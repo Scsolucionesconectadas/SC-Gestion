@@ -18,6 +18,10 @@ const supabase = createClient(url, serviceRoleKey, {
  * SC_PASSWORD_MBETANCOURT
  * SC_PASSWORD_AREYES
  * SC_PASSWORD_OROJAS
+ *
+ * Si querés respetar la clave inicial solicitada, podés asignar temporalmente
+ * mbetancourt / areyes / orojas respectivamente. El CRM marcará la cuenta
+ * para cambio de contraseña en el primer acceso.
  */
 const users = [
   {
@@ -55,7 +59,7 @@ for (const user of users) {
       username: user.username,
       full_name: user.full_name,
       role: user.role,
-      must_change_password: false
+      must_change_password: true
     }
   });
 
