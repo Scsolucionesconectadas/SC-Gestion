@@ -145,6 +145,12 @@ async function enterAuthenticated(user){
   await loadRemoteData();
   setupRealtime();
   setView('dashboard');
+  if (currentProfile?.must_change_password) {
+    setTimeout(() => {
+      openAction('password');
+      notify('Por seguridad, cambiá la contraseña inicial.');
+    }, 250);
+  }
 }
 function enterDemo(){
   mode='demo';
