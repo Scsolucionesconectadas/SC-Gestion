@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#2C3A46">
+  <title>SC · Agentes IA</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/app.css">
+  <link rel="stylesheet" href="./assets/css/agents.css">
+  <script src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.js" defer></script>
+  <script src="./assets/js/config.js"></script>
+</head>
+<body>
+  <div class="agents-shell">
+    <aside class="agents-side">
+      <a class="agents-brand" href="./index.html">
+        <img src="./assets/img/sc-isotipo-color.webp" alt="SC">
+        <span><b>Agentes IA</b><small>SC Soluciones Conectadas</small></span>
+      </a>
+      <div class="agent-selector">
+        <button class="active" data-agent="prospecting"><i data-lucide="radar"></i><span><b>Agente Comercial</b><small>Busca y prepara prospectos</small></span></button>
+        <button data-agent="quote"><i data-lucide="calculator"></i><span><b>Agente de Presupuestos</b><small>Estima alcance y costos</small></span></button>
+      </div>
+      <div class="agent-side-note">
+        <i data-lucide="shield-check"></i>
+        <p>Los resultados son asistencia para revisión humana. Ningún mensaje ni presupuesto se envía solo.</p>
+      </div>
+      <a class="back-link" href="./index.html"><i data-lucide="arrow-left"></i>Volver al CRM</a>
+    </aside>
+
+    <main class="agents-main">
+      <header class="agents-top">
+        <div><span class="eyebrow">SC · INTELIGENCIA COMERCIAL</span><h1 id="agentPageTitle">Agente Comercial</h1><p id="agentPageSub">Encontrá negocios con afinidad real para SC y prepará el primer contacto.</p></div>
+        <div class="agents-user"><span class="live-dot"></span><span id="agentUserLabel">Conectando...</span></div>
+      </header>
+
+      <section class="agent-workspace active" id="prospectingWorkspace">
+        <div class="agent-grid">
+          <article class="agent-config panel">
+            <div class="panel-head"><div><span class="eyebrow">BÚSQUEDA</span><h3>Definir prospección</h3></div><span class="ai-chip">WEB + IA</span></div>
+            <form id="prospectingForm" class="agent-form">
+              <label>Ciudad base<input name="city" value="Concepción del Uruguay" required></label>
+              <label>Zona / localidades cercanas<input name="nearby" value="Colón, San José, Villa Elisa, Caseros, Gualeguaychú"></label>
+              <label>Rubros a priorizar<textarea name="sectors" rows="3" placeholder="Distribuidoras, industria, gastronomía, salud..."></textarea></label>
+              <div class="two-col">
+                <label>Cantidad objetivo<input name="limit" type="number" min="1" max="25" value="8"></label>
+                <label>Profundidad<select name="depth"><option value="balanced">Equilibrada</option><option value="deep">Profunda</option><option value="fast">Rápida</option></select></label>
+              </div>
+              <label>Indicaciones adicionales<textarea name="notes" rows="3" placeholder="Ej.: buscar negocios con venta mayorista, múltiples sucursales o logística..."></textarea></label>
+              <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="search"></i>Buscar oportunidades</button>
+            </form>
+          </article>
+
+          <article class="agent-output panel">
+            <div class="panel-head"><div><span class="eyebrow">RESULTADOS</span><h3>Oportunidades encontradas</h3></div><button class="text-btn" id="clearProspectingBtn">Limpiar</button></div>
+            <div class="agent-placeholder" id="prospectingPlaceholder">
+              <span class="agent-orb"><i data-lucide="radar"></i></span>
+              <h3>Definí una búsqueda</h3>
+              <p>El agente investigará fuentes públicas, excluirá duplicados del CRM y preparará un mensaje inicial por negocio.</p>
+            </div>
+            <div id="prospectingResults" class="lead-results"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="agent-workspace" id="quoteWorkspace">
+        <div class="agent-grid">
+          <article class="agent-config panel">
+            <div class="panel-head"><div><span class="eyebrow">COTIZACIÓN</span><h3>Relevar necesidad</h3></div><span class="ai-chip">SC + IA</span></div>
+            <form id="quoteForm" class="agent-form">
+              <label>Prospecto<select name="prospect_id" id="quoteProspect"><option value="">Sin prospecto asociado</option></select></label>
+              <label>Necesidad / alcance<textarea name="requirements" rows="5" required placeholder="Describí qué necesita el cliente, procesos, usuarios, integraciones, reportes..."></textarea></label>
+              <div class="two-col">
+                <label>Usuarios estimados<input name="users" type="number" min="1" placeholder="5"></label>
+                <label>Plazo deseado<input name="deadline" placeholder="Ej.: 6 semanas"></label>
+              </div>
+              <label>Integraciones / servicios externos<textarea name="integrations" rows="3" placeholder="WhatsApp, Mercado Pago, API externa, Odoo, ATER..."></textarea></label>
+              <label class="check-row"><input type="checkbox" name="hosting" checked><span>Incluir infraestructura / hosting</span></label>
+              <label class="check-row"><input type="checkbox" name="maintenance" checked><span>Evaluar mantenimiento / soporte mensual</span></label>
+              <label class="check-row"><input type="checkbox" name="research_hosting_market"><span>Investigar referencias actuales de hosting si faltan precios internos</span></label>
+              <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="calculator"></i>Preparar estimación</button>
+            </form>
+          </article>
+
+          <article class="agent-output panel">
+            <div class="panel-head"><div><span class="eyebrow">BORRADOR INTERNO</span><h3>Estimación profesional</h3></div><button class="text-btn" id="clearQuoteBtn">Limpiar</button></div>
+            <div class="agent-placeholder" id="quotePlaceholder">
+              <span class="agent-orb"><i data-lucide="calculator"></i></span>
+              <h3>Completá el relevamiento</h3>
+              <p>El agente separará desarrollo, infraestructura, costos recurrentes, supuestos, riesgos y preguntas pendientes.</p>
+            </div>
+            <div id="quoteResults" class="quote-results"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="./assets/js/agents.js"></script>
+</body>
+</html>
