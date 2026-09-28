@@ -66,7 +66,7 @@ revoke all on table public.pricing_catalog, public.agent_runs, public.quote_esti
 
 grant select on public.pricing_catalog to authenticated;
 grant insert, update, delete on public.pricing_catalog to authenticated;
-grant select, insert on public.agent_runs to authenticated;
+grant select, insert, update on public.agent_runs to authenticated;
 grant select, insert, update, delete on public.quote_estimates to authenticated;
 
 drop policy if exists pricing_catalog_select_team on public.pricing_catalog;
@@ -87,6 +87,12 @@ using (user_id = (select auth.uid()) or public.is_admin());
 drop policy if exists agent_runs_insert_own on public.agent_runs;
 create policy agent_runs_insert_own on public.agent_runs
 for insert to authenticated
+with check (user_id = (select auth.uid()) and public.is_active_member());
+
+drop policy if exists agent_runs_update_own on public.agent_runs;
+create policy agent_runs_update_own on public.agent_runs
+for update to authenticated
+using (user_id = (select auth.uid()) and public.is_active_member())
 with check (user_id = (select auth.uid()) and public.is_active_member());
 
 drop policy if exists quote_estimates_select_team on public.quote_estimates;
