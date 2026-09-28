@@ -1,0 +1,12 @@
+{
+  "name": "sc-crm-comercial",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "users:create": "node scripts/create-users.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.117.2"
+  }
+}
