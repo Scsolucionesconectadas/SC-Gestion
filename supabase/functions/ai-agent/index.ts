@@ -1,4 +1,4 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.57.4';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -247,10 +247,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     if (runId) {
-      await supabase.from('agent_runs').update({ status: 'failed', error_message: String(error?.message || error) }).eq('id', runId);
+      await supabase.from('agent_runs').update({ status: 'failed', error_message: message }).eq('id', runId);
     }
-    return new Response(JSON.stringify({ error: String(error?.message || error), run_id: runId }), {
+    return new Response(JSON.stringify({ error: message, run_id: runId }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
