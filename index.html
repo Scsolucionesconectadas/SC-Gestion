@@ -1,217 +1,255 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#07111f">
-<title>SC CRM Comercial</title>
-<style>
-:root{--bg:#f3f6fb;--panel:#fff;--panel2:#f7f9fc;--text:#132033;--muted:#6c7b90;--line:#e4e9f1;--nav:#07111f;--nav2:#10213a;--primary:#2478f0;--primary2:#175fc7;--green:#18945d;--amber:#bc7300;--purple:#7657c8;--red:#c64141;--shadow:0 12px 32px rgba(18,32,51,.08)}
-body.dark{--bg:#0d1726;--panel:#111f32;--panel2:#16263c;--text:#f1f5fb;--muted:#9bacbf;--line:#263a56;--primary:#5c9aff;--primary2:#83b3ff;--shadow:0 12px 32px rgba(0,0,0,.22)}
-*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial;background:var(--bg);color:var(--text)}button,input,select,textarea{font:inherit}.app{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:100vh}.side{position:sticky;top:0;height:100vh;background:var(--nav);color:#dbe8f8;padding:22px 16px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;padding:0 6px 24px}.logo{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;font-weight:900;background:linear-gradient(135deg,#1e6edc,#59a9ff);color:#fff;box-shadow:0 8px 24px rgba(36,120,240,.28)}.brand b{display:block;font-size:15px}.brand small{color:#91a4bd}.nav{display:grid;gap:7px}.nav button{border:0;background:transparent;color:#a9b9cd;text-align:left;padding:11px 12px;border-radius:10px;cursor:pointer}.nav button:hover,.nav button.active{background:var(--nav2);color:#fff}.sidefoot{margin-top:auto;display:grid;gap:8px}.ghost{background:transparent;color:#c9d7e9;border:1px solid #28405f;border-radius:9px;padding:9px;cursor:pointer}.main{min-width:0}.top{position:sticky;top:0;z-index:20;padding:18px 24px;background:color-mix(in srgb,var(--panel) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:14px}.top h1{margin:0;font-size:23px}.top p{margin:4px 0 0;color:var(--muted);font-size:12px}.actions{display:flex;gap:8px}.btn,.icon,.smallbtn{border:0;border-radius:10px;cursor:pointer}.btn{padding:10px 14px;font-weight:700}.primary{background:var(--primary);color:#fff}.primary:hover{background:var(--primary2)}.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.icon{width:40px;height:40px;background:var(--panel);border:1px solid var(--line);color:var(--text)}.view{display:none;padding:24px}.view.active{display:block}.metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:13px;margin-bottom:16px}.metric,.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow)}.metric{padding:17px}.metric span{font-size:11px;color:var(--muted)}.metric strong{display:block;font-size:28px;margin-top:7px}.metric small{display:block;color:var(--muted);margin-top:6px}.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:16px}.card{padding:17px}.cardhead{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:12px}.card h2{font-size:15px;margin:0}.card p{font-size:11px;color:var(--muted);margin:4px 0 0}.list{display:grid;gap:9px}.item{display:flex;justify-content:space-between;align-items:center;gap:12px;border:1px solid var(--line);background:var(--panel2);padding:11px;border-radius:11px}.item b{font-size:12px}.item small{display:block;color:var(--muted);margin-top:4px}.chip{font-size:10px;font-weight:700;border-radius:999px;padding:5px 8px;background:#e9f2ff;color:#175fb9;white-space:nowrap}.chip.green{background:#e8f8ef;color:#147a4d}.chip.amber{background:#fff1dc;color:#975800}.chip.purple{background:#f0eaff;color:#6e4cb7}.chip.gray{background:#eef1f5;color:#59677a}.toolbar{display:flex;gap:10px;margin-bottom:13px}.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:0 11px}.search input{width:100%;border:0;outline:0;background:transparent;color:var(--text);padding:10px 0}.filters{display:flex;gap:8px}.filters select,input,select,textarea{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:9px;padding:10px}.tablewrap{overflow:auto}.tablecard{padding:0;overflow:hidden}table{width:100%;border-collapse:collapse}th,td{padding:13px 14px;border-bottom:1px solid var(--line);text-align:left;font-size:12px}th{font-size:10px;text-transform:uppercase;color:var(--muted);background:var(--panel2)}.smallbtn{padding:6px 9px;background:var(--panel);border:1px solid var(--line);color:var(--text);font-size:11px}.kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}.col{min-width:255px;width:255px;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:11px}.colhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}.colhead b{font-size:12px}.lead{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px;margin-bottom:8px;cursor:pointer}.lead b{font-size:12px}.lead p{margin:5px 0;color:var(--muted);font-size:10px}.leadfoot{display:flex;justify-content:space-between;color:var(--muted);font-size:9px}.empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:11px}.modalback{position:fixed;inset:0;background:rgba(2,8,20,.68);display:grid;place-items:center;padding:18px;z-index:100}.modalback[hidden]{display:none}.modal{width:min(760px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:19px;box-shadow:0 30px 80px rgba(0,0,0,.35)}.modalhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}.modalhead h2{margin:0}.modalhead p{margin:4px 0;color:var(--muted);font-size:11px}.form{display:grid;grid-template-columns:1fr 1fr;gap:12px}.form label{display:grid;gap:5px;font-size:11px;font-weight:700}.form .full{grid-column:1/-1}.formactions{display:flex;justify-content:flex-end;gap:8px}.detailgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px}.field{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:11px}.field span{display:block;color:var(--muted);font-size:9px;text-transform:uppercase;margin-bottom:5px}.field b{font-size:12px}.timeline{display:grid;gap:8px}.timeline div{border-left:2px solid var(--primary);padding:3px 0 3px 10px}.timeline b{font-size:11px}.timeline p{font-size:10px;color:var(--muted);margin:3px 0}.toast{position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;padding:11px 14px;border-radius:9px;z-index:200}.mobilemenu,.mobilecards{display:none}
-@media(max-width:1080px){.metrics{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:1fr}}
-@media(max-width:760px){.app{grid-template-columns:1fr}.side{position:fixed;left:0;top:0;width:250px;z-index:80;transform:translateX(-100%);transition:.2s}.side.open{transform:translateX(0)}.mobilemenu{display:inline-grid}.top{padding:14px}.top p{display:none}.view{padding:14px}.metrics{grid-template-columns:1fr 1fr}.toolbar{flex-direction:column}.filters{display:grid;grid-template-columns:1fr}.tablewrap{display:none}.mobilecards{display:grid;gap:9px}.form,.detailgrid{grid-template-columns:1fr}.form .full{grid-column:auto}}
-@media(max-width:470px){.metrics{grid-template-columns:1fr}.top h1{font-size:19px}.actions .icon{display:none}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#2C3A46">
+  <meta name="description" content="CRM Comercial interno de SC Soluciones Conectadas">
+  <title>SC · CRM Comercial</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/app.css">
+  <script src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.js" defer></script>
+  <script src="./assets/js/config.js"></script>
 </head>
 <body>
-<div class="app">
-<aside class="side" id="side">
-  <div class="brand"><div class="logo">SC</div><div><b>CRM Comercial</b><small>Soluciones Conectadas</small></div></div>
-  <div class="nav">
-    <button class="active" data-view="dashboard">Inicio</button>
-    <button data-view="prospects">Prospectos</button>
-    <button data-view="pipeline">Pipeline</button>
-    <button data-view="followups">Seguimientos</button>
-    <button data-view="reports">Reportes</button>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <section class="auth-shell" id="authShell">
+    <div class="auth-card">
+      <div class="auth-logo-panel">
+        <img src="./assets/img/sc-logo.png" alt="SC Soluciones Conectadas" class="brand-logo brand-logo-auth">
+      </div>
+      <div class="auth-content">
+        <span class="eyebrow">ACCESO INTERNO · CRM COMERCIAL</span>
+        <h1>Convertí cada contacto en una oportunidad visible.</h1>
+        <p class="auth-copy">Prospectos, seguimientos, reuniones, tareas, propuestas y métricas en un solo flujo de trabajo.</p>
+
+        <form class="auth-form" id="loginForm">
+          <label>Usuario
+            <div class="input-shell">
+              <i data-lucide="user-round"></i>
+              <input id="loginUser" autocomplete="username" placeholder="mbetancourt" required>
+            </div>
+          </label>
+          <label>Contraseña
+            <div class="input-shell">
+              <i data-lucide="lock-keyhole"></i>
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            </div>
+          </label>
+          <button class="btn btn-primary btn-lg" id="loginButton" type="submit">
+            <span>Ingresar</span><i data-lucide="arrow-right"></i>
+          </button>
+          <p class="form-message" id="authMessage"></p>
+        </form>
+
+        <div class="setup-box" id="setupBox" hidden>
+          <div><i data-lucide="database-zap"></i></div>
+          <div>
+            <strong>Frontend listo para Supabase</strong>
+            <p>Falta cargar URL y publishable key del proyecto para activar autenticación y PostgreSQL.</p>
+            <button class="text-btn" type="button" id="demoLoginBtn">Entrar a la demo →</button>
+          </div>
+        </div>
+
+        <div class="security-row">
+          <span class="live-dot"></span>
+          <span>Supabase Auth + PostgreSQL + RLS</span>
+        </div>
+      </div>
+    </div>
+
+    <aside class="auth-story">
+      <span class="eyebrow light">SC / OPERACIÓN COMERCIAL CONECTADA</span>
+      <h2>Del primer mensaje al cierre, sin perder el hilo.</h2>
+      <div class="flow-line">
+        <span>Lead</span><i></i><span>Contacto</span><i></i><span>Reunión</span><i></i><span>Propuesta</span><i></i><span>Cliente</span>
+      </div>
+      <div class="story-cards">
+        <article><b>01</b><strong>Priorizá</strong><p>Qué requiere atención hoy y qué puede esperar.</p></article>
+        <article><b>02</b><strong>SeguÍ</strong><p>Cada WhatsApp, llamada, reunión y próximo paso.</p></article>
+        <article><b>03</b><strong>Medí</strong><p>Qué rubros responden, convierten y generan reuniones.</p></article>
+      </div>
+    </aside>
+  </section>
+
+  <div class="app-shell" id="appShell" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand">
+        <div class="side-logo-box"><img src="./assets/img/sc-logo.png" alt="SC" class="brand-logo"></div>
+        <div><b>CRM Comercial</b><small>Soluciones Conectadas</small></div>
+      </div>
+
+      <nav class="nav">
+        <button class="active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Inicio</span></button>
+        <button data-view="prospects"><i data-lucide="users-round"></i><span>Prospectos</span></button>
+        <button data-view="pipeline"><i data-lucide="columns-3"></i><span>Pipeline</span></button>
+        <button data-view="followups"><i data-lucide="calendar-clock"></i><span>Seguimientos</span></button>
+        <button data-view="tasks"><i data-lucide="list-checks"></i><span>Tareas</span></button>
+        <button data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="sync-card">
+          <span class="sync-orbit"><span></span></span>
+          <div><b id="syncLabel">Sincronizando</b><small id="syncSub">PostgreSQL</small></div>
+        </div>
+        <button class="side-link" id="exportBtn"><i data-lucide="download"></i>Exportar respaldo</button>
+        <button class="side-link logout" id="logoutBtn"><i data-lucide="log-out"></i>Cerrar sesión</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="top-left">
+          <button class="icon-btn mobile-menu" id="menuBtn"><i data-lucide="menu"></i></button>
+          <div><span class="eyebrow" id="contextLabel">SC COMERCIAL</span><h1 id="viewTitle">Inicio</h1></div>
+        </div>
+        <div class="top-actions">
+          <div class="global-search">
+            <i data-lucide="search"></i>
+            <input id="globalSearch" placeholder="Buscar negocio...">
+            <kbd>/</kbd>
+          </div>
+          <button class="icon-btn" id="themeBtn" title="Cambiar tema"><i data-lucide="sun-moon"></i></button>
+          <button class="btn btn-primary" id="newProspectBtn"><i data-lucide="plus"></i>Nuevo prospecto</button>
+          <button class="user-pill" id="userPill">
+            <span class="avatar" id="userAvatar">MB</span>
+            <span class="user-copy"><b id="userName">Maikol</b><small id="userRole">Administrador</small></span>
+          </button>
+        </div>
+      </header>
+
+      <section class="content view active" id="dashboardView">
+        <div class="hero-panel">
+          <div class="hero-copy">
+            <span class="eyebrow light">PANEL DEL DÍA</span>
+            <h2 id="heroGreeting">Buenas tardes, Maikol.</h2>
+            <p id="heroText">Estas son las oportunidades que requieren atención comercial.</p>
+          </div>
+          <div class="hero-actions">
+            <button class="btn btn-glass" data-view-jump="followups"><i data-lucide="calendar-clock"></i>Ver seguimientos</button>
+            <button class="btn btn-white" id="quickInteractionBtn"><i data-lucide="message-circle-more"></i>Registrar contacto</button>
+          </div>
+          <div class="hero-rings" aria-hidden="true"><i></i><i></i><i></i></div>
+        </div>
+
+        <div class="kpi-grid" id="kpiGrid"></div>
+
+        <div class="dashboard-grid">
+          <article class="panel span-2">
+            <div class="panel-head"><div><span class="eyebrow">PRIORIDAD</span><h3>Seguimientos que requieren acción</h3></div><button class="text-btn" data-view-jump="followups">Ver todos →</button></div>
+            <div class="action-list" id="priorityList"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">PIPELINE</span><h3>Embudo comercial</h3></div></div>
+            <div class="funnel-list" id="funnelList"></div>
+          </article>
+          <article class="panel span-2">
+            <div class="panel-head"><div><span class="eyebrow">ACTIVIDAD</span><h3>Últimos movimientos</h3></div></div>
+            <div class="activity-list" id="recentList"></div>
+          </article>
+          <article class="panel">
+            <div class="panel-head"><div><span class="eyebrow">EQUIPO</span><h3>Distribución por responsable</h3></div></div>
+            <div class="owner-list" id="ownerList"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="content view" id="prospectsView">
+        <div class="page-toolbar">
+          <div class="filter-search"><i data-lucide="search"></i><input id="prospectSearch" placeholder="Negocio, contacto, rubro, localidad..."></div>
+          <div class="filter-group">
+            <select id="statusFilter"></select>
+            <select id="ownerFilter"></select>
+            <select id="sectorFilter"></select>
+          </div>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th>Negocio</th><th>Rubro</th><th>Responsable</th><th>Estado</th><th>Próximo paso</th><th>Seguimiento</th><th></th></tr></thead>
+              <tbody id="prospectRows"></tbody>
+            </table>
+          </div>
+          <div class="mobile-list" id="mobileProspects"></div>
+        </div>
+      </section>
+
+      <section class="content view" id="pipelineView">
+        <div class="section-note"><i data-lucide="grab"></i><span>Arrastrá una tarjeta para cambiar su etapa comercial.</span></div>
+        <div class="kanban" id="kanban"></div>
+      </section>
+
+      <section class="content view" id="followupsView">
+        <div class="followup-grid" id="followupGroups"></div>
+      </section>
+
+      <section class="content view" id="tasksView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">ORGANIZACIÓN</span><h2 class="page-subtitle">Tareas del equipo</h2></div>
+          <button class="btn btn-primary" id="newTaskBtn"><i data-lucide="plus"></i>Nueva tarea</button>
+        </div>
+        <div class="task-board" id="taskBoard"></div>
+      </section>
+
+      <section class="content view" id="reportsView">
+        <div class="kpi-grid" id="reportKpis"></div>
+        <div class="charts-grid">
+          <article class="panel"><div class="panel-head"><div><span class="eyebrow">CONVERSIÓN</span><h3>Prospectos por estado</h3></div></div><div class="chart-box"><canvas id="pipelineChart"></canvas></div></article>
+          <article class="panel"><div class="panel-head"><div><span class="eyebrow">RUBROS</span><h3>Oportunidades por sector</h3></div></div><div class="chart-box"><canvas id="sectorChart"></canvas></div></article>
+        </div>
+        <div class="panel table-panel">
+          <div class="panel-head pad"><div><span class="eyebrow">ANÁLISIS</span><h3>Rendimiento por rubro</h3></div></div>
+          <div class="table-scroll"><table><thead><tr><th>Rubro</th><th>Prospectos</th><th>Con respuesta</th><th>Interesados+</th><th>Clientes</th><th>Conversión</th></tr></thead><tbody id="sectorReportRows"></tbody></table></div>
+        </div>
+      </section>
+    </main>
   </div>
-  <div class="sidefoot">
-    <button class="ghost" id="demoBtn">Cargar demo</button>
-    <button class="ghost" id="exportBtn">Exportar datos</button>
-    <small style="text-align:center;color:#7187a4">MVP 0.1</small>
+
+  <div class="modal-backdrop" id="prospectModal" hidden>
+    <div class="modal modal-lg">
+      <div class="modal-head"><div><span class="eyebrow">FICHA COMERCIAL</span><h2 id="prospectModalTitle">Nuevo prospecto</h2></div><button class="icon-btn" data-close="prospectModal"><i data-lucide="x"></i></button></div>
+      <form class="form-grid" id="prospectForm">
+        <input type="hidden" id="prospectId">
+        <label>Negocio*<input id="businessName" required></label>
+        <label>Rubro<input id="sector"></label>
+        <label>Localidad<input id="city" value="Cdelu"></label>
+        <label>Contacto<input id="contactName"></label>
+        <label>Cargo<input id="jobTitle"></label>
+        <label>Teléfono<input id="phone" inputmode="tel"></label>
+        <label>Email<input id="email" type="email"></label>
+        <label>Responsable<select id="owner"></select></label>
+        <label>Marca<select id="brand"><option>SC</option><option>Click</option><option>SC y Click</option></select></label>
+        <label>Estado<select id="status"></select></label>
+        <label>Próxima acción<input id="nextAction"></label>
+        <label>Seguimiento<input id="nextFollowup" type="date"></label>
+        <label class="full">Necesidad / interés<textarea id="needInterest" rows="3"></textarea></label>
+        <label class="full">Observaciones<textarea id="notes" rows="3"></textarea></label>
+        <div class="form-actions full"><button type="button" class="btn btn-secondary" data-close="prospectModal">Cancelar</button><button class="btn btn-primary" type="submit">Guardar prospecto</button></div>
+      </form>
+    </div>
   </div>
-</aside>
 
-<main class="main">
-<header class="top">
-  <div style="display:flex;align-items:center;gap:10px">
-    <button class="icon mobilemenu" id="menuBtn">☰</button>
-    <div><h1 id="title">Inicio</h1><p id="subtitle">Resumen comercial y próximos seguimientos</p></div>
+  <div class="modal-backdrop" id="detailModal" hidden>
+    <div class="modal modal-xl">
+      <div class="modal-head"><div><span class="eyebrow">OPORTUNIDAD</span><h2 id="detailTitle"></h2><p id="detailSubtitle"></p></div><button class="icon-btn" data-close="detailModal"><i data-lucide="x"></i></button></div>
+      <div id="detailBody"></div>
+    </div>
   </div>
-  <div class="actions"><button class="icon" id="themeBtn">◐</button><button class="btn primary" id="newBtn">+ Nuevo prospecto</button></div>
-</header>
 
-<section class="view active" id="dashboardView">
-  <div class="metrics" id="metrics"></div>
-  <div class="grid">
-    <div class="card"><div class="cardhead"><div><h2>Seguimientos prioritarios</h2><p>Lo que necesita atención primero</p></div></div><div class="list" id="priority"></div></div>
-    <div class="card"><div class="cardhead"><div><h2>Embudo comercial</h2><p>Distribución por estado</p></div></div><div class="list" id="funnel"></div></div>
+  <div class="modal-backdrop" id="actionModal" hidden>
+    <div class="modal">
+      <div class="modal-head"><div><span class="eyebrow" id="actionEyebrow">ACCIÓN</span><h2 id="actionTitle"></h2></div><button class="icon-btn" data-close="actionModal"><i data-lucide="x"></i></button></div>
+      <div id="actionBody"></div>
+    </div>
   </div>
-  <div class="grid">
-    <div class="card"><div class="cardhead"><div><h2>Actividad reciente</h2><p>Últimos movimientos registrados</p></div></div><div class="list" id="recent"></div></div>
-    <div class="card"><div class="cardhead"><div><h2>Por responsable</h2><p>Prospectos asignados</p></div></div><div class="list" id="owners"></div></div>
-  </div>
-</section>
 
-<section class="view" id="prospectsView">
-  <div class="toolbar">
-    <div class="search">⌕ <input id="q" placeholder="Buscar negocio, contacto, rubro..."></div>
-    <div class="filters"><select id="statusFilter"></select><select id="ownerFilter"></select><select id="sectorFilter"></select></div>
-  </div>
-  <div class="card tablecard"><div class="tablewrap"><table><thead><tr><th>Negocio</th><th>Rubro</th><th>Responsable</th><th>Estado</th><th>Seguimiento</th><th></th></tr></thead><tbody id="rows"></tbody></table></div><div class="mobilecards" id="mobileRows"></div></div>
-</section>
+  <div class="toast" id="toast" hidden></div>
 
-<section class="view" id="pipelineView"><div class="kanban" id="kanban"></div></section>
-<section class="view" id="followupsView"><div id="followups"></div></section>
-<section class="view" id="reportsView"><div class="metrics" id="reportMetrics"></div><div class="card"><div class="cardhead"><div><h2>Rendimiento por rubro</h2><p>Respuesta y oportunidades</p></div></div><div class="tablewrap"><table><thead><tr><th>Rubro</th><th>Prospectos</th><th>Respuesta</th><th>Interesados+</th><th>Conversión</th></tr></thead><tbody id="sectorReport"></tbody></table></div></div></section>
-</main>
-</div>
-
-<div class="modalback" id="formModal" hidden><div class="modal">
-  <div class="modalhead"><div><h2 id="formTitle">Nuevo prospecto</h2><p>Información comercial principal</p></div><button class="icon" data-close="formModal">×</button></div>
-  <form class="form" id="prospectForm">
-    <input type="hidden" id="pid">
-    <label>Negocio*<input id="business" required></label>
-    <label>Rubro<input id="sector"></label>
-    <label>Localidad<input id="city" value="Cdelu"></label>
-    <label>Contacto<input id="contact"></label>
-    <label>Teléfono<input id="phone"></label>
-    <label>Email<input id="email" type="email"></label>
-    <label>Responsable<select id="owner"><option>Maikol</option><option>Alexis</option><option>Oriana</option></select></label>
-    <label>Marca<select id="brand"><option>SC</option><option>Click</option><option>SC y Click</option></select></label>
-    <label>Estado<select id="status"></select></label>
-    <label>Próximo seguimiento<input id="next" type="date"></label>
-    <label class="full">Necesidad / interés<textarea id="need" rows="3"></textarea></label>
-    <label class="full">Observaciones<textarea id="notes" rows="3"></textarea></label>
-    <div class="formactions full"><button type="button" class="btn secondary" data-close="formModal">Cancelar</button><button class="btn primary">Guardar</button></div>
-  </form>
-</div></div>
-
-<div class="modalback" id="detailModal" hidden><div class="modal">
-  <div class="modalhead"><div><h2 id="detailTitle"></h2><p id="detailSub"></p></div><button class="icon" data-close="detailModal">×</button></div>
-  <div id="detailBody"></div>
-</div></div>
-
-<div class="toast" id="toast" hidden></div>
-
-<script>
-(function(){
-var KEY='sc_crm_mvp_01', THEME='sc_crm_theme';
-var STATUSES=['Prospecto','Contactado','Respondió','Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente','No interesado'];
-var OWNERS=['Maikol','Alexis','Oriana'];
-var TYPES=['WhatsApp','Llamada','Visita','Email','Reunión','Videollamada'];
-var views={dashboard:['Inicio','Resumen comercial y próximos seguimientos'],prospects:['Prospectos','Base comercial centralizada'],pipeline:['Pipeline','Oportunidades por etapa comercial'],followups:['Seguimientos','Vencidos, de hoy y próximos'],reports:['Reportes','Indicadores para decidir dónde enfocar el esfuerzo']};
-var state=load();
-
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||{prospects:[],interactions:[]}}catch(e){return{prospects:[],interactions:[]}}}
-function save(){localStorage.setItem(KEY,JSON.stringify(state));renderAll()}
-function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2)}
-function today(){var d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
-function fmt(s){if(!s)return'Sin fecha';var a=s.split('-');return a[2]+'/'+a[1]+'/'+a[0]}
-function dateObj(s){if(!s)return null;var a=s.split('-');return new Date(+a[0],+a[1]-1,+a[2])}
-function delta(s){if(!s)return 9999;return Math.round((dateObj(s)-dateObj(today()))/86400000)}
-function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
-function replied(p){return['Respondió','Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente'].indexOf(p.status)>=0}
-function opportunity(p){return['Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente'].indexOf(p.status)>=0}
-function tone(s){if(s==='Cliente'||s==='Reunión realizada')return'green';if(s==='Interesado'||s==='Reunión pendiente'||s==='Negociación')return'amber';if(s==='Respondió'||s==='Propuesta enviada')return'purple';return'gray'}
-function toast(t){var e=document.getElementById('toast');e.textContent=t;e.hidden=false;clearTimeout(window.__t);window.__t=setTimeout(function(){e.hidden=true},1800)}
-function openM(id){document.getElementById(id).hidden=false}
-function closeM(id){document.getElementById(id).hidden=true}
-
-function setView(v){
- document.querySelectorAll('.view').forEach(function(x){x.classList.remove('active')});
- document.querySelectorAll('.nav button').forEach(function(x){x.classList.toggle('active',x.dataset.view===v)});
- document.getElementById(v+'View').classList.add('active');document.getElementById('title').textContent=views[v][0];document.getElementById('subtitle').textContent=views[v][1];document.getElementById('side').classList.remove('open')
-}
-function chip(s){return'<span class="chip '+tone(s)+'">'+esc(s)+'</span>'}
-function renderAll(){renderFilters();renderDashboard();renderProspects();renderPipeline();renderFollowups();renderReports()}
-
-function renderDashboard(){
- var p=state.prospects;
- var m=[['Prospectos',p.length,'Total en la base'],['Con respuesta',p.filter(replied).length,'Conversaciones abiertas'],['Interesados+',p.filter(opportunity).length,'Oportunidades activas'],['Reuniones',p.filter(function(x){return x.status.indexOf('Reunión')===0}).length,'Pendientes o realizadas'],['Clientes',p.filter(function(x){return x.status==='Cliente'}).length,'Cierres']];
- document.getElementById('metrics').innerHTML=m.map(function(x){return'<div class="metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>'}).join('');
- var f=p.filter(function(x){return x.next}).sort(function(a,b){return a.next.localeCompare(b.next)}).slice(0,6);
- document.getElementById('priority').innerHTML=f.length?f.map(function(x){var d=delta(x.next),lab=d<0?'Vencido':d===0?'Hoy':d===1?'Mañana':fmt(x.next);return'<div class="item"><div><b>'+esc(x.business)+'</b><small>'+esc(x.status)+' · '+esc(x.owner)+'</small></div><span class="chip">'+lab+'</span></div>'}).join(''):'<div class="empty">No hay seguimientos cargados.</div>';
- var g=STATUSES.map(function(s){return[s,p.filter(function(x){return x.status===s}).length]}).filter(function(x){return x[1]});
- document.getElementById('funnel').innerHTML=g.length?g.map(function(x){return'<div class="item"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>'}).join(''):'<div class="empty">Sin datos.</div>';
- var r=state.interactions.slice().sort(function(a,b){return(b.createdAt||b.date||'').localeCompare(a.createdAt||a.date||'')}).slice(0,6);
- document.getElementById('recent').innerHTML=r.length?r.map(function(i){var p=state.prospects.find(function(x){return x.id===i.prospectId});return'<div class="item"><div><b>'+esc(p?p.business:'Prospecto')+'</b><small>'+esc(i.type)+' · '+esc(i.result)+'</small></div><span class="chip">'+fmt(i.date)+'</span></div>'}).join(''):'<div class="empty">Sin actividad todavía.</div>';
- document.getElementById('owners').innerHTML=OWNERS.map(function(o){var n=p.filter(function(x){return x.owner===o}).length;return'<div class="item"><span>'+o+'</span><b>'+n+'</b></div>'}).join('');
-}
-function renderFilters(){
- var sf=document.getElementById('statusFilter'),of=document.getElementById('ownerFilter'),rf=document.getElementById('sectorFilter');var keep=[sf.value,of.value,rf.value];
- sf.innerHTML='<option value="">Todos los estados</option>'+STATUSES.map(function(x){return'<option>'+x+'</option>'}).join('');
- of.innerHTML='<option value="">Todos los responsables</option>'+OWNERS.map(function(x){return'<option>'+x+'</option>'}).join('');
- var secs=[...new Set(state.prospects.map(function(x){return x.sector}).filter(Boolean))].sort();
- rf.innerHTML='<option value="">Todos los rubros</option>'+secs.map(function(x){return'<option>'+esc(x)+'</option>'}).join('');
- sf.value=keep[0];of.value=keep[1];rf.value=keep[2];document.getElementById('status').innerHTML=STATUSES.map(function(x){return'<option>'+x+'</option>'}).join('')
-}
-function filtered(){
- var q=document.getElementById('q').value.toLowerCase().trim(),sf=document.getElementById('statusFilter').value,of=document.getElementById('ownerFilter').value,rf=document.getElementById('sectorFilter').value;
- return state.prospects.filter(function(p){var txt=[p.business,p.contact,p.sector,p.city,p.phone,p.email].join(' ').toLowerCase();return(!sf||p.status===sf)&&(!of||p.owner===of)&&(!rf||p.sector===rf)&&(!q||txt.indexOf(q)>=0)})
-}
-function renderProspects(){
- var list=filtered();
- document.getElementById('rows').innerHTML=list.length?list.map(function(p){return'<tr><td><b>'+esc(p.business)+'</b><br><small style="color:var(--muted)">'+esc(p.city||'')+'</small></td><td>'+esc(p.sector||'—')+'</td><td>'+esc(p.owner)+'</td><td>'+chip(p.status)+'</td><td>'+fmt(p.next)+'</td><td><button class="smallbtn" data-open="'+p.id+'">Ver</button> <button class="smallbtn" data-edit="'+p.id+'">Editar</button></td></tr>'}).join(''):'<tr><td colspan="6"><div class="empty">No hay resultados.</div></td></tr>';
- document.getElementById('mobileRows').innerHTML=list.length?list.map(function(p){return'<div class="card" data-open="'+p.id+'"><b>'+esc(p.business)+'</b><p>'+esc(p.sector||'Sin rubro')+' · '+esc(p.owner)+'</p>'+chip(p.status)+'</div>'}).join(''):'<div class="empty">No hay resultados.</div>';
-}
-function renderPipeline(){
- var active=STATUSES.filter(function(s){return s!=='No interesado'});
- document.getElementById('kanban').innerHTML=active.map(function(s){var items=state.prospects.filter(function(p){return p.status===s});return'<div class="col"><div class="colhead"><b>'+s+'</b><span class="chip">'+items.length+'</span></div>'+(items.length?items.map(function(p){return'<div class="lead" data-open="'+p.id+'"><b>'+esc(p.business)+'</b><p>'+esc(p.sector||'Sin rubro')+'</p><div class="leadfoot"><span>'+esc(p.owner)+'</span><span>'+fmt(p.next)+'</span></div></div>'}).join(''):'<div class="empty">Vacío</div>')+'</div>'}).join('')
-}
-function renderFollowups(){
- var groups=[['Vencidos',function(p){return p.next&&delta(p.next)<0}],['Hoy',function(p){return p.next&&delta(p.next)===0}],['Próximos 7 días',function(p){var d=delta(p.next);return p.next&&d>0&&d<=7}],['Más adelante',function(p){return p.next&&delta(p.next)>7}]];
- document.getElementById('followups').innerHTML=groups.map(function(g){var a=state.prospects.filter(g[1]).sort(function(x,y){return x.next.localeCompare(y.next)});return'<div class="card" style="margin-bottom:14px"><div class="cardhead"><h2>'+g[0]+' ('+a.length+')</h2></div><div class="list">'+(a.length?a.map(function(p){return'<div class="item"><div><b>'+esc(p.business)+'</b><small>'+esc(p.status)+' · '+esc(p.owner)+'</small></div><div><span class="chip">'+fmt(p.next)+'</span> <button class="smallbtn" data-open="'+p.id+'">Abrir</button></div></div>'}).join(''):'<div class="empty">Sin seguimientos.</div>')+'</div></div>'}).join('')
-}
-function renderReports(){
- var p=state.prospects,total=p.length||1,rep=p.filter(replied).length,opp=p.filter(opportunity).length,clients=p.filter(function(x){return x.status==='Cliente'}).length;
- var m=[['Tasa de respuesta',Math.round(rep/total*100)+'%',rep+' de '+p.length],['Oportunidades',Math.round(opp/total*100)+'%',opp+' prospectos'],['Clientes',clients,'Sobre '+p.length],['Interacciones',state.interactions.length,'Historial total'],['Vencidos',p.filter(function(x){return x.next&&delta(x.next)<0}).length,'Requieren acción']];
- document.getElementById('reportMetrics').innerHTML=m.map(function(x){return'<div class="metric"><span>'+x[0]+'</span><strong>'+x[1]+'</strong><small>'+x[2]+'</small></div>'}).join('');
- var secs=[...new Set(p.map(function(x){return x.sector||'Sin rubro'}))].sort();
- document.getElementById('sectorReport').innerHTML=secs.length?secs.map(function(s){var a=p.filter(function(x){return(x.sector||'Sin rubro')===s}),r=a.filter(replied).length,o=a.filter(opportunity).length;return'<tr><td>'+esc(s)+'</td><td>'+a.length+'</td><td>'+r+'</td><td>'+o+'</td><td>'+(a.length?Math.round(o/a.length*100):0)+'%</td></tr>'}).join(''):'<tr><td colspan="5">Sin datos.</td></tr>'
-}
-function resetForm(){
- document.getElementById('prospectForm').reset();document.getElementById('pid').value='';document.getElementById('city').value='Cdelu';document.getElementById('owner').value='Maikol';document.getElementById('brand').value='SC';document.getElementById('status').value='Prospecto';document.getElementById('formTitle').textContent='Nuevo prospecto'
-}
-function edit(id){
- var p=state.prospects.find(function(x){return x.id===id});if(!p)return;resetForm();
- document.getElementById('pid').value=p.id;document.getElementById('business').value=p.business||'';document.getElementById('sector').value=p.sector||'';document.getElementById('city').value=p.city||'';document.getElementById('contact').value=p.contact||'';document.getElementById('phone').value=p.phone||'';document.getElementById('email').value=p.email||'';document.getElementById('owner').value=p.owner||'Maikol';document.getElementById('brand').value=p.brand||'SC';document.getElementById('status').value=p.status||'Prospecto';document.getElementById('next').value=p.next||'';document.getElementById('need').value=p.need||'';document.getElementById('notes').value=p.notes||'';document.getElementById('formTitle').textContent='Editar prospecto';openM('formModal')
-}
-function openDetail(id){
- var p=state.prospects.find(function(x){return x.id===id});if(!p)return;document.getElementById('detailTitle').textContent=p.business;document.getElementById('detailSub').textContent=(p.sector||'Sin rubro')+' · '+(p.city||'Sin localidad');
- var phone=(p.phone||'').replace(/\D/g,'').replace(/^0+/,'');var wa=phone?('https://wa.me/'+(phone.indexOf('54')===0?phone:'54'+phone)):'';
- var inter=state.interactions.filter(function(x){return x.prospectId===id}).sort(function(a,b){return(b.date||'').localeCompare(a.date||'')});
- var fields=[['Estado',p.status],['Responsable',p.owner],['Contacto',p.contact||'—'],['Teléfono',p.phone||'—'],['Email',p.email||'—'],['Próximo seguimiento',fmt(p.next)],['Necesidad / interés',p.need||'—'],['Observaciones',p.notes||'—']];
- document.getElementById('detailBody').innerHTML='<div class="detailgrid">'+fields.map(function(x){return'<div class="field"><span>'+x[0]+'</span><b>'+esc(x[1])+'</b></div>'}).join('')+'</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+(wa?'<a class="btn primary" target="_blank" rel="noopener" href="'+wa+'" style="text-decoration:none">Abrir WhatsApp</a>':'')+'<button class="btn secondary" data-edit="'+p.id+'">Editar</button><button class="btn secondary" data-advance="'+p.id+'">Avanzar etapa</button></div><h3 style="font-size:13px">Historial</h3><div class="timeline">'+(inter.length?inter.map(function(i){return'<div><b>'+fmt(i.date)+' · '+esc(i.type)+'</b><p>'+esc(i.result)+'</p></div>'}).join(''):'<div class="empty">Sin interacciones.</div>')+'</div><form id="interactionForm" style="display:grid;grid-template-columns:140px 1fr 140px auto;gap:8px;margin-top:14px"><select name="type">'+TYPES.map(function(t){return'<option>'+t+'</option>'}).join('')+'</select><input name="result" placeholder="Resultado / nota" required><input name="date" type="date" value="'+today()+'" required><button class="btn primary">Registrar</button></form>';
- document.getElementById('interactionForm').onsubmit=function(e){e.preventDefault();var f=new FormData(e.target);state.interactions.push({id:uid(),prospectId:id,type:f.get('type'),result:f.get('result'),date:f.get('date'),createdAt:new Date().toISOString()});save();openDetail(id);toast('Interacción registrada')};openM('detailModal')
-}
-function advance(id){var p=state.prospects.find(function(x){return x.id===id});if(!p)return;var i=STATUSES.indexOf(p.status);if(i>=0&&i<STATUSES.length-2){p.status=STATUSES[i+1];save();openDetail(id);toast('Movido a '+p.status)}}
-function demo(){
- if(state.prospects.length&&!confirm('Ya hay datos. ¿Reemplazarlos por una demo?'))return;
- var d=today();function plus(n){var x=dateObj(d);x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')}
- var a=[
- {business:'Distribuidora Norte Demo',sector:'Mayorista distribuidor',city:'Cdelu',contact:'Marina',phone:'3442000001',email:'',owner:'Maikol',brand:'SC',status:'Reunión pendiente',next:d,need:'Integrar pedidos, stock y reparto.',notes:'Pidió reunión.'},
- {business:'Estudio Delta Demo',sector:'Arquitectura',city:'Cdelu',contact:'Juan',phone:'3442000002',email:'',owner:'Alexis',brand:'SC',status:'Contactado',next:plus(2),need:'Proyectos y documentación.',notes:''},
- {business:'Clínica Centro Demo',sector:'Salud',city:'Cdelu',contact:'Ana',phone:'3442000003',email:'',owner:'Oriana',brand:'SC y Click',status:'Interesado',next:plus(1),need:'Turnos y reportes.',notes:'Interés en demo.'},
- {business:'Taller Ruta Demo',sector:'Automor',city:'Cdelu',contact:'Pablo',phone:'3442000004',email:'',owner:'Maikol',brand:'SC',status:'Propuesta enviada',next:plus(4),need:'Órdenes de trabajo.',notes:''}
- ].map(function(x){x.id=uid();x.createdAt=new Date().toISOString();return x});
- state={prospects:a,interactions:a.map(function(p,i){return{id:uid(),prospectId:p.id,type:'WhatsApp',result:i===0?'Respondió y pidió reunión':'Primer contacto enviado',date:d,createdAt:new Date(Date.now()-i*3600000).toISOString()}})};save();toast('Demo cargada')
-}
-function exportData(){var b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sc-crm-'+today()+'.json';a.click();URL.revokeObjectURL(a.href)}
-
-document.querySelectorAll('.nav button').forEach(function(b){b.onclick=function(){setView(b.dataset.view)}});
-document.querySelectorAll('[data-close]').forEach(function(b){b.onclick=function(){closeM(b.dataset.close)}});
-document.getElementById('newBtn').onclick=function(){resetForm();openM('formModal')};
-document.getElementById('menuBtn').onclick=function(){document.getElementById('side').classList.toggle('open')};
-document.getElementById('themeBtn').onclick=function(){document.body.classList.toggle('dark');localStorage.setItem(THEME,document.body.classList.contains('dark')?'dark':'light')};
-if(localStorage.getItem(THEME)==='dark')document.body.classList.add('dark');
-['q','statusFilter','ownerFilter','sectorFilter'].forEach(function(id){document.getElementById(id).addEventListener(id==='q'?'input':'change',renderProspects)});
-document.getElementById('demoBtn').onclick=demo;document.getElementById('exportBtn').onclick=exportData;
-document.getElementById('prospectForm').onsubmit=function(e){e.preventDefault();var id=document.getElementById('pid').value;var data={business:document.getElementById('business').value.trim(),sector:document.getElementById('sector').value.trim(),city:document.getElementById('city').value.trim(),contact:document.getElementById('contact').value.trim(),phone:document.getElementById('phone').value.trim(),email:document.getElementById('email').value.trim(),owner:document.getElementById('owner').value,brand:document.getElementById('brand').value,status:document.getElementById('status').value,next:document.getElementById('next').value,need:document.getElementById('need').value.trim(),notes:document.getElementById('notes').value.trim()};if(id){var i=state.prospects.findIndex(function(x){return x.id===id});state.prospects[i]=Object.assign({},state.prospects[i],data,{updatedAt:new Date().toISOString()})}else{data.id=uid();data.createdAt=new Date().toISOString();state.prospects.push(data);state.interactions.push({id:uid(),prospectId:data.id,type:'Visita',result:'Prospecto creado en CRM',date:today(),createdAt:new Date().toISOString()})}save();closeM('formModal');toast(id?'Prospecto actualizado':'Prospecto creado')};
-document.body.addEventListener('click',function(e){var o=e.target.closest('[data-open]'),ed=e.target.closest('[data-edit]'),ad=e.target.closest('[data-advance]');if(o)openDetail(o.dataset.open);if(ed){closeM('detailModal');edit(ed.dataset.edit)}if(ad)advance(ad.dataset.advance)});
-document.querySelectorAll('.modalback').forEach(function(m){m.onclick=function(e){if(e.target===m)m.hidden=true}});
-renderAll();
-})();
-</script>
+  <script type="module" src="./assets/js/app.js"></script>
 </body>
 </html>
