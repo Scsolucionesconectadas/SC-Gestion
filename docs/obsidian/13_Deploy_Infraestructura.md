@@ -21,3 +21,7 @@
 6. Definir backups, monitoreo y rollback.
 
 No publicar el portal interno como GitHub Pages abierto. La autenticación protege datos, pero el hosting privado reduce superficie y evita exponer innecesariamente la aplicación operativa.
+
+## Estado de GitHub Pages
+
+El intento de activar Pages desde el repositorio privado devolvió `422`: el plan actual no lo soporta. El repositorio continúa privado y el frontend no fue expuesto. GitHub Pages, incluso cuando se origina en un repositorio privado, publica un sitio accesible en Internet; no debe confundirse con un sitio privado.

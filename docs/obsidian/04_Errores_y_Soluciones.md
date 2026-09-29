@@ -19,3 +19,13 @@
 **Solución aplicada:** regla global `[hidden]{display:none!important}` y aserción Playwright.
 
 **Cómo evitarlo:** verificar capturas completas además de visibilidad de componentes aislados.
+
+## 2026-09-28 - GitHub Pages no disponible para repositorio privado
+
+**Síntoma:** la API de Pages respondió `422` al intentar publicar `SC-Gestion`.
+
+**Causa:** el plan actual de la cuenta no permite GitHub Pages desde este repositorio privado.
+
+**Solución aplicada:** se mantuvo el repositorio privado y no se expuso el código interno.
+
+**Cómo resolverlo:** usar GitHub Pro, un hosting externo compatible con repositorios privados o aprobar explícitamente una publicación pública del frontend.
