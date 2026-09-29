@@ -57,3 +57,35 @@
 **Archivos relacionados:** `supabase/migrations/20260929105003_team_profiles.sql`, `supabase/migrations/20260929105610_team_profile_visibility.sql`, `assets/js/app.js`.
 
 La RPC es deliberadamente `security definer` porque actualiza perfil y membresía en forma atómica. Solo se concede a `authenticated`, vuelve a validar la sesión y el rol `owner` dentro de PostgreSQL, fija `search_path` y no confía en datos del navegador.
+
+## 2026-09-29 - Permisos granulares por empresa
+
+**Decisión:** combinar permisos predeterminados por rol con excepciones JSON por membresía y validarlos tanto en RLS como en las RPC.
+
+**Motivo:** una misma persona puede tener capacidades diferentes según la empresa, sin multiplicar roles rígidos.
+
+**Impacto:** la interfaz oculta acciones por módulo y PostgreSQL continúa siendo la autoridad final. Solo un propietario puede delegar propiedad o capacidades de administración equivalentes.
+
+**Archivos relacionados:** `supabase/migrations/20260929133000_permissions_and_organizations.sql`, `supabase/migrations/20260929141500_permission_rls_enforcement.sql`, `assets/js/app.js`.
+
+## 2026-09-29 - Versionado de agentes y secretos solo en servidor
+
+**Decisión:** separar definiciones editables de versiones publicadas inmutables y aceptar únicamente modelos incluidos en `OPENAI_ALLOWED_MODELS`.
+
+**Motivo:** conservar trazabilidad, permitir rollback conceptual y evitar que un valor del navegador elija modelos o credenciales no autorizados.
+
+**Impacto:** `agents.manage` configura y publica; `agents.run` ejecuta. Cada ejecución registra versión, duración y uso informado por la API.
+
+**Archivos relacionados:** `supabase/migrations/20260929140000_agent_studio.sql`, `supabase/functions/ai-agent/index.ts`, `assets/js/agents.js`.
+
+## 2026-09-29 - Comunicaciones y documentos internos
+
+**Decisión:** generar PDF no fiscales en el navegador, almacenarlos de forma privada y enviar correos mediante una Edge Function con Resend e idempotencia.
+
+**Motivo:** la clave del proveedor y el acceso a adjuntos no deben llegar al navegador; los documentos necesitan historial y aislamiento por empresa.
+
+**Impacto:** los envíos requieren `communications.send`; los PDF mantienen marca no fiscal, versión y trazabilidad.
+
+**Alternativas consideradas:** `mailto:` sin trazabilidad y claves de proveedor en el frontend; ambas se descartaron.
+
+**Archivos relacionados:** `assets/js/workspace.js`, `supabase/functions/communications/index.ts`, `supabase/migrations/20260929134500_collaboration_communications.sql`.

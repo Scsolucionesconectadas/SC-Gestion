@@ -4,9 +4,9 @@
 
 - Auth: login por email interno derivado del nombre de usuario.
 - Database: PostgreSQL con RLS.
-- Storage: buckets privados `organization-documents` y `profile-avatars`.
+- Storage: buckets privados `organization-documents`, `profile-avatars` y `generated-pdfs`.
 - Realtime: refresco de entidades filtradas por `organization_id`.
-- Edge Function: `ai-agent` con JWT obligatorio.
+- Edge Functions: `ai-agent` y `communications`, ambas con JWT obligatorio.
 
 Usuarios iniciales aprovisionados:
 
@@ -31,9 +31,22 @@ La Edge Function usa Responses API con salida estructurada. Variables:
 
 ```env
 OPENAI_API_KEY=
+OPENAI_ALLOWED_MODELS=
 OPENAI_PROSPECTING_MODEL=
 OPENAI_QUOTE_MODEL=
 ALLOWED_ORIGINS=
 ```
 
-No hay envíos automáticos a clientes ni acciones destructivas por IA.
+No hay acciones destructivas automáticas por IA. Las versiones configurables pueden exigir aprobación humana y cada ejecución queda registrada.
+
+## Resend
+
+La función `communications` entrega correos preparados desde el portal. Valida permiso, destinatarios, frecuencia e idempotencia; los adjuntos se obtienen desde Storage privado.
+
+```env
+RESEND_API_KEY=
+RESEND_FROM=
+RESEND_REPLY_TO=
+```
+
+No hay envíos hasta configurar un remitente verificado y realizar una prueba controlada.

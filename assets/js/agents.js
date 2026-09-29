@@ -5,8 +5,7 @@ const configured=Boolean(cfg.SUPABASE_URL&&cfg.SUPABASE_PUBLISHABLE_KEY);
 const supabase=configured?createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true}}):null;
 
 const ORG_KEY='sc_gestion_active_organization';
-const AI_ROLES=new Set(['owner','admin','commercial','accounting']);
-let session=null,profile=null,prospects=[],activeAgent='prospecting',membership=null,organization=null;
+let session=null,profile=null,prospects=[],definitions=[],activeAgent='prospecting',membership=null,organization=null,canRun=false,canManage=false,studioAgentId=null;
 
 const $=id=>document.getElementById(id);
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -34,9 +33,9 @@ async function init(){
   const stored=localStorage.getItem(ORG_KEY);
   membership=(memberships.data||[]).find(item=>item.organization_id===stored)||(memberships.data||[])[0]||null;
   organization=membership?.organizations||null;
-  if(!membership||!organization||!AI_ROLES.has(membership.role)){
+  if(!membership||!organization){
     $('agentUserLabel').textContent='Acceso restringido';
-    errorBox($('prospectingResults'),'Tu rol no tiene permiso para ejecutar agentes IA en esta empresa.');
+    errorBox($('prospectingResults'),'Tu usuario no pertenece a una empresa activa.');
     $('prospectingPlaceholder').hidden=true;
     errorBox($('quoteResults'),'Solicitá acceso a un administrador de la empresa.');
     $('quotePlaceholder').hidden=true;
@@ -44,34 +43,64 @@ async function init(){
     return;
   }
   localStorage.setItem(ORG_KEY,organization.id);
-  const [pr,ps]=await Promise.all([
+  const [pr,ps,agents,runPermission,managePermission]=await Promise.all([
     supabase.from('profiles').select('*').eq('id',session.user.id).single(),
-    supabase.from('prospects').select('id,business_name,sector,city,need_interest,status').eq('organization_id',organization.id).order('business_name')
+    supabase.from('prospects').select('id,business_name,sector,city,need_interest,status').eq('organization_id',organization.id).order('business_name'),
+    supabase.from('agent_definitions').select('*').eq('organization_id',organization.id).neq('status','archived').order('name'),
+    supabase.rpc('current_user_has_permission',{target_organization_id:organization.id,requested_permission:'agents.run'}),
+    supabase.rpc('current_user_has_permission',{target_organization_id:organization.id,requested_permission:'agents.manage'})
   ]);
-  profile=pr.data;prospects=ps.data||[];
-  $('agentUserLabel').textContent=(profile?.full_name||'Usuario')+' · '+organization.name;
+  profile=pr.data;prospects=ps.data||[];definitions=agents.data||[];canRun=runPermission.data===true;canManage=managePermission.data===true;
+  if(!canRun){
+    errorBox($('prospectingResults'),'Tu rol no tiene permiso para ejecutar agentes IA en esta empresa.');
+    $('prospectingPlaceholder').hidden=true;document.querySelectorAll('form button[type="submit"]').forEach(button=>button.disabled=true);
+  }
+  $('agentUserLabel').textContent=canRun
+    ?(profile?.full_name||'Usuario')+' · '+organization.name
+    :'Acceso restringido · '+organization.name;
   $('quoteProspect').innerHTML='<option value="">Sin prospecto asociado</option>'+prospects.map(p=>'<option value="'+p.id+'">'+esc(p.business_name)+'</option>').join('');
+  $('agentStudioBtn').hidden=!canManage;$('newAgentBtn').hidden=!canManage;
+  renderAgentSelector();
+  if(!definitions.some(item=>item.slug===activeAgent))activeAgent=definitions[0]?.slug||'prospecting';
+  setAgent(activeAgent);
   iconRefresh();
 }
 
 function bind(){
-  document.querySelectorAll('[data-agent]').forEach(b=>b.addEventListener('click',()=>setAgent(b.dataset.agent)));
   $('prospectingForm').addEventListener('submit',runProspecting);
   $('quoteForm').addEventListener('submit',runQuote);
+  $('genericAgentForm').addEventListener('submit',runGenericAgent);
   $('clearProspectingBtn').addEventListener('click',()=>{ $('prospectingResults').innerHTML='';$('prospectingPlaceholder').hidden=false });
   $('clearQuoteBtn').addEventListener('click',()=>{ $('quoteResults').innerHTML='';$('quotePlaceholder').hidden=false });
+  $('clearGenericBtn').addEventListener('click',()=>{ $('genericResults').innerHTML='';$('genericPlaceholder').hidden=false });
+  $('agentStudioBtn').addEventListener('click',()=>openStudio());
+  $('newAgentBtn').addEventListener('click',()=>openStudio(null,true));
+  $('studioNewAgentBtn').addEventListener('click',()=>editStudioAgent(null));
+  document.querySelectorAll('[data-agent-close]').forEach(button=>button.addEventListener('click',closeStudio));
+  $('agentStudioModal').addEventListener('click',event=>{if(event.target===$('agentStudioModal'))closeStudio()});
   document.body.addEventListener('click',async e=>{
+    const selector=e.target.closest('[data-agent]');if(selector){setAgent(selector.dataset.agent);return}
     const c=e.target.closest('[data-copy]');if(c)copy(decodeURIComponent(c.dataset.copy));
     const a=e.target.closest('[data-add-lead]');if(a)await addLead(JSON.parse(decodeURIComponent(a.dataset.addLead)));
+    const studio=e.target.closest('[data-studio-agent]');if(studio)editStudioAgent(studio.dataset.studioAgent);
+    const publish=e.target.closest('[data-publish-agent]');if(publish)await publishAgent(publish.dataset.publishAgent);
+    const archive=e.target.closest('[data-archive-agent]');if(archive)await archiveAgent(archive.dataset.archiveAgent);
   });
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!$('agentStudioModal').hidden)closeStudio()});
+}
+function renderAgentSelector(){
+  $('agentSelector').innerHTML=definitions.map(agent=>'<button type="button" class="'+(agent.slug===activeAgent?'active':'')+'" data-agent="'+esc(agent.slug)+'"><i data-lucide="'+(agent.slug==='prospecting'?'radar':agent.slug==='quote'?'calculator':'bot')+'"></i><span><b>'+esc(agent.name)+'</b><small>'+esc(agent.description||'Agente configurable')+'</small></span><em>v'+Number(agent.current_version||0)+'</em></button>').join('');
+  iconRefresh();
 }
 function setAgent(agent){
   activeAgent=agent;
   document.querySelectorAll('[data-agent]').forEach(b=>b.classList.toggle('active',b.dataset.agent===agent));
   $('prospectingWorkspace').classList.toggle('active',agent==='prospecting');
   $('quoteWorkspace').classList.toggle('active',agent==='quote');
-  $('agentPageTitle').textContent=agent==='prospecting'?'Agente Comercial':'Agente de Presupuestos';
-  $('agentPageSub').textContent=agent==='prospecting'?'Encontrá negocios con afinidad real para SC y prepará el primer contacto.':'Transformá un relevamiento en una estimación profesional para revisión interna.';
+  $('genericWorkspace').classList.toggle('active',!['prospecting','quote'].includes(agent));
+  const definition=definitions.find(item=>item.slug===agent);
+  $('agentPageTitle').textContent=definition?.name||(agent==='prospecting'?'Agente Comercial':'Agente de Presupuestos');
+  $('agentPageSub').textContent=definition?.description||(agent==='prospecting'?'Encontrá negocios con afinidad real para SC y prepará el primer contacto.':'Transformá un relevamiento en una estimación profesional para revisión interna.');
   iconRefresh();
 }
 
@@ -184,6 +213,53 @@ async function saveEstimate(q,prospectId,input){
   });
   if(error){toast('No se pudo guardar: '+error.message);return}
   toast('Borrador guardado');
+}
+
+async function runGenericAgent(event){
+  event.preventDefault();const definition=definitions.find(item=>item.slug===activeAgent);if(!definition)return;
+  $('genericPlaceholder').hidden=true;loading($('genericResults'),'Ejecutando la versión publicada y registrando trazabilidad...');
+  const values=new FormData(event.target),input={request:values.get('request').trim(),context:values.get('context').trim()||null};
+  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_id:definition.id,input}});
+  if(error){errorBox($('genericResults'),error.message||'No se pudo ejecutar el agente.');return}
+  const result=data?.result||{};
+  $('genericResults').innerHTML='<section class="quote-hero"><span class="status-pill status-green">Ejecución registrada</span><h3>'+esc(result.summary||definition.name)+'</h3><p class="agent-result-text">'+esc(result.result_markdown||JSON.stringify(result,null,2))+'</p></section>'+((result.next_actions||[]).length?'<section class="quote-block"><h4>Próximas acciones</h4><ul>'+result.next_actions.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>':'')+((result.warnings||[]).length?'<div class="warning-box"><b>Revisión humana</b><br>'+esc(result.warnings.join(' · '))+'</div>':'');
+  iconRefresh();
+}
+
+function openStudio(agentId=null,create=false){
+  if(!canManage)return;$('agentStudioModal').hidden=false;document.body.classList.add('studio-open');renderStudioList();
+  editStudioAgent(create?null:(agentId||definitions.find(item=>item.slug===activeAgent)?.id||definitions[0]?.id||null));
+}
+function closeStudio(){$('agentStudioModal').hidden=true;document.body.classList.remove('studio-open')}
+function renderStudioList(){
+  $('studioAgentList').innerHTML=definitions.length?definitions.map(agent=>'<button type="button" class="'+(studioAgentId===agent.id?'active':'')+'" data-studio-agent="'+agent.id+'"><span><b>'+esc(agent.name)+'</b><small>'+esc(agent.slug)+' · v'+Number(agent.current_version||0)+'</small></span><span class="status-pill '+(agent.status==='active'?'status-green':'status-amber')+'">'+(agent.status==='active'?'Publicado':'Borrador')+'</span></button>').join(''):'<div class="agent-error">Todavía no hay agentes.</div>';
+}
+async function editStudioAgent(agentId){
+  studioAgentId=agentId||null;renderStudioList();const agent=definitions.find(item=>item.id===studioAgentId)||null;
+  const versions=agent?await supabase.from('agent_versions').select('id,version,published_at,published_by').eq('organization_id',organization.id).eq('agent_id',agent.id).order('version',{ascending:false}).limit(12):{data:[]};
+  const tools=Array.isArray(agent?.tools)?agent.tools:[],sources=Array.isArray(agent?.context_sources)?agent.context_sources:[];
+  $('studioEditor').innerHTML='<form id="agentDefinitionForm" class="agent-definition-form"><input type="hidden" name="id" value="'+esc(agent?.id||'')+'"><div class="studio-editor-head"><div><span class="eyebrow">'+(agent?'BORRADOR DE CONFIGURACIÓN':'NUEVO AGENTE')+'</span><h3>'+(agent?esc(agent.name):'Definí un asistente especializado')+'</h3></div>'+(agent?'<span class="status-pill '+(agent.status==='active'?'status-green':'status-amber')+'">'+(agent.status==='active'?'Publicado v'+agent.current_version:'Borrador')+'</span>':'')+'</div><div class="studio-fields"><label>Nombre<input name="name" required minlength="2" maxlength="120" value="'+esc(agent?.name||'')+'" placeholder="Ej.: Analista de proyectos"></label><label>Identificador<input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" '+(agent?'readonly':'')+' value="'+esc(agent?.slug||'')+'" placeholder="analista-proyectos"></label><label class="full">Descripción<input name="description" maxlength="300" value="'+esc(agent?.description||'')+'" placeholder="Qué resuelve y para quién."></label><label class="full">Prompt del sistema<textarea name="instructions" required minlength="20" maxlength="20000" rows="10" placeholder="Rol, objetivo, reglas, límites y formato esperado.">'+esc(agent?.instructions||'')+'</textarea><small>Los secretos y claves nunca deben incluirse en el prompt.</small></label><label>Modelo autorizado<input name="model" list="modelOptions" value="'+esc(agent?.model||'gpt-5-mini')+'"><datalist id="modelOptions"><option value="gpt-5-mini"></datalist><small>También debe estar permitido en OPENAI_ALLOWED_MODELS.</small></label><label class="approval-control">Aprobación humana<span class="toggle-field"><input name="requires_approval" type="checkbox" '+(agent?.requires_approval!==false?'checked':'')+'><span></span><b>Requerida</b></span></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label class="check-row"><input type="checkbox" name="web_search" '+(tools.includes('web_search')?'checked':'')+'><span>Búsqueda web pública</span></label></fieldset><fieldset><legend>Fuentes internas</legend><label class="check-row"><input type="checkbox" name="prospects" '+(sources.includes('prospects')?'checked':'')+'><span>Oportunidades</span></label><label class="check-row"><input type="checkbox" name="pricing_catalog" '+(sources.includes('pricing_catalog')?'checked':'')+'><span>Catálogo de precios</span></label></fieldset></div><div class="studio-history"><div><b>Versiones publicadas</b><small>Historial inmutable para auditoría</small></div><div class="version-list">'+((versions.data||[]).length?(versions.data||[]).map(version=>'<span><b>v'+version.version+'</b><small>'+new Date(version.published_at).toLocaleString('es-AR')+'</small></span>').join(''):'<span><small>Sin versiones publicadas.</small></span>')+'</div></div><div class="form-actions">'+(agent?'<button type="button" class="btn btn-secondary danger-soft" data-archive-agent="'+agent.id+'"><i data-lucide="archive"></i>Archivar</button>':'')+'<span class="form-actions-spacer"></span><button type="button" class="btn btn-secondary" data-agent-close>Cancelar</button><button class="btn btn-secondary" type="submit"><i data-lucide="save"></i>Guardar borrador</button>'+(agent?'<button type="button" class="btn btn-primary" data-publish-agent="'+agent.id+'"><i data-lucide="rocket"></i>Publicar versión</button>':'')+'</div></form>';
+  $('agentDefinitionForm').onsubmit=saveAgentDefinition;$('studioEditor').querySelectorAll('[data-agent-close]').forEach(button=>button.onclick=closeStudio);iconRefresh();
+}
+async function saveAgentDefinition(event){
+  event.preventDefault();const values=new FormData(event.target),id=values.get('id')||null;
+  const payload={organization_id:organization.id,slug:values.get('slug').trim().toLowerCase(),name:values.get('name').trim(),description:values.get('description').trim()||null,instructions:values.get('instructions').trim(),model:values.get('model').trim()||'gpt-5-mini',tools:values.get('web_search')==='on'?['web_search']:[],context_sources:['prospects','pricing_catalog'].filter(key=>values.get(key)==='on'),requires_approval:values.get('requires_approval')==='on',updated_by:profile.id};
+  const result=id?await supabase.from('agent_definitions').update(payload).eq('organization_id',organization.id).eq('id',id).select('*').single():await supabase.from('agent_definitions').insert({...payload,status:'draft',created_by:profile.id}).select('*').single();
+  if(result.error){toast(result.error.message);return}
+  await reloadDefinitions();studioAgentId=result.data.id;await editStudioAgent(result.data.id);toast('Borrador guardado');
+}
+async function publishAgent(agentId){
+  const {data,error}=await supabase.rpc('publish_agent_definition',{target_agent_id:agentId});if(error){toast(error.message);return}
+  await reloadDefinitions();await editStudioAgent(agentId);toast('Versión '+data+' publicada');
+}
+async function archiveAgent(agentId){
+  if(!confirm('¿Archivar este agente? Dejará de estar disponible para nuevas ejecuciones.'))return;
+  const {error}=await supabase.from('agent_definitions').update({status:'archived',updated_by:profile.id}).eq('organization_id',organization.id).eq('id',agentId);if(error){toast(error.message);return}
+  await reloadDefinitions();studioAgentId=definitions[0]?.id||null;if(studioAgentId)await editStudioAgent(studioAgentId);else $('studioEditor').innerHTML='<div class="agent-error">No hay agentes activos.</div>';toast('Agente archivado');
+}
+async function reloadDefinitions(){
+  const {data,error}=await supabase.from('agent_definitions').select('*').eq('organization_id',organization.id).neq('status','archived').order('name');if(error){toast(error.message);return}
+  definitions=data||[];renderAgentSelector();
 }
 
 init();

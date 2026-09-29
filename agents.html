@@ -10,20 +10,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./assets/css/app.css">
   <link rel="stylesheet" href="./assets/css/agents.css">
+  <link rel="stylesheet" href="./assets/css/agents-studio.css">
   <script src="https://unpkg.com/lucide@1.48.0/dist/umd/lucide.js" defer></script>
   <script src="./assets/js/config.js"></script>
 </head>
 <body>
   <div class="agents-shell">
-    <aside class="agents-side">
+    <aside class="agents-side" aria-label="Catálogo de agentes">
       <a class="agents-brand" href="./index.html">
         <img src="./assets/img/sc-isotipo-color.webp" alt="SC">
         <span><b>Agentes IA</b><small>SC Soluciones Conectadas</small></span>
       </a>
-      <div class="agent-selector">
-        <button type="button" class="active" data-agent="prospecting"><i data-lucide="radar"></i><span><b>Agente Comercial</b><small>Busca y prepara prospectos</small></span></button>
-        <button type="button" data-agent="quote"><i data-lucide="calculator"></i><span><b>Agente de Presupuestos</b><small>Estima alcance y costos</small></span></button>
-      </div>
+      <div class="agent-selector" id="agentSelector"></div>
+      <button type="button" class="btn btn-secondary agent-new-btn" id="newAgentBtn" hidden><i data-lucide="plus"></i>Nuevo agente</button>
       <div class="agent-side-note">
         <i data-lucide="shield-check"></i>
         <p>Los resultados son asistencia para revisión humana. Ningún mensaje ni presupuesto se envía solo.</p>
@@ -34,7 +33,7 @@
     <main class="agents-main">
       <header class="agents-top">
         <div><span class="eyebrow">SC · INTELIGENCIA COMERCIAL</span><h1 id="agentPageTitle">Agente Comercial</h1><p id="agentPageSub">Encontrá negocios con afinidad real para SC y prepará el primer contacto.</p></div>
-        <div class="agents-user"><span class="live-dot"></span><span id="agentUserLabel">Conectando...</span></div>
+        <div class="agents-top-actions"><button type="button" class="btn btn-secondary" id="agentStudioBtn" hidden><i data-lucide="sliders-horizontal"></i>Configurar agentes</button><div class="agents-user"><span class="live-dot"></span><span id="agentUserLabel">Conectando...</span></div></div>
       </header>
 
       <section class="agent-workspace active" id="prospectingWorkspace">
@@ -96,7 +95,35 @@
           </article>
         </div>
       </section>
+
+      <section class="agent-workspace" id="genericWorkspace">
+        <div class="agent-grid">
+          <article class="agent-config panel">
+            <div class="panel-head"><div><span class="eyebrow">PRUEBA CONTROLADA</span><h3>Entrada del agente</h3></div><span class="ai-chip">OPENAI</span></div>
+            <form id="genericAgentForm" class="agent-form">
+              <label>Solicitud<textarea name="request" rows="9" required placeholder="Describí el análisis o borrador que necesitás preparar."></textarea></label>
+              <label>Contexto adicional<textarea name="context" rows="5" placeholder="Datos, restricciones y resultado esperado."></textarea></label>
+              <button class="btn btn-primary btn-lg" type="submit"><i data-lucide="sparkles"></i>Ejecutar agente</button>
+            </form>
+          </article>
+          <article class="agent-output panel">
+            <div class="panel-head"><div><span class="eyebrow">RESULTADO</span><h3>Respuesta estructurada</h3></div><button type="button" class="text-btn" id="clearGenericBtn">Limpiar</button></div>
+            <div class="agent-placeholder" id="genericPlaceholder"><span class="agent-orb"><i data-lucide="bot"></i></span><h3>Agente listo</h3><p>La ejecución usa únicamente la versión publicada y queda registrada para auditoría.</p></div>
+            <div id="genericResults" class="quote-results"></div>
+          </article>
+        </div>
+      </section>
     </main>
+  </div>
+
+  <div class="modal-backdrop" id="agentStudioModal" hidden>
+    <div class="modal agent-studio-modal">
+      <div class="modal-head"><div><span class="eyebrow">AGENT STUDIO</span><h2>Configuración de agentes</h2><p>Los cambios se guardan como borrador hasta publicar una nueva versión.</p></div><button type="button" class="icon-btn" data-agent-close aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+      <div class="agent-studio-layout">
+        <aside class="studio-list" aria-label="Agentes configurados"><div class="studio-list-head"><b>Agentes</b><button type="button" class="icon-btn" id="studioNewAgentBtn" aria-label="Nuevo agente"><i data-lucide="plus"></i></button></div><div id="studioAgentList"></div></aside>
+        <section class="studio-editor" id="studioEditor"></section>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" hidden></div>

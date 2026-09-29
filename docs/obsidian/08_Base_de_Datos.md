@@ -8,9 +8,11 @@ PostgreSQL 17 en Supabase.
 
 - Acceso: `profiles`, `organizations`, `memberships`.
 - Comercial: `prospects`, `interactions`, `meetings`, `proposals`.
-- Operación: `clients`, `projects`, `project_comments`, `tasks`, `documents`.
+- Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
-- IA y control: `pricing_catalog`, `quote_estimates`, `agent_runs`, `activity_log`, `notifications`.
+- Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
+- IA y control: `agent_definitions`, `agent_versions`, `agent_runs`, `pricing_catalog`, `quote_estimates`, `activity_log`, `notifications`.
+- Autorización: `permission_catalog`, `role_permission_defaults` y excepciones en `memberships.permission_overrides`.
 
 ## Integridad
 
@@ -24,6 +26,13 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 - `20260929105003_team_profiles.sql`: campos profesionales, bucket privado de avatares, políticas y RPC de administración del equipo.
 - `20260929105610_team_profile_visibility.sql`: visibilidad de integrantes inactivos y sus fotos para propietarios.
 - `20260929111500_consolidate_profile_update_policy.sql`: política única para autoedición y administración de perfiles.
+- `20260929133000_permissions_and_organizations.sql`: catálogo de permisos, preferencias y RPC administrativas.
+- `20260929134500_collaboration_communications.sql`: colaboración, comunicaciones, PDF privados y notificaciones.
+- `20260929140000_agent_studio.sql`: definiciones y versiones inmutables de agentes.
+- `20260929141500_permission_rls_enforcement.sql`: RLS granular por módulo.
+- `20260929142000_notification_preferences.sql`: actualización segura de preferencias personales.
+- `20260929143500_collaboration_performance.sql`: índices de claves foráneas y políticas sin superposición.
+- `20260929144000_task_watcher_user_index.sql`: cobertura específica de la relación entre seguidores y perfiles.
 
 ## Perfiles y membresías
 

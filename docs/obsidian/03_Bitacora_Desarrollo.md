@@ -67,3 +67,30 @@
 **Pendientes detectados:**
 - Limpiar una foto recién subida si una actualización posterior del perfil falla.
 - Confirmar el cambio inicial de contraseña de `areyes` y `orojas`.
+
+## 2026-09-29 - Permisos, colaboración, comunicaciones y Agent Studio
+
+**Cambios realizados:**
+- Se agregó administración multiempresa de datos de empresa, usuarios, roles, permisos y preferencias de notificación.
+- Se incorporaron comentarios, menciones, seguidores y notificaciones de tareas asignadas o vencidas.
+- Se implementaron comunicaciones con historial, plantillas y envío autenticado mediante Resend.
+- Se agregó generación y descarga de PDF internos no fiscales con logo proporcionado, marca visible y almacenamiento privado.
+- Se creó Agent Studio para definir prompts, contexto, herramientas, aprobación humana y versiones publicadas.
+- Se actualizó la interfaz con menús de creación, notificaciones, usuario, configuración y microinteracciones con movimiento reducido accesible.
+- Se separaron visualmente los permisos de lectura y escritura por módulo.
+
+**Archivos modificados:**
+- `index.html`, `agents.html`, `assets/css/app.css`, `assets/css/agents-studio.css`.
+- `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/agents.js`.
+- `supabase/functions/ai-agent/index.ts`, `supabase/functions/communications/index.ts`.
+- Migraciones `20260929133000` a `20260929144000`.
+
+**Validaciones realizadas:**
+- `npm run check`, `npm run lint:html` y Playwright en escritorio y móvil.
+- Inicio autenticado con rol comercial para comprobar módulos ocultos y ejecución de agentes publicada.
+- Supabase Security y Performance Advisor después de aplicar índices y consolidar políticas.
+
+**Pendientes detectados:**
+- Configurar Resend y validar un envío controlado.
+- Activar protección contra contraseñas filtradas desde Supabase Auth.
+- Completar prueba de aislamiento con una segunda empresa real.

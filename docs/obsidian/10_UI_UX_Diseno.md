@@ -42,4 +42,14 @@
 
 - La vista resume integrantes activos, responsables comerciales y propietarios.
 - Cada ficha presenta foto o iniciales, contacto, cargo, rol, estado y edición contextual.
-- El propietario puede editar el equipo; otros roles conservan una vista informativa.
+- El propietario edita los perfiles profesionales. Quienes reciben `team.manage` administran membresías y permisos; los demás roles conservan una vista informativa. La base impide que un administrador delegue propiedad o permisos que no posee.
+
+## Espacio de trabajo conectado
+
+- Menú de creación rápida, centro de notificaciones y menú de usuario en la barra superior.
+- Configuración separada en Empresa, Roles y permisos, Notificaciones e Integraciones.
+- Detalle de tareas con conversación, menciones y seguimiento sin anidar cards decorativas.
+- Historial de comunicaciones y compositor de correo con estados de envío visibles.
+- Agent Studio usa selector lateral y editor enfocado, con historial de versiones.
+- Los botones emplean brillo y presión breves inspirados en patrones públicos de Uiverse, adaptados al sistema SC y desactivados con `prefers-reduced-motion`.
+- Lectura y escritura se reflejan por permiso específico; una persona puede consultar un módulo sin recibir acciones de edición.

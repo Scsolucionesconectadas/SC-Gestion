@@ -4,6 +4,7 @@
 
 - Comercial: investigación pública y borrador de contacto.
 - Presupuestos: estimación interna basada en catálogo.
+- Configurables: propósito, prompt, modelo, fuentes, herramientas y aprobación humana administrados desde Agent Studio.
 
 ## Controles
 
@@ -13,6 +14,9 @@
 - Rate limit por usuario y empresa.
 - Consultas filtradas por tenant.
 - Clave OpenAI solo en Supabase Secrets.
+- Modelos limitados por `OPENAI_ALLOWED_MODELS` en servidor.
+- Versiones publicadas inmutables y ejecución vinculada a agente y versión.
+- Métricas de duración y tokens informados por la API.
 
 ## MCP
 

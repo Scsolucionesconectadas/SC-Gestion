@@ -59,3 +59,25 @@
 **Solución aplicada:** se corrigió el indicador del perfil y la actualización ahora exige devolver exactamente una fila, evitando mostrar éxito si RLS impide persistir el cambio.
 
 **Cómo evitarlo:** tratar Auth y el indicador del perfil como una operación compuesta y verificar la respuesta de ambas actualizaciones.
+
+## 2026-09-29 - Políticas de lectura duplicadas en plantillas
+
+**Síntoma:** Performance Advisor informó dos políticas permisivas para `SELECT` sobre `email_templates`.
+
+**Causa:** una política `FOR ALL` se superponía con la política específica de lectura.
+
+**Solución aplicada:** reemplazar `FOR ALL` por políticas separadas para `INSERT`, `UPDATE` y `DELETE`, conservando una única política de lectura.
+
+**Cómo evitarlo:** preferir políticas por operación cuando lectura y escritura requieren capacidades diferentes.
+
+**Archivos relacionados:** `supabase/migrations/20260929143500_collaboration_performance.sql`.
+
+## 2026-09-29 - Identificador temporal en comentarios
+
+**Síntoma:** el modo demo necesitaba un ID local, pero el insert remoto podía incluir un valor `undefined`.
+
+**Causa:** se reutilizaba el mismo objeto para estado local y persistencia.
+
+**Solución aplicada:** separar explícitamente el payload remoto y dejar que PostgreSQL genere el UUID.
+
+**Cómo evitarlo:** construir payloads de persistencia sin propiedades auxiliares ni valores indefinidos.

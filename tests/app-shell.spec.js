@@ -19,6 +19,8 @@ test('recorre y opera los módulos multiempresa en modo demo', async ({ page }) 
   await expect(page.locator('#organizationSelect')).toHaveValue('demo-sc');
 
   await page.locator('#userPill').click();
+  await expect(page.locator('#userMenu')).toBeVisible();
+  await page.locator('[data-user-action="profile"]').click();
   await expect(page.locator('#actionTitle')).toHaveText('Mi perfil');
   await page.locator('#actionForm [data-close="actionModal"]').click();
   await expect(page.locator('#actionModal')).toBeHidden();
@@ -74,6 +76,44 @@ test('recorre y opera los módulos multiempresa en modo demo', async ({ page }) 
 
   await page.locator('[data-view="team"]').click();
   await expect(page.locator('#teamGrid')).toContainText('Maikol Betancourt');
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('opera colaboración, comunicaciones, PDF y configuración', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+
+  await page.locator('#quickCreateBtn').click();
+  await expect(page.locator('#quickCreateMenu')).toBeVisible();
+  await expect(page.locator('#quickCreateMenu')).toContainText('Tarea');
+  await page.keyboard.press('Escape');
+
+  await page.locator('[data-view="tasks"]').click();
+  await page.locator('[data-task-open]').first().click();
+  await expect(page.locator('#actionEyebrow')).toHaveText('DETALLE DE TAREA');
+  await page.locator('#taskCommentForm textarea').fill('Actualización de prueba para @areyes');
+  await page.locator('#taskCommentForm button[type="submit"]').click();
+  await expect(page.locator('.comment-list')).toContainText('Actualización de prueba');
+  await page.locator('#actionModal [data-close="actionModal"]').click();
+
+  await page.locator('[data-view="billing"]').click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.locator('[data-invoice-pdf]').first().click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.pdf$/);
+
+  await page.locator('[data-view="communications"]').click();
+  await page.locator('#composeEmailBtn').click();
+  await page.locator('#emailComposerForm [name="to"]').fill('cliente@demo.local');
+  await page.locator('#emailComposerForm [name="subject"]').fill('Seguimiento de prueba');
+  await page.locator('#emailComposerForm [name="body"]').fill('Mensaje trazable de prueba.');
+  await page.locator('#emailComposerForm button[value="draft"]').click();
+  await expect(page.locator('#emailRows')).toContainText('Seguimiento de prueba');
+
+  await page.locator('[data-view="settings"]').click();
+  await expect(page.locator('#settingsSurface')).toContainText('Identidad de la empresa');
+  await page.locator('[data-settings-tab="notifications"]').click();
+  await expect(page.locator('#settingsSurface')).toContainText('Preferencias personales');
+
   expect(runtimeErrors).toEqual([]);
 });
 

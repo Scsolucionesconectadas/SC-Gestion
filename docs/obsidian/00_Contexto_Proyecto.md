@@ -8,10 +8,12 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 
 - Esquema multiempresa aplicado al proyecto Supabase `sc-crm-comercial`.
 - Frontend y demo local implementados.
-- RLS, roles, Storage privado y auditoría implementados.
+- RLS, roles, permisos granulares por empresa, Storage privado y auditoría implementados.
 - Empresa y tres usuarios iniciales aprovisionados y validados contra Auth y RLS; `mbetancourt` completó el cambio inicial y los otros dos usuarios lo mantienen pendiente.
 - Perfiles profesionales, fotos privadas y administración del equipo por el propietario implementados.
 - Sidebar responsive, formularios y modales actualizados y cubiertos por Playwright.
+- Colaboración de tareas, notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
+- Agent Studio implementado con borradores, versiones publicadas y modelos autorizados desde servidor.
 - Hosting privado y dominio interno pendientes.
 
 ## Stack técnico
@@ -35,6 +37,8 @@ npm run serve
 - [ ] Confirmar que `areyes` y `orojas` reemplazaron su contraseña temporal.
 - [ ] Validar separación con dos empresas y usuarios reales.
 - [ ] Definir hosting privado, dominio y recuperación de contraseña.
+- [ ] Configurar y verificar Resend con un dominio remitente validado.
+- [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 
 ## Notas relacionadas

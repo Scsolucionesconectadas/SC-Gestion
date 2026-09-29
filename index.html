@@ -103,8 +103,10 @@
         <button type="button" data-view="tasks"><i data-lucide="list-checks"></i><span>Tareas</span></button>
         <button type="button" data-view="documents"><i data-lucide="files"></i><span>Documentos</span></button>
         <button type="button" data-view="billing" data-role-scope="finance"><i data-lucide="receipt-text"></i><span>Administración</span></button>
+        <button type="button" data-view="communications"><i data-lucide="send"></i><span>Comunicaciones</span></button>
         <button type="button" data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
         <button type="button" data-view="team"><i data-lucide="users"></i><span>Equipo</span></button>
+        <button type="button" data-view="settings"><i data-lucide="settings-2"></i><span>Configuración</span></button>
         <a class="agent-link" href="./agents.html"><i data-lucide="bot"></i><span>Agentes IA</span><span class="agent-badge">AI</span></a>
       </nav>
 
@@ -133,11 +135,26 @@
             <kbd>/</kbd>
           </div>
           <button type="button" class="icon-btn" id="themeBtn" title="Cambiar tema"><i data-lucide="sun-moon"></i></button>
-          <button type="button" class="btn btn-primary" id="newProspectBtn"><i data-lucide="plus"></i>Nueva oportunidad</button>
-          <button type="button" class="user-pill" id="userPill">
-            <span class="avatar" id="userAvatar">MB</span>
-            <span class="user-copy"><b id="userName">Maikol</b><small id="userRole">Administrador</small></span>
-          </button>
+          <div class="popover-wrap">
+            <button type="button" class="btn btn-primary" id="quickCreateBtn" aria-haspopup="menu" aria-expanded="false"><i data-lucide="plus"></i>Crear<i data-lucide="chevron-down" class="btn-chevron"></i></button>
+            <div class="action-popover quick-create-menu" id="quickCreateMenu" role="menu" hidden></div>
+          </div>
+          <button type="button" class="btn btn-primary sr-action-source" id="newProspectBtn"><i data-lucide="plus"></i>Nueva oportunidad</button>
+          <div class="popover-wrap">
+            <button type="button" class="icon-btn notification-trigger" id="notificationBtn" aria-label="Notificaciones" aria-haspopup="dialog" aria-expanded="false"><i data-lucide="bell"></i><span class="notification-badge" id="notificationBadge" hidden>0</span></button>
+            <aside class="action-popover notification-popover" id="notificationPanel" aria-label="Centro de notificaciones" hidden>
+              <div class="popover-head"><div><span class="eyebrow">ACTIVIDAD</span><h3>Notificaciones</h3></div><button type="button" class="text-btn" id="markNotificationsRead">Marcar leídas</button></div>
+              <div class="notification-list" id="notificationList"></div>
+            </aside>
+          </div>
+          <div class="popover-wrap">
+            <button type="button" class="user-pill" id="userPill" aria-haspopup="menu" aria-expanded="false">
+              <span class="avatar" id="userAvatar">MB</span>
+              <span class="user-copy"><b id="userName">Maikol</b><small id="userRole">Administrador</small></span>
+              <i data-lucide="chevron-down" class="user-chevron"></i>
+            </button>
+            <div class="action-popover user-menu" id="userMenu" role="menu" hidden></div>
+          </div>
         </div>
       </header>
 
@@ -257,6 +274,19 @@
         <p class="section-disclaimer"><i data-lucide="info"></i>Los comprobantes de este módulo son internos y no sustituyen documentación fiscal emitida ante ARCA.</p>
       </section>
 
+      <section class="content view" id="communicationsView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">MENSAJERÍA TRAZABLE</span><h2 class="page-subtitle">Comunicaciones de la empresa</h2></div>
+          <button type="button" class="btn btn-primary" id="composeEmailBtn"><i data-lucide="mail-plus"></i>Nuevo correo</button>
+        </div>
+        <div class="kpi-grid" id="communicationKpis"></div>
+        <div class="panel table-panel">
+          <div class="panel-head pad"><div><span class="eyebrow">HISTORIAL</span><h3>Correos preparados y enviados</h3></div></div>
+          <div class="table-scroll"><table><thead><tr><th>Destinatario</th><th>Asunto</th><th>Relación</th><th>Estado</th><th>Fecha</th></tr></thead><tbody id="emailRows"></tbody></table></div>
+          <div class="mobile-list" id="mobileEmails"></div>
+        </div>
+      </section>
+
       <section class="content view" id="reportsView">
         <div class="kpi-grid" id="reportKpis"></div>
         <div class="charts-grid">
@@ -272,10 +302,24 @@
       <section class="content view" id="teamView">
         <div class="page-toolbar">
           <div><span class="eyebrow">ACCESOS</span><h2 class="page-subtitle">Equipo y permisos</h2></div>
-          <button type="button" class="btn btn-secondary" id="myProfileBtn"><i data-lucide="user-round-cog"></i>Mi perfil</button>
+          <div class="toolbar-actions"><button type="button" class="btn btn-secondary" id="myProfileBtn"><i data-lucide="user-round-cog"></i>Mi perfil</button><button type="button" class="btn btn-primary" id="addMemberBtn"><i data-lucide="user-plus"></i>Agregar usuario</button></div>
         </div>
         <div class="team-overview" id="teamOverview"></div>
         <div class="team-grid" id="teamGrid"></div>
+      </section>
+
+      <section class="content view" id="settingsView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">GOBIERNO DEL ESPACIO</span><h2 class="page-subtitle">Configuración de empresa</h2></div>
+          <button type="button" class="btn btn-primary" id="newOrganizationBtn"><i data-lucide="building-2"></i>Nueva empresa</button>
+        </div>
+        <div class="settings-tabs" role="tablist" aria-label="Configuración">
+          <button type="button" class="active" data-settings-tab="company">Empresa</button>
+          <button type="button" data-settings-tab="permissions">Roles y permisos</button>
+          <button type="button" data-settings-tab="notifications">Notificaciones</button>
+          <button type="button" data-settings-tab="integrations">Integraciones</button>
+        </div>
+        <div class="settings-surface" id="settingsSurface"></div>
       </section>
     </main>
   </div>
@@ -321,5 +365,6 @@
   <div class="toast" id="toast" hidden></div>
 
   <script type="module" src="./assets/js/app.js"></script>
+  <script type="module" src="./assets/js/workspace.js"></script>
 </body>
 </html>

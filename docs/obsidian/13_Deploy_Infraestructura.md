@@ -9,9 +9,10 @@
 
 - Proyecto: `sc-crm-comercial`.
 - Región: `sa-east-1`.
-- Edge Function: `ai-agent`, JWT obligatorio.
-- Migraciones de perfiles y equipo aplicadas hasta `20260929111500_consolidate_profile_update_policy.sql`.
+- Edge Functions: `ai-agent` y `communications`, JWT obligatorio.
+- Migraciones aplicadas hasta `20260929144000_task_watcher_user_index.sql`.
 - Bucket privado `profile-avatars`: máximo 2 MB, JPEG/PNG/WebP y acceso controlado por membresías.
+- Bucket privado `generated-pdfs`: documentos internos no fiscales accesibles por permisos de facturación y comunicaciones.
 
 ## Requisitos antes de producción
 
@@ -21,6 +22,7 @@
 4. Elegir un hosting que permita acceso privado y variables de entorno.
 5. Configurar dominio en `ALLOWED_ORIGINS`.
 6. Definir backups, monitoreo y rollback.
+7. Configurar un dominio remitente de Resend y validar un envío controlado.
 
 No publicar el portal interno como GitHub Pages abierto. La autenticación protege datos, pero el hosting privado reduce superficie y evita exponer innecesariamente la aplicación operativa.
 

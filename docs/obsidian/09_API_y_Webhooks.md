@@ -9,11 +9,17 @@ Entrada mínima:
 ```json
 {
   "organization_id": "uuid",
-  "agent_type": "prospecting",
+  "agent_id": "uuid",
   "input": {}
 }
 ```
 
-Requiere JWT de Supabase. Valida origen, tamaño, organización, membresía, rol y límite horario. Responde errores públicos sin trazas internas.
+También admite los agentes especializados heredados mediante `agent_type`. Requiere JWT de Supabase. Valida origen, tamaño, organización, permiso `agents.run`, versión publicada, modelo autorizado y límite horario. Responde errores públicos sin trazas internas.
+
+## Edge Function `communications`
+
+`POST /functions/v1/communications`
+
+Operaciones: `connection_status` y `send_email`. `send_email` recibe `organization_id` y `message_id`; el cuerpo, destinatarios y adjuntos se recuperan desde la base y Storage privados. Requiere JWT, permiso `communications.send`, límite de frecuencia e idempotencia por mensaje.
 
 No existen webhooks públicos en esta versión.

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "serve": "python -m http.server 4173",
-    "check": "node --check assets/js/app.js && node --check assets/js/agents.js && node --check scripts/create-users.mjs",
+    "check": "node --check assets/js/app.js && node --check assets/js/workspace.js && node --check assets/js/agents.js && node --check scripts/create-users.mjs",
     "lint": "npm run check && npm run lint:html",
     "lint:html": "html-validate index.html agents.html",
     "test": "npm run test:e2e",

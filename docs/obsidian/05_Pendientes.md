@@ -11,6 +11,9 @@
 - [ ] Completar identidad legal, CUIT y domicilio solo cuando estén formalmente disponibles.
 - [ ] Revisión legal argentina de privacidad, términos y cookies del sitio público.
 - [ ] Eliminar automáticamente una foto recién subida si luego falla la actualización del perfil.
+- [ ] Configurar `RESEND_API_KEY`, remitente verificado y ejecutar un envío controlado.
+- [ ] Definir dominio privado y agregarlo a `ALLOWED_ORIGINS`.
+- [ ] Programar la evaluación periódica de tareas vencidas si se requiere aviso sin actividad del usuario.
 
 ## Resueltos
 
@@ -21,3 +24,7 @@
 - [x] Separación multiempresa y roles - 2026-09-28.
 - [x] Módulos de clientes, proyectos, documentos y administración - 2026-09-28.
 - [x] Agente IA aislado por empresa - 2026-09-28.
+- [x] Permisos granulares, administración de empresas y excepciones por usuario - 2026-09-29.
+- [x] Comentarios, menciones, seguidores y notificaciones de tareas - 2026-09-29.
+- [x] Generación de PDF internos no fiscales y almacenamiento privado - 2026-09-29.
+- [x] Agent Studio con prompts, modelos autorizados y versiones publicadas - 2026-09-29.

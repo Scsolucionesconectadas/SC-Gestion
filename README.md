@@ -1,12 +1,12 @@
 # SC Gestión
 
-Portal interno multiempresa de **Soluciones Conectadas** para centralizar oportunidades, clientes, proyectos, tareas, documentos, administración no fiscal, reportes y asistentes de IA.
+Portal interno multiempresa de **Soluciones Conectadas** para centralizar oportunidades, clientes, proyectos, tareas colaborativas, documentos privados, comunicaciones, administración no fiscal, reportes y agentes de IA configurables.
 
 ## Stack
 
 - Frontend estático en HTML, CSS y JavaScript.
 - Supabase Auth, PostgreSQL, Storage, Realtime y Edge Functions.
-- Row Level Security por `organization_id` y membresías con roles.
+- Row Level Security por `organization_id`, roles y permisos granulares.
 - OpenAI Responses API detrás de una Edge Function autenticada.
 - Chart.js, SortableJS, Day.js y Lucide con versiones fijadas.
 - Playwright y HTML Validate para calidad.
@@ -15,7 +15,7 @@ Portal interno multiempresa de **Soluciones Conectadas** para centralizar oportu
 
 `owner`, `admin`, `commercial`, `project_manager`, `accounting`, `collaborator` y `viewer`.
 
-La autorización proviene exclusivamente de `memberships.role`. El contenido de `user_metadata` nunca concede permisos.
+La autorización proviene de `memberships.role`, los permisos predeterminados del rol y `permission_overrides` por empresa. El contenido de `user_metadata` nunca concede permisos. El propietario conserva control total; los administradores solo pueden delegar permisos que ya poseen y no pueden asignar el rol propietario.
 
 ## Ejecutar localmente
 
@@ -36,7 +36,9 @@ npm run test:e2e
 
 ## Base de datos
 
-Las migraciones están en `supabase/migrations/`. La migración `20260928215846_multi_company_core.sql` agrega aislamiento multiempresa, módulos operativos, Storage privado, auditoría y políticas RLS.
+Las migraciones están en `supabase/migrations/`. Además del núcleo multiempresa, incluyen permisos granulares, comentarios y seguidores de tareas, notificaciones, correo, documentos generados, Agent Studio, endurecimiento RLS e índices de relaciones.
+
+Los PDF generados desde Administración son documentos internos no fiscales, se guardan en el bucket privado `generated-pdfs` y conservan versión y trazabilidad. No reemplazan comprobantes emitidos ante ARCA.
 
 ## Aprovisionar empresa y usuarios
 
@@ -46,9 +48,20 @@ Las migraciones están en `supabase/migrations/`. La migración `20260928215846_
 
 El script es repetible: crea o actualiza la empresa, perfiles y membresías. La service role y las contraseñas nunca deben enviarse al navegador ni versionarse.
 
+## Comunicaciones
+
+La Edge Function `communications` envía mensajes preparados desde el portal mediante Resend. Requiere JWT, permiso `communications.send`, destinatarios válidos e idempotencia por mensaje. Los adjuntos se descargan únicamente desde Storage privado. Configure `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_REPLY_TO` y `ALLOWED_ORIGINS` como Supabase Secrets.
+
 ## Agentes IA
 
-La función `supabase/functions/ai-agent/index.ts` exige JWT, una membresía activa, un rol permitido y `organization_id`. La clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
+La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa, permiso `agents.run` y `organization_id`. Agent Studio permite a quienes tienen `agents.manage` crear borradores, definir instrucciones, contexto, herramientas, modelo permitido y publicar versiones inmutables. La clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
+
+## Colaboración
+
+- Tareas con responsables, prioridad, vencimiento, comentarios, menciones y seguidores.
+- Notificaciones dentro de la aplicación para asignaciones, comentarios y vencimientos.
+- Preferencias personales de avisos por empresa.
+- Gestión multiempresa de usuarios, roles y excepciones de permisos.
 
 ## Documentación técnica
 

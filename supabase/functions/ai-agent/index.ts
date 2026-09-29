@@ -7,7 +7,6 @@ const DEFAULT_ORIGINS = [
   'http://localhost:4173'
 ];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const AI_ROLES = new Set(['owner', 'admin', 'commercial', 'accounting']);
 
 const SC_CONTEXT = `
 SC Soluciones Conectadas es un emprendimiento tecnológico de Concepción del Uruguay, Entre Ríos.
@@ -154,6 +153,18 @@ const QUOTE_SCHEMA = {
   }
 };
 
+const GENERIC_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['summary', 'result_markdown', 'next_actions', 'warnings'],
+  properties: {
+    summary: { type: 'string' },
+    result_markdown: { type: 'string' },
+    next_actions: { type: 'array', items: { type: 'string' } },
+    warnings: { type: 'array', items: { type: 'string' } }
+  }
+};
+
 function allowedOrigins(): Set<string> {
   const configured = (Deno.env.get('ALLOWED_ORIGINS') || '')
     .split(',')
@@ -206,7 +217,7 @@ Deno.serve(async (req) => {
   const supabaseUrl = Deno.env.get('SUPABASE_URL');
   const publishableKey = Deno.env.get('SUPABASE_ANON_KEY');
   const openaiKey = Deno.env.get('OPENAI_API_KEY');
-  if (!supabaseUrl || !publishableKey || !openaiKey) return jsonResponse({ error: 'Service unavailable' }, 503, headers);
+  if (!supabaseUrl || !publishableKey) return jsonResponse({ error: 'Service unavailable' }, 503, headers);
 
   const authHeader = req.headers.get('Authorization') || '';
   const supabase = createClient(supabaseUrl, publishableKey, {
@@ -225,21 +236,36 @@ Deno.serve(async (req) => {
   }
 
   const organizationId = String(body?.organization_id || '');
-  const agentType = body?.agent_type;
-  const input = body?.input;
   if (!UUID_PATTERN.test(organizationId)) return jsonResponse({ error: 'Invalid organization' }, 400, headers);
-  if (!['prospecting', 'quote'].includes(agentType)) return jsonResponse({ error: 'Unsupported agent type' }, 400, headers);
+
+  const requestedPermission = body?.action === 'connection_status' ? 'agents.manage' : 'agents.run';
+  const { data: allowed, error: permissionError } = await supabase.rpc('current_user_has_permission', {
+    target_organization_id: organizationId,
+    requested_permission: requestedPermission
+  });
+  if (permissionError || !allowed) return jsonResponse({ error: 'Forbidden' }, 403, headers);
+
+  if (body?.action === 'connection_status') {
+    return jsonResponse({ configured: Boolean(openaiKey) }, 200, headers);
+  }
+  if (!openaiKey) return jsonResponse({ error: 'OpenAI is not configured' }, 503, headers);
+
+  const input = body?.input;
   if (!input || typeof input !== 'object' || Array.isArray(input)) return jsonResponse({ error: 'Invalid input' }, 400, headers);
   if (JSON.stringify(input).length > 20_000) return jsonResponse({ error: 'Input too large' }, 413, headers);
 
-  const { data: membership, error: membershipError } = await supabase
-    .from('memberships')
-    .select('role,active')
-    .eq('organization_id', organizationId)
-    .eq('user_id', userData.user.id)
-    .eq('active', true)
-    .maybeSingle();
-  if (membershipError || !membership || !AI_ROLES.has(membership.role)) return jsonResponse({ error: 'Forbidden' }, 403, headers);
+  let agentQuery = supabase.from('agent_definitions').select('*').eq('organization_id', organizationId).eq('status', 'active');
+  if (body?.agent_id && UUID_PATTERN.test(String(body.agent_id))) agentQuery = agentQuery.eq('id', body.agent_id);
+  else agentQuery = agentQuery.eq('slug', String(body?.agent_type || body?.agent_slug || ''));
+  const { data: definition, error: definitionError } = await agentQuery.maybeSingle();
+  if (definitionError || !definition) return jsonResponse({ error: 'Published agent not found' }, 404, headers);
+
+  let snapshot: any = definition;
+  if (definition.current_version > 0) {
+    const { data: version } = await supabase.from('agent_versions').select('snapshot').eq('organization_id', organizationId).eq('agent_id', definition.id).eq('version', definition.current_version).maybeSingle();
+    if (version?.snapshot) snapshot = { ...definition, ...version.snapshot };
+  }
+  const agentType = definition.slug;
 
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const { count } = await supabase
@@ -250,8 +276,14 @@ Deno.serve(async (req) => {
     .gte('created_at', oneHourAgo);
   if ((count || 0) >= 20) return jsonResponse({ error: 'Hourly usage limit reached' }, 429, headers);
 
-  const model = Deno.env.get(agentType === 'prospecting' ? 'OPENAI_PROSPECTING_MODEL' : 'OPENAI_QUOTE_MODEL') || 'gpt-5-mini';
-  const instructions = `${SC_CONTEXT}\n${agentType === 'prospecting' ? PROSPECTING_PROMPT : QUOTE_PROMPT}`;
+  const allowedModels = new Set((Deno.env.get('OPENAI_ALLOWED_MODELS') || 'gpt-5-mini').split(',').map(value => value.trim()).filter(Boolean));
+  const legacyModelKey = agentType === 'prospecting' ? 'OPENAI_PROSPECTING_MODEL' : agentType === 'quote' ? 'OPENAI_QUOTE_MODEL' : null;
+  const legacyModel = legacyModelKey ? Deno.env.get(legacyModelKey) || '' : '';
+  const requestedModel = String(snapshot.model || legacyModel || 'gpt-5-mini');
+  if (!allowedModels.has(requestedModel)) return jsonResponse({ error: 'Agent model is not allowed by the server' }, 422, headers);
+  const model = requestedModel;
+  const specialistPrompt = agentType === 'prospecting' ? PROSPECTING_PROMPT : agentType === 'quote' ? QUOTE_PROMPT : '';
+  const instructions = `${SC_CONTEXT}\n${specialistPrompt}\nCONFIGURACION PUBLICADA DEL AGENTE:\n${String(snapshot.instructions || '').slice(0, 20_000)}`;
   let inputContext: Record<string, unknown> = { ...input };
   let tools: Array<Record<string, unknown>> = [];
 
@@ -267,7 +299,7 @@ Deno.serve(async (req) => {
       existing_crm_businesses: (existing || []).map((item: any) => item.business_name)
     };
     tools = [{ type: 'web_search' }];
-  } else {
+  } else if (agentType === 'quote') {
     const { data: catalog, error: catalogError } = await supabase
       .from('pricing_catalog')
       .select('code,label,category,unit,currency,cost_amount,sell_amount,billing_cycle,notes')
@@ -292,11 +324,27 @@ Deno.serve(async (req) => {
 
     inputContext = { ...inputContext, prospect, pricing_catalog: catalog || [] };
     if (body?.input?.research_hosting_market === true) tools = [{ type: 'web_search' }];
+  } else {
+    const sources = Array.isArray(snapshot.context_sources) ? snapshot.context_sources : [];
+    if (sources.includes('prospects')) {
+      const { data: prospects } = await supabase.from('prospects').select('business_name,sector,city,status,need_interest').eq('organization_id', organizationId).limit(250);
+      inputContext.prospects = prospects || [];
+    }
+    if (sources.includes('pricing_catalog')) {
+      const { data: catalog } = await supabase.from('pricing_catalog').select('code,label,category,unit,currency,sell_amount,billing_cycle,notes').eq('organization_id', organizationId).eq('active', true).limit(500);
+      inputContext.pricing_catalog = catalog || [];
+    }
+    const configuredTools = Array.isArray(snapshot.tools) ? snapshot.tools : [];
+    if (configuredTools.includes('web_search')) tools = [{ type: 'web_search' }];
   }
 
   const responseFormat = agentType === 'prospecting'
     ? { type: 'json_schema', name: 'prospecting_result', strict: true, schema: PROSPECTING_SCHEMA }
-    : { type: 'json_schema', name: 'quote_result', strict: true, schema: QUOTE_SCHEMA };
+    : agentType === 'quote'
+      ? { type: 'json_schema', name: 'quote_result', strict: true, schema: QUOTE_SCHEMA }
+      : { type: 'json_schema', name: 'agent_result', strict: true, schema: GENERIC_SCHEMA };
+
+  const startedAt = Date.now();
 
   const { data: run, error: runError } = await supabase
     .from('agent_runs')
@@ -305,6 +353,8 @@ Deno.serve(async (req) => {
       user_id: userData.user.id,
       prospect_id: body?.prospect_id || null,
       agent_type: agentType,
+      agent_id: definition.id,
+      agent_version: definition.current_version || null,
       request: { input, prospect_id: body?.prospect_id || null },
       status: 'running',
       model
@@ -337,17 +387,24 @@ Deno.serve(async (req) => {
 
     await supabase
       .from('agent_runs')
-      .update({ response: result, status: 'completed', error_message: null })
+      .update({
+        response: result,
+        status: 'completed',
+        error_message: null,
+        duration_ms: Date.now() - startedAt,
+        input_tokens: raw?.usage?.input_tokens || null,
+        output_tokens: raw?.usage?.output_tokens || null
+      })
       .eq('organization_id', organizationId)
       .eq('id', run.id);
 
-    return jsonResponse({ run_id: run.id, agent_type: agentType, model, result }, 200, headers);
+    return jsonResponse({ run_id: run.id, agent_id: definition.id, agent_type: agentType, agent_version: definition.current_version, model, result }, 200, headers);
   } catch (error) {
     const internalMessage = error instanceof Error ? error.message : String(error);
     console.error('ai-agent execution failed', { run_id: run.id, message: internalMessage });
     await supabase
       .from('agent_runs')
-      .update({ status: 'failed', error_message: internalMessage.slice(0, 500) })
+      .update({ status: 'failed', error_message: internalMessage.slice(0, 500), duration_ms: Date.now() - startedAt })
       .eq('organization_id', organizationId)
       .eq('id', run.id);
     return jsonResponse({ error: 'The agent could not complete this request', run_id: run.id }, 502, headers);

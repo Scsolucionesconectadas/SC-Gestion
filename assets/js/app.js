@@ -27,8 +27,10 @@ const VIEW_META = {
   tasks:['Tareas','ORGANIZACIÓN'],
   documents:['Documentos','TRAZABILIDAD'],
   billing:['Administración','CONTROL INTERNO'],
+  communications:['Comunicaciones','MENSAJERÍA TRAZABLE'],
   reports:['Reportes','ANÁLISIS'],
-  team:['Equipo','ACCESOS']
+  team:['Equipo','ACCESOS'],
+  settings:['Configuración','GOBIERNO DEL ESPACIO']
 };
 const DEMO_KEY = 'sc_crm_demo_v2';
 const THEME_KEY = 'sc_crm_theme';
@@ -53,6 +55,7 @@ let activeView = 'dashboard';
 let realtimeChannel = null;
 let reloadTimer = null;
 let charts = [];
+let rolePermissionDefaults = [];
 const avatarUrls = new Map();
 let data = {
   profiles: [],
@@ -65,7 +68,16 @@ let data = {
   projects: [],
   documents: [],
   invoices: [],
+  invoiceItems: [],
   payments: [],
+  taskComments: [],
+  taskWatchers: [],
+  notifications: [],
+  emailMessages: [],
+  emailTemplates: [],
+  generatedDocuments: [],
+  agentDefinitions: [],
+  permissionCatalog: [],
   organizationMemberships: []
 };
 
@@ -85,9 +97,18 @@ const isOpportunity = (p) => ['Interesado','Reunión pendiente','Reunión realiz
 const activeProspect = (p) => !['Cliente','No interesado'].includes(p.status);
 const activeOrganizationId = () => activeOrganization?.id || null;
 const roleLabel = (role) => ROLE_LABELS[role] || 'Sin rol';
-const canWrite = () => WRITE_ROLES.has(currentMembership?.role);
-const canManageFinance = () => FINANCE_ROLES.has(currentMembership?.role);
-const canManageTeam = () => TEAM_MANAGER_ROLES.has(currentMembership?.role);
+function hasPermission(code){
+  if(currentMembership?.role==='owner')return true;
+  const overrides=currentMembership?.permission_overrides||{};
+  if(Object.prototype.hasOwnProperty.call(overrides,code))return overrides[code]===true;
+  if(mode==='demo')return WRITE_ROLES.has(currentMembership?.role);
+  return rolePermissionDefaults.some(item=>item.role===currentMembership?.role&&item.permission_code===code&&item.allowed!==false);
+}
+const canWrite = () => mode==='demo'?WRITE_ROLES.has(currentMembership?.role):['crm.write','clients.write','projects.write','tasks.write','documents.write'].some(hasPermission);
+const canViewFinance = () => mode==='demo'?FINANCE_ROLES.has(currentMembership?.role):hasPermission('billing.view');
+const canManageFinance = () => mode==='demo'?FINANCE_ROLES.has(currentMembership?.role):hasPermission('billing.write');
+const canManageTeam = () => hasPermission('team.manage');
+const canEditTeamProfiles = () => currentMembership?.role==='owner';
 const activeMemberIds = () => new Set(data.organizationMemberships.filter(m=>m.active!==false).map(m=>m.user_id));
 const projectById = (id) => data.projects.find(project => project.id === id);
 const clientById = (id) => data.clients.find(client => client.id === id);
@@ -124,6 +145,9 @@ function lucideRefresh(){ if(window.lucide) window.lucide.createIcons(); }
 function notify(message){
   const t=$('toast'); t.textContent=message; t.hidden=false;
   clearTimeout(window.__scToast); window.__scToast=setTimeout(()=>t.hidden=true,2200);
+}
+function emitWorkspace(type){
+  window.dispatchEvent(new CustomEvent('sc:workspace',{detail:{type}}));
 }
 function statusClass(status){
   if(status==='Cliente'||status==='Reunión realizada') return 'status-green';
@@ -232,7 +256,7 @@ async function enterAuthenticated(user){
   currentProfile=profile;
   const { data: membershipRows, error: membershipError } = await supabase
     .from('memberships')
-    .select('id,organization_id,role,active,organizations(id,name,slug,logo_url,default_currency,status)')
+    .select('id,organization_id,role,active,permission_overrides,notification_preferences,organizations(id,name,slug,logo_url,tax_identifier,default_currency,status,contact_email,phone,timezone,brand_color,settings)')
     .eq('user_id', user.id)
     .eq('active', true);
   if(membershipError || !membershipRows?.length){
@@ -267,7 +291,7 @@ function enterDemo(){
   currentUser={id:'demo-maikol'};
   activeOrganization={id:'demo-sc',name:'Soluciones Conectadas',slug:'soluciones-conectadas',default_currency:'ARS',status:'active'};
   organizations=[activeOrganization];
-  currentMembership={organization_id:activeOrganization.id,user_id:currentUser.id,role:'owner',active:true,organizations:activeOrganization};
+  currentMembership={organization_id:activeOrganization.id,user_id:currentUser.id,role:'owner',active:true,permission_overrides:{},notification_preferences:{in_app:true,email:true,daily_digest:false},organizations:activeOrganization};
   memberships=[currentMembership];
   data=loadDemoData();
   currentProfile=profileById(currentUser.id)||currentProfile;
@@ -294,11 +318,14 @@ function renderOrganizationSwitcher(){
   const select=$('organizationSelect');
   select.innerHTML=memberships.map(item=>'<option value="'+item.organization_id+'">'+esc(item.organizations?.name||'Empresa')+'</option>').join('');
   select.value=activeOrganization?.id||'';
-  document.querySelectorAll('[data-role-scope="finance"]').forEach(element=>element.hidden=!canManageFinance());
-  ['newProspectBtn','quickInteractionBtn','newTaskBtn','newClientBtn','newProjectBtn','newDocumentBtn'].forEach(id=>{
-    const element=$(id);if(element)element.hidden=!canWrite();
-  });
+  document.querySelectorAll('[data-role-scope="finance"]').forEach(element=>element.hidden=!canViewFinance());
+  const actionPermissions={newProspectBtn:'crm.write',quickInteractionBtn:'crm.write',newTaskBtn:'tasks.write',newClientBtn:'clients.write',newProjectBtn:'projects.write',newDocumentBtn:'documents.write'};
+  Object.entries(actionPermissions).forEach(([id,permission])=>{const element=$(id);if(element)element.hidden=!(mode==='demo'?canWrite():hasPermission(permission))});
   if($('newInvoiceBtn'))$('newInvoiceBtn').hidden=!canManageFinance();
+  if($('composeEmailBtn'))$('composeEmailBtn').hidden=!hasPermission('communications.send');
+  if($('addMemberBtn'))$('addMemberBtn').hidden=!hasPermission('team.manage');
+  if($('newOrganizationBtn'))$('newOrganizationBtn').hidden=currentMembership?.role!=='owner';
+  document.querySelectorAll('[data-view="settings"]').forEach(element=>element.hidden=!(hasPermission('organization.manage')||hasPermission('team.manage')));
 }
 
 async function switchOrganization(organizationId){
@@ -346,10 +373,13 @@ async function loadRemoteData(){
   if(!organizationId)return;
   setSync('Sincronizando','PostgreSQL');
   const membersQuery=await supabase.from('memberships')
-    .select('user_id,role,active')
+    .select('user_id,role,active,permission_overrides,notification_preferences')
     .eq('organization_id',organizationId);
+  const permissionDefaultsQuery=await supabase.from('role_permission_defaults').select('role,permission_code,allowed');
+  if(!permissionDefaultsQuery.error)rolePermissionDefaults=permissionDefaultsQuery.data||[];
   const profileIds=(membersQuery.data||[]).map(item=>item.user_id);
   const queries = await Promise.all([
+    supabase.from('permission_catalog').select('*').order('position'),
     profileIds.length?supabase.from('profiles').select('*').in('id',profileIds).order('full_name'):Promise.resolve({data:[],error:null}),
     supabase.from('prospects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
     supabase.from('interactions').select('*').eq('organization_id',organizationId).order('happened_at',{ascending:false}).limit(1000),
@@ -359,17 +389,31 @@ async function loadRemoteData(){
     supabase.from('clients').select('*').eq('organization_id',organizationId).order('business_name'),
     supabase.from('projects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
     supabase.from('documents').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
-    canManageFinance()?supabase.from('invoices').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
-    canManageFinance()?supabase.from('payments').select('*').eq('organization_id',organizationId).order('paid_at',{ascending:false}):Promise.resolve({data:[],error:null})
+    canViewFinance()?supabase.from('invoices').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
+    canViewFinance()?supabase.from('invoice_items').select('*').eq('organization_id',organizationId).order('position'):Promise.resolve({data:[],error:null}),
+    canViewFinance()?supabase.from('payments').select('*').eq('organization_id',organizationId).order('paid_at',{ascending:false}):Promise.resolve({data:[],error:null}),
+    hasPermission('tasks.view')?supabase.from('task_comments').select('*').eq('organization_id',organizationId).order('created_at'):Promise.resolve({data:[],error:null}),
+    hasPermission('tasks.view')?supabase.from('task_watchers').select('*').eq('organization_id',organizationId):Promise.resolve({data:[],error:null}),
+    supabase.from('notifications').select('*').eq('organization_id',organizationId).eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(100),
+    hasPermission('communications.send')?supabase.from('email_messages').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}).limit(250):Promise.resolve({data:[],error:null}),
+    hasPermission('communications.send')?supabase.from('email_templates').select('*').eq('organization_id',organizationId).eq('active',true).order('name'):Promise.resolve({data:[],error:null}),
+    canViewFinance()?supabase.from('generated_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
+    hasPermission('agents.run')?supabase.from('agent_definitions').select('*').eq('organization_id',organizationId).order('name'):Promise.resolve({data:[],error:null})
   ]);
-  const names=['profiles','prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','payments'];
-  let failed=Boolean(membersQuery.error);
-  queries.forEach((q,i)=>{ if(q.error){ console.error(names[i],q.error); failed=true; } else data[names[i]]=q.data||[]; });
+  const names=['permissionCatalog','profiles','prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
+  let failed=Boolean(membersQuery.error||permissionDefaultsQuery.error);
+  queries.forEach((q,i)=>{
+    if(q.error){console.error(names[i],q.error);failed=true;return}
+    data[names[i]]=q.data||[];
+  });
   data.organizationMemberships=membersQuery.data||[];
+  const refreshedMembership=data.organizationMemberships.find(item=>item.user_id===currentUser?.id);
+  if(refreshedMembership)currentMembership={...currentMembership,...refreshedMembership};
   const refreshedProfile=profileById(currentProfile?.id);
   if(refreshedProfile)currentProfile=refreshedProfile;
   await hydrateAvatarUrls();
   applyUserIdentity();
+  renderOrganizationSwitcher();
   setSync(failed?'Con advertencias':'Conectado',failed?'Revisar consola':'Supabase · tiempo real',!failed);
   renderAll();
 }
@@ -378,7 +422,7 @@ function setupRealtime(){
   const organizationId=activeOrganizationId();
   if(!organizationId)return;
   realtimeChannel=supabase.channel('sc-gestion-'+organizationId);
-  ['prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','payments'].forEach(table=>{
+  ['prospects','interactions','tasks','task_comments','notifications','meetings','proposals','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
     realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table,filter:'organization_id=eq.'+organizationId},scheduleReload);
   });
   realtimeChannel.subscribe();
@@ -430,7 +474,7 @@ function loadDemoData(){
 }
 function normalizeDemoData(demo){
   demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
-  ['prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','payments'].forEach(key=>{
+  ['prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
   if(!(demo.organizationMemberships||[]).length){
@@ -459,10 +503,12 @@ function setSidebar(open,{restoreFocus=false}={}){
 }
 
 function setView(view){
-  if(view==='billing'&&!canManageFinance()){
+  if(view==='billing'&&!canViewFinance()){
     notify('Tu rol no tiene acceso a administración.');
     return;
   }
+  const required={communications:'communications.send',settings:'team.manage'}[view];
+  if(required&&!hasPermission(required)&&!(view==='settings'&&hasPermission('organization.manage'))){notify('Tu rol no tiene acceso a este módulo.');return}
   activeView=view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
   document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
@@ -472,6 +518,7 @@ function setView(view){
   setSidebar(false);
   if(view==='reports') renderReports();
   if(view==='pipeline') setTimeout(enableKanban,0);
+  emitWorkspace('view');
   lucideRefresh();
 }
 
@@ -491,6 +538,7 @@ function renderAll(){
   if(activeView==='reports') renderReports();
   document.querySelectorAll('button:not([type])').forEach(button=>button.type='button');
   lucideRefresh();
+  emitWorkspace('data');
 }
 
 function renderOwnerControls(){
@@ -553,7 +601,7 @@ function filteredProspects(){
 }
 function renderProspects(){
   const list=filteredProspects();
-  $('prospectRows').innerHTML=list.length?list.map(p=>'<tr><td><span class="row-main"><b>'+esc(p.business_name)+'</b><small>'+esc(p.contact_name||p.city||'')+'</small></span></td><td>'+esc(p.sector||'—')+'</td><td>'+esc(ownerShort(p.owner_id))+'</td><td>'+statusPill(p.status)+'</td><td>'+esc(p.next_action||'—')+'</td><td>'+fmtDate(p.next_followup)+'</td><td><div class="row-actions"><button class="mini-btn" data-open="'+p.id+'">Ver</button>'+(canWrite()?'<button class="mini-btn" data-edit="'+p.id+'">Editar</button>':'')+'</div></td></tr>').join(''):'<tr><td colspan="7">'+emptyState('No hay resultados para esos filtros.','search-x')+'</td></tr>';
+  $('prospectRows').innerHTML=list.length?list.map(p=>'<tr><td><span class="row-main"><b>'+esc(p.business_name)+'</b><small>'+esc(p.contact_name||p.city||'')+'</small></span></td><td>'+esc(p.sector||'—')+'</td><td>'+esc(ownerShort(p.owner_id))+'</td><td>'+statusPill(p.status)+'</td><td>'+esc(p.next_action||'—')+'</td><td>'+fmtDate(p.next_followup)+'</td><td><div class="row-actions"><button class="mini-btn" data-open="'+p.id+'">Ver</button>'+(hasPermission('crm.write')?'<button class="mini-btn" data-edit="'+p.id+'">Editar</button>':'')+'</div></td></tr>').join(''):'<tr><td colspan="7">'+emptyState('No hay resultados para esos filtros.','search-x')+'</td></tr>';
   $('mobileProspects').innerHTML=list.length?list.map(p=>'<article class="mobile-card" data-open="'+p.id+'"><div class="mobile-card-top"><b>'+esc(p.business_name)+'</b>'+statusPill(p.status)+'</div><p>'+esc(p.sector||'Sin rubro')+' · '+esc(ownerShort(p.owner_id))+'</p><small>'+esc(p.next_action||'Sin próxima acción')+' · '+fmtDate(p.next_followup)+'</small></article>').join(''):emptyState('No hay resultados.','search-x');
 }
 function renderPipeline(){
@@ -565,7 +613,7 @@ function renderPipeline(){
   lucideRefresh();
 }
 function enableKanban(){
-  if(!canWrite())return;
+  if(!hasPermission('crm.write'))return;
   document.querySelectorAll('.kanban-list').forEach(list=>{
     if(list.__sortable) return;
     list.__sortable=new Sortable(list,{
@@ -599,7 +647,7 @@ function renderTasks(){
     const tasks=data.tasks.filter(t=>t.status===status).sort((a,b)=>(a.due_at||'9999').localeCompare(b.due_at||'9999'));
     return '<section class="task-col"><h3>'+label+' · '+tasks.length+'</h3>'+(tasks.length?tasks.map(t=>{
       const p=data.prospects.find(x=>x.id===t.prospect_id);
-      return '<article class="task-card" data-task="'+t.id+'"><b>'+esc(t.title)+'</b><p>'+esc(t.description||p?.business_name||'')+'</p><div class="task-meta"><span class="priority-pill '+(t.priority==='urgente'||t.priority==='alta'?'status-red':'status-gray')+'">'+esc(t.priority)+'</span><span>'+fmtDateTime(t.due_at)+'</span></div>'+(canWrite()?'<div class="row-actions" style="margin-top:8px"><button class="mini-btn" data-task-toggle="'+t.id+'">'+(status==='completada'?'Reabrir':'Completar')+'</button></div>':'')+'</article>';
+      return '<article class="task-card" data-task="'+t.id+'"><b>'+esc(t.title)+'</b><p>'+esc(t.description||p?.business_name||'')+'</p><div class="task-meta"><span class="priority-pill '+(t.priority==='urgente'||t.priority==='alta'?'status-red':'status-gray')+'">'+esc(t.priority)+'</span><span>'+fmtDateTime(t.due_at)+'</span></div><div class="row-actions task-card-actions"><button class="mini-btn" data-task-open="'+t.id+'"><i data-lucide="message-square-text"></i>Detalle</button>'+(hasPermission('tasks.write')?'<button class="mini-btn" data-task-toggle="'+t.id+'">'+(status==='completada'?'Reabrir':'Completar')+'</button>':'')+'</div></article>';
     }).join(''):emptyState('Sin tareas.','check-check'))+'</section>';
   }).join('');
 }
@@ -624,7 +672,7 @@ function renderProjects(){
       '<h3>'+esc(project.name)+'</h3><p>'+esc(project.description||'Sin descripción')+'</p>'+
       '<div class="project-meta"><span><i data-lucide="building-2"></i>'+esc(client?.business_name||'Proyecto interno')+'</span><span><i data-lucide="user-round"></i>'+esc(ownerName(project.owner_id))+'</span><span><i data-lucide="calendar"></i>'+fmtDate(project.due_date)+'</span></div>'+
       '<div class="progress-copy"><span>Avance</span><b>'+progress+'%</b></div><div class="progress-track"><i style="width:'+progress+'%"></i></div>'+
-      (canWrite()?'<button class="mini-btn project-progress-btn" data-project-progress="'+project.id+'"><i data-lucide="gauge"></i>Actualizar avance</button>':'')+'</article>';
+      (hasPermission('projects.write')?'<button class="mini-btn project-progress-btn" data-project-progress="'+project.id+'"><i data-lucide="gauge"></i>Actualizar avance</button>':'')+'</article>';
   }).join(''):emptyState('Todavía no hay proyectos para esta empresa.','briefcase-business');
 }
 function renderDocuments(){
@@ -652,7 +700,7 @@ function formatCurrencyTotals(totals){
   return entries.length?entries.map(([currency,total])=>money(total,currency)).join(' + '):money(0,activeOrganization?.default_currency||'ARS');
 }
 function renderBilling(){
-  if(!canManageFinance())return;
+  if(!canViewFinance())return;
   const issued=data.invoices.filter(invoice=>!['draft','cancelled'].includes(invoice.status));
   const pending=data.invoices.filter(invoice=>['issued','partially_paid','overdue'].includes(invoice.status));
   const paid=data.payments;
@@ -668,10 +716,10 @@ function renderBilling(){
     return '<tr><td><span class="row-main"><b>'+esc(invoice.internal_number)+'</b><small>'+esc(invoice.is_fiscal?'Fiscal':'Interno no fiscal')+'</small></span></td>'+
       '<td>'+esc(clientById(invoice.client_id)?.business_name||'—')+'</td><td>'+esc(labelFrom(invoice.document_type))+'</td><td>'+money(invoice.total,invoice.currency)+'</td>'+
       '<td>'+businessPill(invoice.status,INVOICE_STATUS_LABELS)+'</td><td>'+fmtDate(invoice.due_date)+'</td><td>'+
-      (balance>0&&!['draft','cancelled'].includes(invoice.status)?'<button class="mini-btn" data-payment="'+invoice.id+'">Registrar pago</button>':'')+'</td></tr>';
+      '<div class="row-actions">'+(canManageFinance()?'<button class="mini-btn" data-invoice-pdf="'+invoice.id+'"><i data-lucide="file-down"></i>PDF</button>':'')+(hasPermission('communications.send')?'<button class="mini-btn" data-invoice-email="'+invoice.id+'"><i data-lucide="send"></i>Enviar</button>':'')+(canManageFinance()&&balance>0&&!['draft','cancelled'].includes(invoice.status)?'<button class="mini-btn" data-payment="'+invoice.id+'">Registrar pago</button>':'')+'</div></td></tr>';
   }).join(''):'<tr><td colspan="7">'+emptyState('Todavía no hay comprobantes internos.','receipt-text')+'</td></tr>';
   $('mobileInvoices').innerHTML=rows.length?rows.map(invoice=>
-    '<article class="mobile-card"><div class="mobile-card-top"><b>'+esc(invoice.internal_number)+'</b>'+businessPill(invoice.status,INVOICE_STATUS_LABELS)+'</div><p>'+esc(clientById(invoice.client_id)?.business_name||'Sin cliente')+' · '+money(invoice.total,invoice.currency)+'</p>'+(!['draft','cancelled','paid'].includes(invoice.status)?'<button class="mini-btn" data-payment="'+invoice.id+'">Registrar pago</button>':'')+'</article>'
+    '<article class="mobile-card"><div class="mobile-card-top"><b>'+esc(invoice.internal_number)+'</b>'+businessPill(invoice.status,INVOICE_STATUS_LABELS)+'</div><p>'+esc(clientById(invoice.client_id)?.business_name||'Sin cliente')+' · '+money(invoice.total,invoice.currency)+'</p><div class="row-actions">'+(canManageFinance()?'<button class="mini-btn" data-invoice-pdf="'+invoice.id+'">PDF</button>':'')+(hasPermission('communications.send')?'<button class="mini-btn" data-invoice-email="'+invoice.id+'">Enviar</button>':'')+(canManageFinance()&&!['draft','cancelled','paid'].includes(invoice.status)?'<button class="mini-btn" data-payment="'+invoice.id+'">Registrar pago</button>':'')+'</div></article>'
   ).join(''):emptyState('Todavía no hay comprobantes internos.','receipt-text');
 }
 function renderTeam(){
@@ -684,7 +732,7 @@ function renderTeam(){
     ['Propietarios',owners,'shield-check']
   ].map(item=>'<article><span class="team-overview-icon"><i data-lucide="'+item[2]+'"></i></span><div><strong>'+item[1]+'</strong><small>'+item[0]+'</small></div></article>').join('');
   $('teamGrid').innerHTML=rows.length?rows.map(({membership,profile})=>
-    '<article class="team-card '+(membership.active?'':'is-inactive')+'">'+avatarMarkup(profile,'team-avatar')+'<div class="team-card-copy"><h3>'+esc(profile?.full_name||'Usuario')+'</h3><p>'+esc(profile?.job_title||profile?.username||'Sin cargo definido')+'</p><a href="mailto:'+esc(profile?.email||'')+'">'+esc(profile?.email||'Sin correo de contacto')+'</a><span class="role-chip">'+esc(roleLabel(membership.role))+'</span></div><div class="team-card-actions"><span class="status-pill '+(membership.active?'status-green':'status-red')+'">'+(membership.active?'Activo':'Inactivo')+'</span>'+(canManageTeam()?'<button type="button" class="mini-btn team-edit-btn" data-team-edit="'+membership.user_id+'" aria-label="Editar perfil de '+esc(profile?.full_name||'usuario')+'"><i data-lucide="settings-2"></i></button>':'')+'</div></article>'
+    '<article class="team-card '+(membership.active?'':'is-inactive')+'">'+avatarMarkup(profile,'team-avatar')+'<div class="team-card-copy"><h3>'+esc(profile?.full_name||'Usuario')+'</h3><p>'+esc(profile?.job_title||profile?.username||'Sin cargo definido')+'</p><a href="mailto:'+esc(profile?.email||'')+'">'+esc(profile?.email||'Sin correo de contacto')+'</a><span class="role-chip">'+esc(roleLabel(membership.role))+'</span></div><div class="team-card-actions"><span class="status-pill '+(membership.active?'status-green':'status-red')+'">'+(membership.active?'Activo':'Inactivo')+'</span>'+((canEditTeamProfiles()||canManageTeam())?'<div class="team-action-stack">'+(canEditTeamProfiles()?'<button type="button" class="mini-btn team-edit-btn" data-team-edit="'+membership.user_id+'" aria-label="Editar perfil de '+esc(profile?.full_name||'usuario')+'"><i data-lucide="user-round-cog"></i></button>':'')+(canManageTeam()?'<button type="button" class="mini-btn team-edit-btn" data-member-permissions="'+membership.user_id+'" aria-label="Editar permisos de '+esc(profile?.full_name||'usuario')+'"><i data-lucide="key-round"></i></button>':'')+'</div>':'')+'</div></article>'
   ).join(''):emptyState('Todavía no hay miembros en esta empresa.','users');
 }
 function renderReports(){
@@ -724,7 +772,7 @@ function editProspect(id){
 }
 async function submitProspect(event){
   event.preventDefault();
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('crm.write'))return;
   const id=$('prospectId').value;
   const payload={
     organization_id:activeOrganizationId(),
@@ -780,7 +828,7 @@ function openDetail(id){
   $('detailBody').innerHTML=
     '<div class="quick-actions">'+
       (wa?'<a class="btn btn-primary" target="_blank" rel="noopener" href="'+wa+'" style="text-decoration:none"><i data-lucide="message-circle"></i>WhatsApp</a>':'')+
-      (canWrite()?'<button class="btn btn-secondary" data-action="interaction" data-prospect="'+id+'"><i data-lucide="history"></i>Interacción</button>'+
+      (hasPermission('crm.write')?'<button class="btn btn-secondary" data-action="interaction" data-prospect="'+id+'"><i data-lucide="history"></i>Interacción</button>'+
       '<button class="btn btn-secondary" data-action="meeting" data-prospect="'+id+'"><i data-lucide="calendar-plus"></i>Reunión</button>'+
       '<button class="btn btn-secondary" data-action="task" data-prospect="'+id+'"><i data-lucide="list-plus"></i>Tarea</button>'+
       '<button class="btn btn-secondary" data-action="proposal" data-prospect="'+id+'"><i data-lucide="file-plus-2"></i>Propuesta</button>'+
@@ -842,9 +890,9 @@ function openAction(type,prospectId=null){
     notify('Primero tenés que cambiar la contraseña inicial.');
     return;
   }
-  if(type==='teamMember'&&!canManageTeam()){notify('Solo el propietario puede administrar el equipo.');return}
-  if(['invoice','payment'].includes(type)&&!ensureWriteAccess(true))return;
-  if(!['invoice','payment','changePassword','profile','teamMember'].includes(type)&&!ensureWriteAccess())return;
+  if(type==='teamMember'&&!canEditTeamProfiles()){notify('Solo el propietario puede editar perfiles del equipo.');return}
+  const actionPermissions={interaction:'crm.write',meeting:'crm.write',proposal:'crm.write',task:'tasks.write',client:'clients.write',project:'projects.write',projectProgress:'projects.write',document:'documents.write',invoice:'billing.write',payment:'billing.write'};
+  if(actionPermissions[type]&&!ensureWriteAccess(actionPermissions[type]))return;
   const p=prospectId?data.prospects.find(x=>x.id===prospectId):null;
   const titles={
     interaction:'Registrar interacción',meeting:'Programar reunión',task:'Nueva tarea',proposal:'Nueva propuesta',
@@ -939,14 +987,14 @@ function clientOptions(selected=''){
 function projectOptions(selected=''){
   return data.projects.filter(project=>!['completed','cancelled'].includes(project.status)).map(project=>'<option value="'+project.id+'" '+(project.id===selected?'selected':'')+'>'+esc(project.name)+'</option>').join('');
 }
-function ensureWriteAccess(finance=false){
-  const allowed=finance?canManageFinance():canWrite();
+function ensureWriteAccess(permission=null){
+  const allowed=permission?hasPermission(permission):canWrite();
   if(!allowed)notify('Tu rol tiene acceso de solo lectura.');
   return allowed;
 }
 async function submitClient(e){
   e.preventDefault();
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('clients.write'))return;
   const f=new FormData(e.target);
   const payload={
     organization_id:activeOrganizationId(),business_name:f.get('business_name').trim(),
@@ -965,7 +1013,7 @@ async function submitClient(e){
 }
 async function submitProject(e){
   e.preventDefault();
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('projects.write'))return;
   const f=new FormData(e.target);
   const payload={
     organization_id:activeOrganizationId(),client_id:f.get('client_id')||null,name:f.get('name').trim(),
@@ -984,7 +1032,7 @@ async function submitProject(e){
 }
 async function submitProjectProgress(e,projectId){
   e.preventDefault();
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('projects.write'))return;
   const f=new FormData(e.target),progress=Math.max(0,Math.min(100,Number(f.get('progress'))));
   const status=progress===100?'completed':f.get('status');
   const patch={status,progress};
@@ -1002,7 +1050,7 @@ function safeFileName(name='documento'){
 }
 async function submitDocument(e){
   e.preventDefault();
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('documents.write'))return;
   const f=new FormData(e.target),file=f.get('file');
   if(file?.size>15728640){notify('El archivo supera el máximo de 15 MB.');return}
   let storagePath=null;
@@ -1038,7 +1086,7 @@ async function openDocument(documentId){
 }
 async function submitInvoice(e){
   e.preventDefault();
-  if(!ensureWriteAccess(true))return;
+  if(!ensureWriteAccess('billing.write'))return;
   const f=new FormData(e.target),total=Number(f.get('total')||0);
   const payload={
     organization_id:activeOrganizationId(),client_id:f.get('client_id')||null,project_id:f.get('project_id')||null,
@@ -1057,7 +1105,7 @@ async function submitInvoice(e){
 }
 async function submitPayment(e,invoiceId){
   e.preventDefault();
-  if(!ensureWriteAccess(true))return;
+  if(!ensureWriteAccess('billing.write'))return;
   const invoice=invoiceById(invoiceId),f=new FormData(e.target),amount=Number(f.get('amount')||0);
   const payload={
     organization_id:activeOrganizationId(),invoice_id:invoiceId,amount,currency:invoice.currency,
@@ -1079,7 +1127,7 @@ async function submitPayment(e,invoiceId){
   closeModal('actionModal');notify('Pago registrado');
 }
 async function submitInteraction(e,fixedId){
-  e.preventDefault();if(!ensureWriteAccess())return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
+  e.preventDefault();if(!ensureWriteAccess('crm.write'))return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
   const payload={organization_id:activeOrganizationId(),prospect_id:prospectId,user_id:currentProfile.id,type:f.get('type'),result:f.get('result'),next_step:f.get('next_step')||null,next_date:f.get('next_date')||null,happened_at:new Date(f.get('happened_at')).toISOString()};
   if(mode==='supabase'){
     const {error}=await supabase.from('interactions').insert(payload);if(error){notify(error.message);return}
@@ -1093,7 +1141,7 @@ async function submitInteraction(e,fixedId){
   closeModal('actionModal');closeModal('detailModal');notify('Interacción registrada');
 }
 async function submitMeeting(e,fixedId){
-  e.preventDefault();if(!ensureWriteAccess())return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
+  e.preventDefault();if(!ensureWriteAccess('crm.write'))return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
   const payload={organization_id:activeOrganizationId(),prospect_id:prospectId,owner_id:currentProfile.id,starts_at:new Date(f.get('starts_at')).toISOString(),duration_minutes:Number(f.get('duration_minutes')||30),modality:f.get('modality'),location:f.get('location')||null,agenda:f.get('agenda')||null,status:'programada'};
   if(mode==='supabase'){
     const {error}=await supabase.from('meetings').insert(payload);if(error){notify(error.message);return}
@@ -1105,7 +1153,7 @@ async function submitMeeting(e,fixedId){
   closeModal('actionModal');closeModal('detailModal');notify('Reunión programada');
 }
 async function submitTask(e){
-  e.preventDefault();if(!ensureWriteAccess())return;const f=new FormData(e.target);
+  e.preventDefault();if(!ensureWriteAccess('tasks.write'))return;const f=new FormData(e.target);
   const due=f.get('due_at');
   const payload={organization_id:activeOrganizationId(),prospect_id:f.get('prospect_id')||null,assigned_to:f.get('assigned_to')||null,created_by:currentProfile.id,title:f.get('title'),description:f.get('description')||null,priority:f.get('priority'),status:'pendiente',due_at:due?new Date(due).toISOString():null};
   if(mode==='supabase'){const {error}=await supabase.from('tasks').insert(payload);if(error){notify(error.message);return}await loadRemoteData()}
@@ -1113,7 +1161,7 @@ async function submitTask(e){
   closeModal('actionModal');notify('Tarea creada');
 }
 async function submitProposal(e,fixedId){
-  e.preventDefault();if(!ensureWriteAccess())return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
+  e.preventDefault();if(!ensureWriteAccess('crm.write'))return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
   const status=f.get('status');
   const payload={organization_id:activeOrganizationId(),prospect_id:prospectId,created_by:currentProfile.id,title:f.get('title'),amount:f.get('amount')?Number(f.get('amount')):null,currency:f.get('currency'),status,valid_until:f.get('valid_until')||null,notes:f.get('notes')||null,sent_at:status==='enviada'?new Date().toISOString():null};
   if(mode==='supabase'){
@@ -1204,7 +1252,7 @@ async function submitPassword(e){
   closeModal('actionModal');notify('Contraseña actualizada');
 }
 async function updateProspectStatus(id,status){
-  if(!ensureWriteAccess()){await loadRemoteData();return}
+  if(!ensureWriteAccess('crm.write')){await loadRemoteData();return}
   if(mode==='supabase'){
     const {error}=await supabase.from('prospects').update({status}).eq('id',id).eq('organization_id',activeOrganizationId());if(error){notify(error.message);await loadRemoteData();return}
     await loadRemoteData();
@@ -1212,7 +1260,7 @@ async function updateProspectStatus(id,status){
   notify('Etapa actualizada');
 }
 async function toggleTask(id){
-  if(!ensureWriteAccess())return;
+  if(!ensureWriteAccess('tasks.write'))return;
   const t=data.tasks.find(x=>x.id===id);if(!t)return;
   const status=t.status==='completada'?'pendiente':'completada';
   const patch={status,completed_at:status==='completada'?new Date().toISOString():null};
@@ -1250,7 +1298,6 @@ function bindStaticEvents(){
   $('newDocumentBtn').addEventListener('click',()=>openAction('document'));
   $('newInvoiceBtn').addEventListener('click',()=>openAction('invoice'));
   $('myProfileBtn').addEventListener('click',()=>openAction('profile'));
-  $('userPill').addEventListener('click',()=>openAction('profile'));
   $('prospectForm').addEventListener('submit',submitProspect);
   $('prospectSearch').addEventListener('input',renderProspects);
   ['statusFilter','ownerFilter','sectorFilter'].forEach(id=>$(id).addEventListener('change',renderProspects));
@@ -1277,5 +1324,29 @@ function bindStaticEvents(){
     const payment=e.target.closest('[data-payment]');if(payment)openAction('payment',payment.dataset.payment);
   });
 }
+
+window.SC_APP={
+  get mode(){return mode},
+  get supabase(){return supabase},
+  get data(){return data},
+  get currentUser(){return currentUser},
+  get currentProfile(){return currentProfile},
+  get currentMembership(){return currentMembership},
+  get activeOrganization(){return activeOrganization},
+  get memberships(){return memberships},
+  get organizations(){return organizations},
+  get activeView(){return activeView},
+  get rolePermissionDefaults(){return rolePermissionDefaults},
+  hasPermission,
+  notify,
+  openAction,
+  openModal,
+  closeModal,
+  setView,
+  reload:async()=>mode==='supabase'?loadRemoteData():(renderAll(),data),
+  switchOrganization,
+  saveDemo,
+  format:{esc,money,fmtDate,fmtDateTime,labelFrom,roleLabel,initials}
+};
 
 init();
