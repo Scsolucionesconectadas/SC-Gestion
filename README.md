@@ -1,77 +1,59 @@
-# SC CRM Comercial
+# SC Gestión
 
-CRM interno de **SC Soluciones Conectadas** y **Click**, pensado para gestionar prospectos, seguimientos, reuniones, propuestas y clientes.
+Portal interno multiempresa de **Soluciones Conectadas** para centralizar oportunidades, clientes, proyectos, tareas, documentos, administración no fiscal, reportes y asistentes de IA.
 
 ## Stack
 
-- GitHub Pages / frontend estático.
-- Supabase Auth.
-- PostgreSQL.
-- Row Level Security (RLS).
-- Supabase JS.
-- Chart.js para analítica.
-- SortableJS para pipeline drag & drop.
-- Day.js para fechas.
-- Lucide para iconografía.
+- Frontend estático en HTML, CSS y JavaScript.
+- Supabase Auth, PostgreSQL, Storage, Realtime y Edge Functions.
+- Row Level Security por `organization_id` y membresías con roles.
+- OpenAI Responses API detrás de una Edge Function autenticada.
+- Chart.js, SortableJS, Day.js y Lucide con versiones fijadas.
+- Playwright y HTML Validate para calidad.
 
-## Usuarios previstos
+## Roles por empresa
 
-- \`mbetancourt\` — Maikol Betancourt — administrador.
-- \`areyes\` — Alexis Reyes — comercial.
-- \`orojas\` — Oriana Rojas — comercial.
+`owner`, `admin`, `commercial`, `project_manager`, `accounting`, `collaborator` y `viewer`.
 
-El login visible usa nombre de usuario. Internamente se transforma a \`usuario@crm.sc.local\` para Supabase Auth.
+La autorización proviene exclusivamente de `memberships.role`. El contenido de `user_metadata` nunca concede permisos.
 
-> Las contraseñas iniciales no se guardan en el repositorio. Se cargan como variables de entorno al crear los usuarios.
+## Ejecutar localmente
+
+```bash
+npm install
+npm run serve
+```
+
+Abrir `http://127.0.0.1:4173`. Si `assets/js/config.js` no tiene configuración válida, se habilita la demo local ficticia.
+
+## Validar
+
+```bash
+npm run check
+npm run lint:html
+npm run test:e2e
+```
 
 ## Base de datos
 
-La migración principal está en:
+Las migraciones están en `supabase/migrations/`. La migración `20260928215846_multi_company_core.sql` agrega aislamiento multiempresa, módulos operativos, Storage privado, auditoría y políticas RLS.
 
-\`supabase/migrations/001_crm_schema.sql\`
+## Aprovisionar empresa y usuarios
 
-Incluye:
+1. Crear `.env` desde `.env.example`.
+2. Completar `SUPABASE_SERVICE_ROLE_KEY` y contraseñas iniciales fuertes.
+3. Ejecutar `npm run users:create` desde una terminal administrativa.
 
-- perfiles;
-- prospectos;
-- interacciones;
-- tareas;
-- reuniones;
-- propuestas;
-- auditoría;
-- vistas de dashboard;
-- índices;
-- RLS;
-- políticas para equipo autenticado.
+El script es repetible: crea o actualiza la empresa, perfiles y membresías. La service role y las contraseñas nunca deben enviarse al navegador ni versionarse.
 
-## Crear usuarios
+## Agentes IA
 
-Después de aplicar la migración:
+La función `supabase/functions/ai-agent/index.ts` exige JWT, una membresía activa, un rol permitido y `organization_id`. La clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
 
-\`\`\`bash
-npm install
-cp .env.example .env
-# completar variables
-set -a && source .env && set +a
-npm run users:create
-\`\`\`
+## Documentación técnica
 
-La \`SUPABASE_SERVICE_ROLE_KEY\` se usa únicamente en un entorno de administración. Nunca debe enviarse al navegador ni subirse a GitHub.
-
-## Configurar frontend
-
-Editar \`assets/js/config.js\`:
-
-\`\`\`js
-window.SC_CONFIG = {
-  SUPABASE_URL: 'https://....supabase.co',
-  SUPABASE_PUBLISHABLE_KEY: '...',
-  AUTH_DOMAIN: 'crm.sc.local'
-};
-\`\`\`
-
-La publishable key está diseñada para usarse en clientes; el acceso a datos queda protegido por autenticación y RLS.
+La memoria operativa y las decisiones están en `docs/obsidian/00_Contexto_Proyecto.md` y notas relacionadas.
 
 ## Publicación
 
-No activar GitHub Pages hasta terminar la conexión con Supabase, migrar los datos del CRM actual y validar usuarios.
+El código se mantiene en el repositorio privado `Scsolucionesconectadas/SC-Gestion`. Antes de exponer el portal en Internet hay que completar el aprovisionamiento inicial, definir el hosting privado, configurar el dominio permitido y validar acceso real con al menos dos empresas de prueba.

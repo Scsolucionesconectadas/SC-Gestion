@@ -4,7 +4,9 @@ const cfg=window.SC_CONFIG||{};
 const configured=Boolean(cfg.SUPABASE_URL&&cfg.SUPABASE_PUBLISHABLE_KEY);
 const supabase=configured?createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true}}):null;
 
-let session=null,profile=null,prospects=[],activeAgent='prospecting';
+const ORG_KEY='sc_gestion_active_organization';
+const AI_ROLES=new Set(['owner','admin','commercial','accounting']);
+let session=null,profile=null,prospects=[],activeAgent='prospecting',membership=null,organization=null;
 
 const $=id=>document.getElementById(id);
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,12 +30,26 @@ async function init(){
   }
   const {data}=await supabase.auth.getSession();session=data.session;
   if(!session){location.href='./index.html';return}
+  const memberships=await supabase.from('memberships').select('organization_id,role,active,organizations(id,name,slug,status)').eq('user_id',session.user.id).eq('active',true);
+  const stored=localStorage.getItem(ORG_KEY);
+  membership=(memberships.data||[]).find(item=>item.organization_id===stored)||(memberships.data||[])[0]||null;
+  organization=membership?.organizations||null;
+  if(!membership||!organization||!AI_ROLES.has(membership.role)){
+    $('agentUserLabel').textContent='Acceso restringido';
+    errorBox($('prospectingResults'),'Tu rol no tiene permiso para ejecutar agentes IA en esta empresa.');
+    $('prospectingPlaceholder').hidden=true;
+    errorBox($('quoteResults'),'Solicitá acceso a un administrador de la empresa.');
+    $('quotePlaceholder').hidden=true;
+    document.querySelectorAll('form button[type="submit"]').forEach(button=>button.disabled=true);
+    return;
+  }
+  localStorage.setItem(ORG_KEY,organization.id);
   const [pr,ps]=await Promise.all([
     supabase.from('profiles').select('*').eq('id',session.user.id).single(),
-    supabase.from('prospects').select('id,business_name,sector,city,need_interest,status').order('business_name')
+    supabase.from('prospects').select('id,business_name,sector,city,need_interest,status').eq('organization_id',organization.id).order('business_name')
   ]);
   profile=pr.data;prospects=ps.data||[];
-  $('agentUserLabel').textContent=profile?.full_name||'Usuario';
+  $('agentUserLabel').textContent=(profile?.full_name||'Usuario')+' · '+organization.name;
   $('quoteProspect').innerHTML='<option value="">Sin prospecto asociado</option>'+prospects.map(p=>'<option value="'+p.id+'">'+esc(p.business_name)+'</option>').join('');
   iconRefresh();
 }
@@ -65,7 +81,7 @@ async function runProspecting(e){
   loading($('prospectingResults'),'Investigando negocios y contrastando fuentes públicas...');
   const f=new FormData(e.target);
   const input={city:f.get('city'),nearby:f.get('nearby'),sectors:f.get('sectors'),limit:Number(f.get('limit')||8),depth:f.get('depth'),notes:f.get('notes')};
-  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{agent_type:'prospecting',input}});
+  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_type:'prospecting',input}});
   if(error){errorBox($('prospectingResults'),error.message||'No se pudo ejecutar el agente.');return}
   renderProspecting(data?.result||{});
 }
@@ -85,13 +101,14 @@ function renderProspecting(result){
       '<div class="lead-section"><b>Ángulo sugerido</b><div class="meta">'+esc(lead.suggested_solution_angle||'')+'</div></div>'+
       '<div class="draft-message">'+esc(lead.message_draft||'')+'</div>'+
       '<div class="source-links">'+sources+'</div>'+
-      '<div class="lead-actions"><button class="btn btn-primary" data-add-lead="'+encoded+'">Agregar al CRM</button><button class="copy-btn" data-copy="'+encodeURIComponent(lead.message_draft||'')+'">Copiar mensaje</button></div></article>';
+      '<div class="lead-actions"><button type="button" class="btn btn-primary" data-add-lead="'+encoded+'">Agregar al CRM</button><button type="button" class="copy-btn" data-copy="'+encodeURIComponent(lead.message_draft||'')+'">Copiar mensaje</button></div></article>';
   }).join('');
   iconRefresh();
 }
 async function addLead(lead){
   const c=lead.public_contact||{};
   const payload={
+    organization_id:organization.id,
     business_name:lead.business_name,
     sector:lead.sector||null,
     city:lead.city||null,
@@ -127,7 +144,7 @@ async function runQuote(e){
     research_hosting_market:f.get('research_hosting_market')==='on'
   };
   const prospect_id=f.get('prospect_id')||null;
-  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{agent_type:'quote',prospect_id,input}});
+  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_type:'quote',prospect_id,input}});
   if(error){errorBox($('quoteResults'),error.message||'No se pudo ejecutar el agente.');return}
   renderQuote(data?.result||{},prospect_id,input);
 }
@@ -148,12 +165,13 @@ function renderQuote(q,prospectId,input){
     (assumptions?'<section class="quote-block"><h4>Supuestos</h4><ul style="font-size:10px;line-height:1.6">'+assumptions+'</ul></section>':'')+
     (risks?'<section class="quote-block"><h4>Riesgos / variaciones</h4><ul style="font-size:10px;line-height:1.6">'+risks+'</ul></section>':'')+
     (questions?'<section class="quote-block"><h4>Preguntas para el cliente</h4><ul style="font-size:10px;line-height:1.6">'+questions+'</ul></section>':'')+
-    '<div class="lead-actions"><button class="btn btn-primary" id="saveEstimateBtn">Guardar borrador</button><button class="copy-btn" data-copy="'+encodeURIComponent(JSON.stringify(q,null,2))+'">Copiar JSON</button></div>';
+    '<div class="lead-actions"><button type="button" class="btn btn-primary" id="saveEstimateBtn">Guardar borrador</button><button type="button" class="copy-btn" data-copy="'+encodeURIComponent(JSON.stringify(q,null,2))+'">Copiar JSON</button></div>';
   $('saveEstimateBtn').onclick=()=>saveEstimate(q,prospectId,input);
 }
 async function saveEstimate(q,prospectId,input){
   const currency=q.recommended_range?.currency||'ARS';
   const {error}=await supabase.from('quote_estimates').insert({
+    organization_id:organization.id,
     prospect_id:prospectId||null,
     created_by:profile.id,
     title:q.title||'Estimación SC',

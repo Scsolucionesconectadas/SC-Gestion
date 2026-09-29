@@ -1,11 +1,11 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#2C3A46">
-  <meta name="description" content="CRM Comercial interno de SC Soluciones Conectadas">
-  <title>SC · CRM Comercial</title>
+  <meta name="description" content="Portal interno multiempresa de SC Soluciones Conectadas">
+  <title>SC · Gestión</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
@@ -23,22 +23,22 @@
         <img src="./assets/img/sc-isotipo-color.webp" alt="SC Soluciones Conectadas" class="brand-logo brand-logo-auth">
       </div>
       <div class="auth-content">
-        <span class="eyebrow">ACCESO INTERNO · CRM COMERCIAL</span>
-        <h1>Convertí cada contacto en una oportunidad visible.</h1>
-        <p class="auth-copy">Prospectos, seguimientos, reuniones, tareas, propuestas y métricas en un solo flujo de trabajo.</p>
+        <span class="eyebrow">ACCESO INTERNO · SC GESTIÓN</span>
+        <h1>Una operación clara para cada empresa.</h1>
+        <p class="auth-copy">Oportunidades, proyectos, tareas, documentos y administración en un entorno protegido.</p>
 
         <form class="auth-form" id="loginForm">
           <label>Usuario
-            <div class="input-shell">
+            <span class="input-shell">
               <i data-lucide="user-round"></i>
-              <input id="loginUser" autocomplete="username" placeholder="mbetancourt" required>
-            </div>
+              <input id="loginUser" type="text" autocomplete="username" placeholder="mbetancourt" required>
+            </span>
           </label>
           <label>Contraseña
-            <div class="input-shell">
+            <span class="input-shell">
               <i data-lucide="lock-keyhole"></i>
               <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required>
-            </div>
+            </span>
           </label>
           <button class="btn btn-primary btn-lg" id="loginButton" type="submit">
             <span>Ingresar</span><i data-lucide="arrow-right"></i>
@@ -62,7 +62,7 @@
       </div>
     </div>
 
-    <aside class="auth-story">
+    <aside class="auth-story" aria-label="Presentación de SC Gestión">
       <span class="eyebrow light">SC / OPERACIÓN COMERCIAL CONECTADA</span>
       <h2>Del primer mensaje al cierre, sin perder el hilo.</h2>
       <div class="flow-line">
@@ -77,19 +77,29 @@
   </section>
 
   <div class="app-shell" id="appShell" hidden>
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" aria-label="Panel de navegación">
       <div class="side-brand">
         <div class="side-logo-box"><img src="./assets/img/sc-isotipo-color.webp" alt="SC" class="brand-logo"></div>
-        <div><b>CRM Comercial</b><small>Soluciones Conectadas</small></div>
+        <div><b>SC Gestión</b><small>Portal multiempresa</small></div>
       </div>
 
+      <label class="organization-switcher">
+        <span>Empresa activa</span>
+        <select id="organizationSelect"></select>
+      </label>
+
       <nav class="nav">
-        <button class="active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Inicio</span></button>
-        <button data-view="prospects"><i data-lucide="users-round"></i><span>Prospectos</span></button>
-        <button data-view="pipeline"><i data-lucide="columns-3"></i><span>Pipeline</span></button>
-        <button data-view="followups"><i data-lucide="calendar-clock"></i><span>Seguimientos</span></button>
-        <button data-view="tasks"><i data-lucide="list-checks"></i><span>Tareas</span></button>
-        <button data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
+        <button type="button" class="active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Inicio</span></button>
+        <button type="button" data-view="prospects"><i data-lucide="users-round"></i><span>Oportunidades</span></button>
+        <button type="button" data-view="pipeline"><i data-lucide="columns-3"></i><span>Pipeline</span></button>
+        <button type="button" data-view="clients"><i data-lucide="building-2"></i><span>Clientes</span></button>
+        <button type="button" data-view="projects"><i data-lucide="briefcase-business"></i><span>Proyectos</span></button>
+        <button type="button" data-view="followups"><i data-lucide="calendar-clock"></i><span>Seguimientos</span></button>
+        <button type="button" data-view="tasks"><i data-lucide="list-checks"></i><span>Tareas</span></button>
+        <button type="button" data-view="documents"><i data-lucide="files"></i><span>Documentos</span></button>
+        <button type="button" data-view="billing" data-role-scope="finance"><i data-lucide="receipt-text"></i><span>Administración</span></button>
+        <button type="button" data-view="reports"><i data-lucide="chart-no-axes-combined"></i><span>Reportes</span></button>
+        <button type="button" data-view="team"><i data-lucide="users"></i><span>Equipo</span></button>
         <a class="agent-link" href="./agents.html"><i data-lucide="bot"></i><span>Agentes IA</span><span class="agent-badge">AI</span></a>
       </nav>
 
@@ -98,26 +108,26 @@
           <span class="sync-orbit"><span></span></span>
           <div><b id="syncLabel">Sincronizando</b><small id="syncSub">PostgreSQL</small></div>
         </div>
-        <button class="side-link" id="exportBtn"><i data-lucide="download"></i>Exportar respaldo</button>
-        <button class="side-link logout" id="logoutBtn"><i data-lucide="log-out"></i>Cerrar sesión</button>
+        <button type="button" class="side-link" id="exportBtn"><i data-lucide="download"></i>Exportar respaldo</button>
+        <button type="button" class="side-link logout" id="logoutBtn"><i data-lucide="log-out"></i>Cerrar sesión</button>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div class="top-left">
-          <button class="icon-btn mobile-menu" id="menuBtn"><i data-lucide="menu"></i></button>
+          <button type="button" class="icon-btn mobile-menu" id="menuBtn" aria-label="Abrir menú"><i data-lucide="menu"></i></button>
           <div><span class="eyebrow" id="contextLabel">SC COMERCIAL</span><h1 id="viewTitle">Inicio</h1></div>
         </div>
         <div class="top-actions">
           <div class="global-search">
             <i data-lucide="search"></i>
-            <input id="globalSearch" placeholder="Buscar negocio...">
+            <input id="globalSearch" type="search" placeholder="Buscar negocio...">
             <kbd>/</kbd>
           </div>
-          <button class="icon-btn" id="themeBtn" title="Cambiar tema"><i data-lucide="sun-moon"></i></button>
-          <button class="btn btn-primary" id="newProspectBtn"><i data-lucide="plus"></i>Nuevo prospecto</button>
-          <button class="user-pill" id="userPill">
+          <button type="button" class="icon-btn" id="themeBtn" title="Cambiar tema"><i data-lucide="sun-moon"></i></button>
+          <button type="button" class="btn btn-primary" id="newProspectBtn"><i data-lucide="plus"></i>Nueva oportunidad</button>
+          <button type="button" class="user-pill" id="userPill">
             <span class="avatar" id="userAvatar">MB</span>
             <span class="user-copy"><b id="userName">Maikol</b><small id="userRole">Administrador</small></span>
           </button>
@@ -132,8 +142,8 @@
             <p id="heroText">Estas son las oportunidades que requieren atención comercial.</p>
           </div>
           <div class="hero-actions">
-            <button class="btn btn-glass" data-view-jump="followups"><i data-lucide="calendar-clock"></i>Ver seguimientos</button>
-            <button class="btn btn-white" id="quickInteractionBtn"><i data-lucide="message-circle-more"></i>Registrar contacto</button>
+            <button type="button" class="btn btn-glass" data-view-jump="followups"><i data-lucide="calendar-clock"></i>Ver seguimientos</button>
+            <button type="button" class="btn btn-white" id="quickInteractionBtn"><i data-lucide="message-circle-more"></i>Registrar contacto</button>
           </div>
           <div class="hero-rings" aria-hidden="true"><i></i><i></i><i></i></div>
         </div>
@@ -142,7 +152,7 @@
 
         <div class="dashboard-grid">
           <article class="panel span-2">
-            <div class="panel-head"><div><span class="eyebrow">PRIORIDAD</span><h3>Seguimientos que requieren acción</h3></div><button class="text-btn" data-view-jump="followups">Ver todos →</button></div>
+            <div class="panel-head"><div><span class="eyebrow">PRIORIDAD</span><h3>Seguimientos que requieren acción</h3></div><button type="button" class="text-btn" data-view-jump="followups">Ver todos →</button></div>
             <div class="action-list" id="priorityList"></div>
           </article>
           <article class="panel">
@@ -162,7 +172,7 @@
 
       <section class="content view" id="prospectsView">
         <div class="page-toolbar">
-          <div class="filter-search"><i data-lucide="search"></i><input id="prospectSearch" placeholder="Negocio, contacto, rubro, localidad..."></div>
+          <div class="filter-search"><i data-lucide="search"></i><input id="prospectSearch" type="search" placeholder="Negocio, contacto, rubro, localidad..."></div>
           <div class="filter-group">
             <select id="statusFilter"></select>
             <select id="ownerFilter"></select>
@@ -185,6 +195,25 @@
         <div class="kanban" id="kanban"></div>
       </section>
 
+      <section class="content view" id="clientsView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">RELACIONES</span><h2 class="page-subtitle">Clientes de la empresa</h2></div>
+          <button type="button" class="btn btn-primary" id="newClientBtn"><i data-lucide="plus"></i>Nuevo cliente</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-scroll"><table><thead><tr><th>Cliente</th><th>Contacto</th><th>Localidad</th><th>Estado</th><th>Actualizado</th></tr></thead><tbody id="clientRows"></tbody></table></div>
+          <div class="mobile-list" id="mobileClients"></div>
+        </div>
+      </section>
+
+      <section class="content view" id="projectsView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">ENTREGAS</span><h2 class="page-subtitle">Proyectos y avance</h2></div>
+          <button type="button" class="btn btn-primary" id="newProjectBtn"><i data-lucide="plus"></i>Nuevo proyecto</button>
+        </div>
+        <div class="project-grid" id="projectGrid"></div>
+      </section>
+
       <section class="content view" id="followupsView">
         <div class="followup-grid" id="followupGroups"></div>
       </section>
@@ -192,9 +221,33 @@
       <section class="content view" id="tasksView">
         <div class="page-toolbar">
           <div><span class="eyebrow">ORGANIZACIÓN</span><h2 class="page-subtitle">Tareas del equipo</h2></div>
-          <button class="btn btn-primary" id="newTaskBtn"><i data-lucide="plus"></i>Nueva tarea</button>
+          <button type="button" class="btn btn-primary" id="newTaskBtn"><i data-lucide="plus"></i>Nueva tarea</button>
         </div>
         <div class="task-board" id="taskBoard"></div>
+      </section>
+
+      <section class="content view" id="documentsView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">TRAZABILIDAD</span><h2 class="page-subtitle">Documentación privada</h2></div>
+          <button type="button" class="btn btn-primary" id="newDocumentBtn"><i data-lucide="upload"></i>Subir documento</button>
+        </div>
+        <div class="panel table-panel">
+          <div class="table-scroll"><table><thead><tr><th>Documento</th><th>Categoría</th><th>Proyecto</th><th>Estado</th><th>Vencimiento</th><th></th></tr></thead><tbody id="documentRows"></tbody></table></div>
+          <div class="mobile-list" id="mobileDocuments"></div>
+        </div>
+      </section>
+
+      <section class="content view" id="billingView">
+        <div class="page-toolbar">
+          <div><span class="eyebrow">ADMINISTRACIÓN NO FISCAL</span><h2 class="page-subtitle">Facturación y cobranzas internas</h2></div>
+          <button type="button" class="btn btn-primary" id="newInvoiceBtn"><i data-lucide="plus"></i>Nuevo comprobante</button>
+        </div>
+        <div class="kpi-grid" id="billingKpis"></div>
+        <div class="panel table-panel">
+          <div class="table-scroll"><table><thead><tr><th>Número</th><th>Cliente</th><th>Tipo</th><th>Importe</th><th>Estado</th><th>Vencimiento</th><th></th></tr></thead><tbody id="invoiceRows"></tbody></table></div>
+          <div class="mobile-list" id="mobileInvoices"></div>
+        </div>
+        <p class="section-disclaimer"><i data-lucide="info"></i>Los comprobantes de este módulo son internos y no sustituyen documentación fiscal emitida ante ARCA.</p>
       </section>
 
       <section class="content view" id="reportsView">
@@ -208,25 +261,30 @@
           <div class="table-scroll"><table><thead><tr><th>Rubro</th><th>Prospectos</th><th>Con respuesta</th><th>Interesados+</th><th>Clientes</th><th>Conversión</th></tr></thead><tbody id="sectorReportRows"></tbody></table></div>
         </div>
       </section>
+
+      <section class="content view" id="teamView">
+        <div class="page-toolbar"><div><span class="eyebrow">ACCESOS</span><h2 class="page-subtitle">Equipo y permisos</h2></div></div>
+        <div class="team-grid" id="teamGrid"></div>
+      </section>
     </main>
   </div>
 
   <div class="modal-backdrop" id="prospectModal" hidden>
     <div class="modal modal-lg">
-      <div class="modal-head"><div><span class="eyebrow">FICHA COMERCIAL</span><h2 id="prospectModalTitle">Nuevo prospecto</h2></div><button class="icon-btn" data-close="prospectModal"><i data-lucide="x"></i></button></div>
+      <div class="modal-head"><div><span class="eyebrow">FICHA COMERCIAL</span><h2 id="prospectModalTitle">Nuevo prospecto</h2></div><button type="button" class="icon-btn" data-close="prospectModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
       <form class="form-grid" id="prospectForm">
         <input type="hidden" id="prospectId">
-        <label>Negocio*<input id="businessName" required></label>
-        <label>Rubro<input id="sector"></label>
-        <label>Localidad<input id="city" value="Cdelu"></label>
-        <label>Contacto<input id="contactName"></label>
-        <label>Cargo<input id="jobTitle"></label>
-        <label>Teléfono<input id="phone" inputmode="tel"></label>
+        <label>Negocio*<input id="businessName" type="text" required></label>
+        <label>Rubro<input id="sector" type="text"></label>
+        <label>Localidad<input id="city" type="text" value="Cdelu"></label>
+        <label>Contacto<input id="contactName" type="text"></label>
+        <label>Cargo<input id="jobTitle" type="text"></label>
+        <label>Teléfono<input id="phone" type="tel" inputmode="tel"></label>
         <label>Email<input id="email" type="email"></label>
         <label>Responsable<select id="owner"></select></label>
         <label>Marca<select id="brand"><option>SC</option><option>Click</option><option>SC y Click</option></select></label>
         <label>Estado<select id="status"></select></label>
-        <label>Próxima acción<input id="nextAction"></label>
+        <label>Próxima acción<input id="nextAction" type="text"></label>
         <label>Seguimiento<input id="nextFollowup" type="date"></label>
         <label class="full">Necesidad / interés<textarea id="needInterest" rows="3"></textarea></label>
         <label class="full">Observaciones<textarea id="notes" rows="3"></textarea></label>
@@ -237,14 +295,14 @@
 
   <div class="modal-backdrop" id="detailModal" hidden>
     <div class="modal modal-xl">
-      <div class="modal-head"><div><span class="eyebrow">OPORTUNIDAD</span><h2 id="detailTitle"></h2><p id="detailSubtitle"></p></div><button class="icon-btn" data-close="detailModal"><i data-lucide="x"></i></button></div>
+      <div class="modal-head"><div><span class="eyebrow">OPORTUNIDAD</span><h2 id="detailTitle">Detalle</h2><p id="detailSubtitle"></p></div><button type="button" class="icon-btn" data-close="detailModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
       <div id="detailBody"></div>
     </div>
   </div>
 
   <div class="modal-backdrop" id="actionModal" hidden>
     <div class="modal">
-      <div class="modal-head"><div><span class="eyebrow" id="actionEyebrow">ACCIÓN</span><h2 id="actionTitle"></h2></div><button class="icon-btn" data-close="actionModal"><i data-lucide="x"></i></button></div>
+      <div class="modal-head"><div><span class="eyebrow" id="actionEyebrow">ACCIÓN</span><h2 id="actionTitle">Acción</h2></div><button type="button" class="icon-btn" data-close="actionModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
       <div id="actionBody"></div>
     </div>
   </div>

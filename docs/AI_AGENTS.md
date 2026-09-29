@@ -1,49 +1,41 @@
-# Agentes IA del CRM
+# Agentes IA de SC Gestión
 
-El CRM incorpora una capa de agentes conectada a OpenAI mediante una **Supabase Edge Function**. La clave de OpenAI nunca se expone en GitHub Pages ni en el navegador.
+Los agentes se ejecutan mediante la Edge Function `ai-agent`. El navegador nunca recibe `OPENAI_API_KEY`.
 
-## 1. Agente Comercial
+## Agente comercial
 
-Objetivo:
-- buscar posibles clientes en Concepción del Uruguay y alrededores;
-- revisar información pública actual;
-- excluir negocios ya cargados en el CRM;
-- separar hechos verificados de hipótesis comerciales;
-- mostrar datos públicos de contacto;
-- proponer un ángulo de solución;
-- redactar un mensaje base personalizado;
-- permitir agregar el negocio al CRM con un clic.
+- Investiga fuentes públicas actuales.
+- Excluye negocios ya presentes en la empresa activa.
+- Separa hechos verificados de hipótesis comerciales.
+- Propone afinidad, ángulo de solución y borrador de contacto.
+- Requiere revisión humana antes de agregar el prospecto.
 
-La búsqueda web se ejecuta desde la Responses API de OpenAI con la herramienta de búsqueda web.
+## Agente de presupuestos
 
-## 2. Agente de Presupuestos
+- Usa únicamente el catálogo de precios de la empresa activa.
+- Separa implementación, costos recurrentes y opcionales.
+- Explicita supuestos, riesgos, exclusiones y preguntas pendientes.
+- Marca los precios faltantes en vez de inventarlos.
+- Guarda un borrador interno, nunca una factura ni propuesta aprobada.
 
-Objetivo:
-- transformar el relevamiento del cliente en una estimación interna;
-- usar el catálogo real de precios de SC;
-- separar implementación y costos recurrentes;
-- considerar hosting, terceros, mantenimiento, soporte, capacitación e integraciones;
-- detectar información faltante;
-- generar preguntas de relevamiento;
-- guardar borradores para revisión humana.
+## Controles
 
-**El agente no inventa tarifas internas.** Si el catálogo no tiene un precio necesario, devuelve `requires_pricing_input=true`.
+- JWT obligatorio.
+- Membresía activa en el `organization_id` recibido.
+- Roles habilitados: `owner`, `admin`, `commercial`, `accounting`.
+- Límite de 20 ejecuciones por usuario, empresa y hora.
+- Entradas limitadas por tamaño y salidas validadas con JSON Schema estricto.
+- Consultas al CRM, catálogo y trazabilidad filtradas por empresa.
+- Errores internos no se exponen al navegador.
+- `store: false` en Responses API.
 
-## Seguridad
+## Secrets
 
-- Supabase Auth identifica al usuario.
-- RLS protege tablas.
-- `OPENAI_API_KEY` vive únicamente como secreto de Supabase Edge Functions.
-- Los resultados se guardan en `agent_runs` para trazabilidad.
-- Ningún mensaje se envía automáticamente.
-- Ningún presupuesto se considera final sin revisión humana.
-
-## Secrets del Edge Function
-
-```
-OPENAI_API_KEY=...
-OPENAI_PROSPECTING_MODEL=gpt-5.6-terra
-OPENAI_QUOTE_MODEL=gpt-5.6-sol
+```env
+OPENAI_API_KEY=
+OPENAI_PROSPECTING_MODEL=gpt-5-mini
+OPENAI_QUOTE_MODEL=gpt-5-mini
+ALLOWED_ORIGINS=https://app.example.com
 ```
 
-Los modelos quedan configurables por variables de entorno para poder cambiarlos sin modificar el frontend.
+Los modelos son configurables para actualizarse sin modificar el frontend.

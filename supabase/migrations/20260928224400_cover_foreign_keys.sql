@@ -1,0 +1,28 @@
+-- Cover foreign keys used by tenant integrity and cascading operations.
+create index if not exists agent_runs_prospect_org_fk_idx on public.agent_runs(prospect_id, organization_id);
+create index if not exists clients_created_by_fk_idx on public.clients(created_by);
+create index if not exists documents_client_org_fk_idx on public.documents(client_id, organization_id);
+create index if not exists documents_created_by_fk_idx on public.documents(created_by);
+create index if not exists documents_project_org_fk_idx on public.documents(project_id, organization_id);
+create index if not exists interactions_prospect_org_fk_idx on public.interactions(prospect_id, organization_id);
+create index if not exists invoice_items_invoice_org_fk_idx on public.invoice_items(invoice_id, organization_id);
+create index if not exists invoice_items_organization_fk_idx on public.invoice_items(organization_id);
+create index if not exists invoices_approved_by_fk_idx on public.invoices(approved_by);
+create index if not exists invoices_client_org_fk_idx on public.invoices(client_id, organization_id);
+create index if not exists invoices_created_by_fk_idx on public.invoices(created_by);
+create index if not exists invoices_project_org_fk_idx on public.invoices(project_id, organization_id);
+create index if not exists meetings_prospect_org_fk_idx on public.meetings(prospect_id, organization_id);
+create index if not exists notifications_organization_fk_idx on public.notifications(organization_id);
+create index if not exists payments_created_by_fk_idx on public.payments(created_by);
+create index if not exists payments_invoice_org_fk_idx on public.payments(invoice_id, organization_id);
+create index if not exists project_comments_author_fk_idx on public.project_comments(author_id);
+create index if not exists project_comments_organization_fk_idx on public.project_comments(organization_id);
+create index if not exists project_comments_project_org_fk_idx on public.project_comments(project_id, organization_id);
+create index if not exists projects_client_org_fk_idx on public.projects(client_id, organization_id);
+create index if not exists projects_created_by_fk_idx on public.projects(created_by);
+create index if not exists projects_owner_fk_idx on public.projects(owner_id);
+create index if not exists projects_prospect_org_fk_idx on public.projects(prospect_id, organization_id);
+create index if not exists proposals_prospect_org_fk_idx on public.proposals(prospect_id, organization_id);
+create index if not exists quote_estimates_prospect_org_fk_idx on public.quote_estimates(prospect_id, organization_id);
+create index if not exists tasks_project_org_fk_idx on public.tasks(project_id, organization_id);
+create index if not exists tasks_prospect_org_fk_idx on public.tasks(prospect_id, organization_id);

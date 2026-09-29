@@ -1,4 +1,4 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="utf-8">
@@ -21,8 +21,8 @@
         <span><b>Agentes IA</b><small>SC Soluciones Conectadas</small></span>
       </a>
       <div class="agent-selector">
-        <button class="active" data-agent="prospecting"><i data-lucide="radar"></i><span><b>Agente Comercial</b><small>Busca y prepara prospectos</small></span></button>
-        <button data-agent="quote"><i data-lucide="calculator"></i><span><b>Agente de Presupuestos</b><small>Estima alcance y costos</small></span></button>
+        <button type="button" class="active" data-agent="prospecting"><i data-lucide="radar"></i><span><b>Agente Comercial</b><small>Busca y prepara prospectos</small></span></button>
+        <button type="button" data-agent="quote"><i data-lucide="calculator"></i><span><b>Agente de Presupuestos</b><small>Estima alcance y costos</small></span></button>
       </div>
       <div class="agent-side-note">
         <i data-lucide="shield-check"></i>
@@ -42,8 +42,8 @@
           <article class="agent-config panel">
             <div class="panel-head"><div><span class="eyebrow">BÚSQUEDA</span><h3>Definir prospección</h3></div><span class="ai-chip">WEB + IA</span></div>
             <form id="prospectingForm" class="agent-form">
-              <label>Ciudad base<input name="city" value="Concepción del Uruguay" required></label>
-              <label>Zona / localidades cercanas<input name="nearby" value="Colón, San José, Villa Elisa, Caseros, Gualeguaychú"></label>
+              <label>Ciudad base<input name="city" type="text" value="Concepción del Uruguay" required></label>
+              <label>Zona / localidades cercanas<input name="nearby" type="text" value="Colón, San José, Villa Elisa, Caseros, Gualeguaychú"></label>
               <label>Rubros a priorizar<textarea name="sectors" rows="3" placeholder="Distribuidoras, industria, gastronomía, salud..."></textarea></label>
               <div class="two-col">
                 <label>Cantidad objetivo<input name="limit" type="number" min="1" max="25" value="8"></label>
@@ -55,7 +55,7 @@
           </article>
 
           <article class="agent-output panel">
-            <div class="panel-head"><div><span class="eyebrow">RESULTADOS</span><h3>Oportunidades encontradas</h3></div><button class="text-btn" id="clearProspectingBtn">Limpiar</button></div>
+            <div class="panel-head"><div><span class="eyebrow">RESULTADOS</span><h3>Oportunidades encontradas</h3></div><button type="button" class="text-btn" id="clearProspectingBtn">Limpiar</button></div>
             <div class="agent-placeholder" id="prospectingPlaceholder">
               <span class="agent-orb"><i data-lucide="radar"></i></span>
               <h3>Definí una búsqueda</h3>
@@ -75,7 +75,7 @@
               <label>Necesidad / alcance<textarea name="requirements" rows="5" required placeholder="Describí qué necesita el cliente, procesos, usuarios, integraciones, reportes..."></textarea></label>
               <div class="two-col">
                 <label>Usuarios estimados<input name="users" type="number" min="1" placeholder="5"></label>
-                <label>Plazo deseado<input name="deadline" placeholder="Ej.: 6 semanas"></label>
+                <label>Plazo deseado<input name="deadline" type="text" placeholder="Ej.: 6 semanas"></label>
               </div>
               <label>Integraciones / servicios externos<textarea name="integrations" rows="3" placeholder="WhatsApp, Mercado Pago, API externa, Odoo, ATER..."></textarea></label>
               <label class="check-row"><input type="checkbox" name="hosting" checked><span>Incluir infraestructura / hosting</span></label>
@@ -86,7 +86,7 @@
           </article>
 
           <article class="agent-output panel">
-            <div class="panel-head"><div><span class="eyebrow">BORRADOR INTERNO</span><h3>Estimación profesional</h3></div><button class="text-btn" id="clearQuoteBtn">Limpiar</button></div>
+            <div class="panel-head"><div><span class="eyebrow">BORRADOR INTERNO</span><h3>Estimación profesional</h3></div><button type="button" class="text-btn" id="clearQuoteBtn">Limpiar</button></div>
             <div class="agent-placeholder" id="quotePlaceholder">
               <span class="agent-orb"><i data-lucide="calculator"></i></span>
               <h3>Completá el relevamiento</h3>
