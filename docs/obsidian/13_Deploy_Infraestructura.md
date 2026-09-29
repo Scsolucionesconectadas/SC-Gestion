@@ -2,8 +2,9 @@
 
 ## Repositorios
 
-- Portal interno: `https://github.com/Scsolucionesconectadas/SC-Gestion` privado.
+- Portal operativo: `https://github.com/Scsolucionesconectadas/SC-Gestion`, repositorio público.
 - Sitio comercial: repositorio separado `Scsolucionesconectadas/Ventas`.
+- URL productiva: `https://erp.scsolucionesconectadas.com.ar/`.
 
 ## Supabase
 
@@ -19,17 +20,16 @@
 1. Confirmar el reemplazo de todas las contraseñas temporales por claves fuertes y únicas.
 2. Activar recuperación de contraseña, MFA y protección contra contraseñas filtradas.
 3. Ejecutar prueba multi-tenant con usuarios reales.
-4. Elegir un hosting que permita acceso privado y variables de entorno.
-5. Configurar dominio en `ALLOWED_ORIGINS`.
-6. Definir backups, monitoreo y rollback.
-7. Configurar un dominio remitente de Resend y validar un envío controlado.
+4. Definir backups, monitoreo y rollback.
+5. Configurar un dominio remitente de Resend y validar un envío controlado.
+6. Configurar `OPENAI_API_KEY`, cuenta, organización, proyecto y modelos permitidos en Supabase Secrets; validar desde Integraciones y ejecutar un agente controlado.
 
 ## Jobs
 
 - `sc-overdue-task-notifications`: diario a las `11:15 UTC`, equivalente a `08:15` de Argentina; ejecuta una función interna sin acceso para `anon` ni `authenticated`.
 
-No publicar el portal interno como GitHub Pages abierto. La autenticación protege datos, pero el hosting privado reduce superficie y evita exponer innecesariamente la aplicación operativa.
-
 ## Estado de GitHub Pages
 
-El intento de activar Pages desde el repositorio privado devolvió `422`: el plan actual no lo soporta. El repositorio continúa privado y el frontend no fue expuesto. GitHub Pages, incluso cuando se origina en un repositorio privado, publica un sitio accesible en Internet; no debe confundirse con un sitio privado.
+GitHub Pages publica desde `main` y `/`, utiliza `CNAME`, fuerza HTTPS y sirve `erp.scsolucionesconectadas.com.ar`. El frontend y su código son públicos; solo los usuarios autenticados pueden consultar información y toda operación continúa controlada por permisos y RLS.
+
+La aplicación declara una CSP mediante `<meta>`, `noindex` y `robots.txt`. GitHub Pages no permite configurar libremente todas las cabeceras HTTP, por lo que una futura necesidad de cabeceras como `frame-ancestors`, HSTS personalizado o `Permissions-Policy` requerirá Cloudflare o un hosting configurable delante del sitio.

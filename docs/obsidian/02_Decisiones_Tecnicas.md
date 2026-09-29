@@ -28,9 +28,21 @@
 
 ## 2026-09-28 - Repositorio y despliegue separados
 
-**Decisión:** sitio comercial en `Ventas`; portal privado en `SC-Gestion`.
+**Decisión:** sitio comercial en `Ventas`; portal operativo en `SC-Gestion` con ciclos de publicación separados.
 
 **Motivo:** separar código público, datos internos y ciclo de despliegue.
+
+## 2026-09-29 - Frontend público con datos protegidos
+
+**Decisión:** publicar la interfaz estática en GitHub Pages bajo `erp.scsolucionesconectadas.com.ar`, manteniendo toda autorización y aislamiento de datos en Supabase Auth, permisos y RLS.
+
+**Motivo:** GitHub Pages no ofrece control de acceso al frontend; la aplicación no contiene secretos y el límite de confianza ya está en backend.
+
+**Impacto:** el repositorio y los archivos estáticos son públicos. Se agrega `noindex`, `robots.txt`, CSP, 404 propia y CORS limitado al dominio real. Ningún secreto puede formar parte del bundle.
+
+**Alternativas consideradas:** hosting privado con repositorio privado; queda como evolución posible si se requiere ocultar también el código de interfaz.
+
+**Archivos relacionados:** `index.html`, `agents.html`, `404.html`, `robots.txt`, `supabase/functions/ai-agent/index.ts`, `supabase/functions/communications/index.ts`.
 
 ## 2026-09-28 - Cambio obligatorio de contraseña inicial
 

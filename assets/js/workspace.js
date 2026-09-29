@@ -11,7 +11,8 @@ const fallbackPermissions=[
   ['communications.send','Comunicaciones','Enviar comunicaciones'],['agents.run','IA','Ejecutar agentes'],['agents.manage','IA','Configurar agentes'],
   ['reports.view','Reportes','Ver reportes'],['team.manage','Configuración','Administrar equipo'],['organization.manage','Configuración','Administrar empresa'],['audit.view','Configuración','Ver auditoría']
 ].map(([code,module,label],position)=>({code,module,label,position}));
-let settingsTab='company';
+const requestedSettingsTab=new URLSearchParams(location.search).get('tab');
+let settingsTab=['company','permissions','notifications','integrations'].includes(requestedSettingsTab)?requestedSettingsTab:'company';
 let integrationState={openai:null,email:null};
 
 const esc=value=>app.format.esc(value);
@@ -122,8 +123,14 @@ function notificationSettings(){
 function preferenceRow(name,title,copy,checked,iconName){return '<label class="preference-row"><span class="settings-icon"><i data-lucide="'+iconName+'"></i></span><span><b>'+title+'</b><small>'+copy+'</small></span><span class="toggle-field"><input type="checkbox" name="'+name+'" '+(checked?'checked':'')+'><span></span></span></label>'}
 
 function integrationSettings(){
-  const state=(value)=>value===true?'<span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span>':value===false?'<span class="integration-state is-error"><i data-lucide="circle-alert"></i>Requiere configuración</span>':'<span class="integration-state"><i data-lucide="circle-dashed"></i>Sin verificar</span>';
-  return '<div class="integration-grid"><article class="integration-card"><span class="integration-logo openai-mark">AI</span><div><h3>OpenAI Responses API</h3><p>Motor para agentes comerciales, presupuestos y asistentes configurables.</p>'+state(integrationState.openai)+'</div><button class="btn btn-secondary" type="button" data-check-integration="openai"><i data-lucide="plug-zap"></i>Verificar</button></article><article class="integration-card"><span class="integration-logo"><i data-lucide="mail"></i></span><div><h3>Correo transaccional</h3><p>Envíos trazables mediante Resend, con adjuntos privados autorizados.</p>'+state(integrationState.email)+'</div><button class="btn btn-secondary" type="button" data-check-integration="email"><i data-lucide="plug-zap"></i>Verificar</button></article><article class="integration-card"><span class="integration-logo"><i data-lucide="database"></i></span><div><h3>Supabase</h3><p>Autenticación, PostgreSQL, Storage, Realtime y funciones seguras.</p><span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span></div><button class="btn btn-secondary" type="button" disabled>Activa</button></article></div><p class="section-disclaimer"><i data-lucide="shield-check"></i>Las claves privadas se configuran como secretos del servidor y nunca se muestran ni se guardan en el navegador.</p>';
+  const state=value=>value?.connected===true?'<span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span>':value?.configured===false||value?.connected===false?'<span class="integration-state is-error"><i data-lucide="circle-alert"></i>Requiere configuración</span>':'<span class="integration-state"><i data-lucide="circle-dashed"></i>Sin verificar</span>';
+  const openai=integrationState.openai;
+  const openaiMeta=openai?'<div class="integration-meta"><span><b>Cuenta</b>'+esc(openai.account?.label||'Sin identificar')+'</span><span><b>Proyecto</b>'+esc(openai.account?.project_id||'Sin informar')+'</span><span><b>Modelos</b>'+esc(String(openai.available_models?.length||openai.allowed_models?.length||0))+' habilitados</span></div>':'';
+  return '<div class="integration-grid">'+
+    '<article class="integration-card"><span class="integration-logo openai-mark">AI</span><div class="integration-copy"><h3>OpenAI Responses API</h3><p>Motor seguro para agentes comerciales, presupuestos y asistentes configurables.</p>'+state(openai)+openaiMeta+'</div><div class="integration-actions"><button class="btn btn-secondary" type="button" data-check-integration="openai" aria-label="Verificar OpenAI"><i data-lucide="refresh-cw"></i>Verificar</button><button class="btn btn-primary" type="button" data-configure-integration="openai"><i data-lucide="settings-2"></i>Configurar</button></div></article>'+
+    '<article class="integration-card"><span class="integration-logo"><i data-lucide="mail"></i></span><div class="integration-copy"><h3>Correo transaccional</h3><p>Envíos trazables mediante Resend, con adjuntos privados autorizados.</p>'+state(integrationState.email)+'</div><div class="integration-actions"><button class="btn btn-secondary" type="button" data-check-integration="email" aria-label="Verificar correo"><i data-lucide="refresh-cw"></i>Verificar</button><button class="btn btn-primary" type="button" data-configure-integration="email"><i data-lucide="settings-2"></i>Configurar</button></div></article>'+
+    '<article class="integration-card"><span class="integration-logo"><i data-lucide="database"></i></span><div class="integration-copy"><h3>Supabase</h3><p>Autenticación, PostgreSQL, Storage, Realtime y funciones seguras.</p><span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span></div><div class="integration-actions"><button class="btn btn-secondary" type="button" disabled><i data-lucide="shield-check"></i>Activa</button></div></article>'+
+    '</div><p class="section-disclaimer"><i data-lucide="shield-check"></i>Las credenciales privadas viven como secretos del servidor. SC Gestión nunca las muestra ni las guarda en el navegador.</p>';
 }
 
 function bindSettingsForm(){
@@ -333,11 +340,43 @@ async function markAllNotifications(){
   renderNotifications();app.notify('Notificaciones marcadas como leídas');
 }
 
-async function checkIntegration(kind){
-  if(app.mode==='demo'){integrationState[kind]=true;renderSettings();return}
+async function integrationError(error){
+  try{
+    if(error?.context instanceof Response)return await error.context.clone().json();
+  }catch{}
+  return {message:error?.message||'No se pudo verificar la integración.'};
+}
+
+async function checkIntegration(kind,{silent=false}={}){
+  if(app.mode==='demo'){
+    integrationState[kind]=kind==='openai'?{configured:true,connected:true,message:'Conexión demo verificada.',account:{label:'SC · Proyecto Demo',project_id:'demo'},allowed_models:['gpt-6-luna','gpt-6-sol','gpt-5-mini'],available_models:['gpt-6-luna','gpt-6-sol','gpt-5-mini']}:{configured:true,connected:true};
+    renderSettings();return integrationState[kind];
+  }
   const functionName=kind==='openai'?'ai-agent':'communications';
   const {data,error}=await app.supabase.functions.invoke(functionName,{body:{action:'connection_status',organization_id:app.activeOrganization.id}});
-  integrationState[kind]=!error&&data?.configured===true;renderSettings();app.notify(integrationState[kind]?'Integración disponible':'La integración requiere un secreto del servidor');
+  integrationState[kind]=error?{configured:false,connected:false,...await integrationError(error)}:{...data,connected:data?.connected??data?.configured===true};
+  renderSettings();
+  if(!silent)app.notify(integrationState[kind].connected?'Integración disponible':integrationState[kind].message||'La integración requiere configuración');
+  return integrationState[kind];
+}
+
+async function openIntegrationSetup(kind){
+  const status=await checkIntegration(kind,{silent:true});
+  const projectRef=(window.SC_CONFIG?.SUPABASE_URL||'').match(/^https:\/\/([^.]+)/)?.[1]||'';
+  const secretsUrl=projectRef?'https://supabase.com/dashboard/project/'+projectRef+'/functions/secrets':'https://supabase.com/dashboard';
+  const isOpenAI=kind==='openai';
+  const required=isOpenAI?['OPENAI_API_KEY','OPENAI_ACCOUNT_LABEL','OPENAI_PROJECT_ID','OPENAI_ORGANIZATION_ID','OPENAI_ALLOWED_MODELS']:['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];
+  const provider=isOpenAI?'OpenAI':'Resend';
+  const providerUrl=isOpenAI?'https://platform.openai.com/api-keys':'https://resend.com/api-keys';
+  const account=status?.account||{};
+  const models=status?.available_models?.length?status.available_models:status?.allowed_models||[];
+  const details=isOpenAI?'<div class="integration-detail-grid"><div><span>Cuenta operativa</span><b>'+esc(account.label||'Sin identificar')+'</b></div><div><span>Proyecto</span><b>'+esc(account.project_id||'Sin informar')+'</b></div><div class="full"><span>Modelos habilitados</span><b>'+esc(models.join(', ')||'Pendientes de verificación')+'</b></div></div>':'';
+  showAction('Configurar '+provider,'INTEGRACIÓN SEGURA','<div class="integration-setup"><section class="integration-setup-status '+(status?.connected?'is-connected':'is-pending')+'"><i data-lucide="'+(status?.connected?'badge-check':'circle-alert')+'"></i><div><b>'+(status?.connected?'Conexión verificada':'Configuración pendiente')+'</b><p>'+esc(status?.message||(status?.connected?'El servicio respondió correctamente.':'Completá los secretos del servidor.'))+'</p></div></section>'+details+'<section class="integration-setup-copy"><h3>'+(isOpenAI?'Conexión por proyecto, no por ChatGPT':'Credenciales del proveedor')+'</h3><p>'+(isOpenAI?'La API de OpenAI usa una clave de proyecto alojada en el servidor. No existe un inicio de sesión de ChatGPT que deba abrirse dentro del CRM. La etiqueta de cuenta permite identificar qué proyecto está pagando y ejecutando los agentes.':'Las credenciales de envío se guardan en Supabase Secrets y nunca se exponen al navegador.')+'</p></section><ol class="integration-steps"><li><span>1</span><div><b>Ingresá a '+provider+'</b><p>Creá o seleccioná la credencial del proyecto de producción.</p></div></li><li><span>2</span><div><b>Configurá Supabase Secrets</b><p>'+required.map(name=>'<code>'+name+'</code>').join(' ')+'</p></div></li><li><span>3</span><div><b>Volvé a verificar</b><p>SC Gestión validará la conexión sin mostrar la clave privada.</p></div></li></ol><div class="integration-setup-actions"><a class="btn btn-secondary" href="'+providerUrl+'" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Abrir '+provider+'</a><a class="btn btn-secondary" href="'+secretsUrl+'" target="_blank" rel="noopener"><i data-lucide="shield-keyhole"></i>Abrir secretos</a><button type="button" class="btn btn-secondary" data-copy-integration="'+kind+'"><i data-lucide="copy"></i>Copiar variables</button><button type="button" class="btn btn-primary" data-retry-integration="'+kind+'"><i data-lucide="refresh-cw"></i>Verificar ahora</button></div></div>',{wide:true});
+}
+
+async function retryIntegration(kind){
+  await checkIntegration(kind,{silent:true});
+  await openIntegrationSetup(kind);
 }
 
 function renderAll(){
@@ -368,6 +407,9 @@ function bind(){
     const permissions=event.target.closest('[data-member-permissions]');if(permissions){openMemberPermissions(permissions.dataset.memberPermissions);return}
     const tab=event.target.closest('[data-settings-tab]');if(tab){settingsTab=tab.dataset.settingsTab;renderSettings();return}
     const integration=event.target.closest('[data-check-integration]');if(integration){checkIntegration(integration.dataset.checkIntegration);return}
+    const configureIntegration=event.target.closest('[data-configure-integration]');if(configureIntegration){openIntegrationSetup(configureIntegration.dataset.configureIntegration);return}
+    const retry=event.target.closest('[data-retry-integration]');if(retry){retryIntegration(retry.dataset.retryIntegration);return}
+    const copyVariables=event.target.closest('[data-copy-integration]');if(copyVariables){const names=copyVariables.dataset.copyIntegration==='openai'?['OPENAI_API_KEY','OPENAI_ACCOUNT_LABEL','OPENAI_PROJECT_ID','OPENAI_ORGANIZATION_ID','OPENAI_ALLOWED_MODELS']:['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];navigator.clipboard.writeText(names.map(name=>name+'=').join('\n')).then(()=>app.notify('Variables copiadas'));return}
   });
   document.addEventListener('keydown',event=>{if(event.key==='Escape')closePopovers()});
   window.addEventListener('sc:workspace',renderAll);

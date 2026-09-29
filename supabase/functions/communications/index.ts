@@ -1,8 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
 
 const DEFAULT_ORIGINS = [
-  'https://app.scsolucionesconectadas.com.ar',
-  'https://scsolucionesconectadas.github.io',
+  'https://erp.scsolucionesconectadas.com.ar',
   'http://127.0.0.1:4173',
   'http://localhost:4173'
 ];

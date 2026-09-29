@@ -43,6 +43,8 @@ const ROLE_LABELS = {
 const FINANCE_ROLES = new Set(['owner','admin','accounting']);
 const WRITE_ROLES = new Set(['owner','admin','commercial','project_manager','accounting','collaborator']);
 const TEAM_MANAGER_ROLES = new Set(['owner']);
+const requestedView = new URLSearchParams(location.search).get('view');
+const initialView = Object.hasOwn(VIEW_META,requestedView||'') ? requestedView : 'dashboard';
 
 let mode = configured ? 'supabase' : 'demo';
 let currentUser = null;
@@ -277,7 +279,7 @@ async function enterAuthenticated(user){
   setSync('Conectado','Supabase · tiempo real');
   await loadRemoteData();
   setupRealtime();
-  setView('dashboard');
+  setView(initialView);
   if (currentProfile?.must_change_password) {
     setTimeout(() => {
       openAction('changePassword');
@@ -301,7 +303,7 @@ function enterDemo(){
   applyUserIdentity();
   setSync('Demo local','Sin conexión a Supabase');
   renderAll();
-  setView('dashboard');
+  setView(initialView);
 }
 function applyUserIdentity(){
   const n=currentProfile?.full_name || 'Usuario';

@@ -6,12 +6,11 @@
 - [ ] Probar RLS con dos empresas y al menos un usuario por empresa.
 - [ ] Configurar recuperación de contraseña y segundo factor para propietarios.
 - [ ] Activar la protección de Supabase Auth contra contraseñas filtradas antes del uso productivo.
-- [ ] Elegir hosting para el portal: GitHub Pro, proveedor externo con repo privado o publicación pública explícitamente aprobada.
 - [ ] Configurar backup y restauración probada.
 - [ ] Completar identidad legal, CUIT y domicilio solo cuando estén formalmente disponibles.
 - [ ] Revisión legal argentina de privacidad, términos y cookies del sitio público.
 - [ ] Configurar `RESEND_API_KEY`, remitente verificado y ejecutar un envío controlado.
-- [ ] Definir dominio privado y agregarlo a `ALLOWED_ORIGINS`.
+- [ ] Configurar `OPENAI_API_KEY`, etiqueta de cuenta, organización y proyecto en Supabase Secrets; luego ejecutar un agente controlado.
 
 ## Resueltos
 
@@ -29,3 +28,7 @@
 - [x] Limpieza compensatoria de avatares y reemplazo sin archivos huérfanos - 2026-09-29.
 - [x] Avisos diarios de tareas vencidas mediante `pg_cron` - 2026-09-29.
 - [x] Checklist y subtareas integrados al detalle de tareas - 2026-09-29.
+- [x] GitHub Pages con dominio propio, HTTPS y despliegue desde `main` - 2026-09-29.
+- [x] Dominio productivo autorizado en Edge Functions y orígenes antiguos retirados - 2026-09-29.
+- [x] CSP, `noindex`, `robots.txt` y página 404 propia - 2026-09-29.
+- [x] Diagnóstico accionable de agentes, selector ampliado de modelos e interfaz de configuración de integraciones - 2026-09-29.

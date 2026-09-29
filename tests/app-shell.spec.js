@@ -125,6 +125,18 @@ test('opera colaboración, comunicaciones, PDF y configuración', async ({ page 
   await page.locator('[data-settings-tab="notifications"]').click();
   await expect(page.locator('#settingsSurface')).toContainText('Preferencias personales');
 
+  await page.locator('[data-settings-tab="integrations"]').click();
+  await expect(page.locator('#settingsSurface')).toContainText('OpenAI Responses API');
+  await page.locator('[data-configure-integration="openai"]').click();
+  await expect(page.locator('#actionTitle')).toHaveText('Configurar OpenAI');
+  await expect(page.locator('#actionBody')).toContainText('Conexión por proyecto, no por ChatGPT');
+  await expect(page.locator('#actionBody')).toContainText('SC · Proyecto Demo');
+  await expect(page.locator('#actionBody')).toContainText('OPENAI_API_KEY');
+  await page.locator('#actionModal [data-close="actionModal"]').click();
+
+  const topbarHeight=await page.locator('.topbar').evaluate(element=>element.getBoundingClientRect().height);
+  expect(topbarHeight).toBeLessThanOrEqual(66);
+
   expect(runtimeErrors).toEqual([]);
 });
 
@@ -163,5 +175,37 @@ test('mantiene navegación usable y sin desborde horizontal en móvil', async ({
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   expect(overflow).toBe(false);
+  const mobileTopbarHeight=await page.locator('.topbar').evaluate(element=>element.getBoundingClientRect().height);
+  expect(mobileTopbarHeight).toBeLessThanOrEqual(60);
   expect(runtimeErrors).toEqual([]);
+});
+
+test('mantiene Agent Studio completo y desplazable en pantallas bajas', async ({ page }) => {
+  await page.setViewportSize({ width: 1365, height: 768 });
+  await page.route('**/assets/js/config.js', route => route.fulfill({contentType:'application/javascript',body:'window.SC_CONFIG = {};'}));
+  await page.goto('/agents.html');
+  await page.evaluate(()=>{
+    const modal=document.querySelector('#agentStudioModal');
+    modal.hidden=false;
+    document.body.classList.add('studio-open');
+    document.querySelector('#studioEditor').innerHTML='<form class="agent-definition-form"><section class="studio-connection is-pending"><span class="studio-connection-icon"></span><div><b>OpenAI requiere configuración</b><p>Cuenta pendiente</p></div><a class="btn btn-secondary">Configurar</a></section><div class="studio-fields"><label>Nombre<input value="Agente Comercial"></label><label>Identificador<input value="prospecting"></label><label class="full">Descripción<input value="Demo"></label><label class="full">Prompt<textarea rows="16">Prompt de prueba</textarea></label><label>Modelo<select><option>gpt-6-luna</option></select></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label>Web</label></fieldset><fieldset><legend>Fuentes</legend><label>CRM</label></fieldset></div><div class="studio-history"><div><b>Versiones</b></div><div class="version-list"><span>v1</span></div></div><div class="form-actions"><button class="btn btn-secondary">Cancelar</button><button class="btn btn-primary">Publicar versión</button></div></form>';
+  });
+  const modal=page.locator('.agent-studio-modal');
+  const modalBox=await modal.boundingBox();
+  expect(modalBox).not.toBeNull();
+  expect(modalBox.y).toBeGreaterThanOrEqual(0);
+  expect(modalBox.y+modalBox.height).toBeLessThanOrEqual(768);
+  await page.locator('#studioEditor').evaluate(element=>{element.scrollTop=element.scrollHeight});
+  await expect(page.locator('#studioEditor .form-actions')).toBeVisible();
+  const actionsBox=await page.locator('#studioEditor .form-actions').boundingBox();
+  expect(actionsBox.y+actionsBox.height).toBeLessThanOrEqual(768);
+});
+
+test('ofrece una salida clara para rutas inexistentes', async ({ page }) => {
+  await page.goto('/404.html');
+  await expect(page).toHaveTitle(/Página no encontrada/);
+  await expect(page.getByRole('heading', { name: /Esta dirección no pertenece/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ir al inicio' })).toHaveAttribute('href', './');
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });

@@ -1,10 +1,16 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.117.2';
 
 const DEFAULT_ORIGINS = [
-  'https://app.scsolucionesconectadas.com.ar',
-  'https://scsolucionesconectadas.github.io',
+  'https://erp.scsolucionesconectadas.com.ar',
   'http://127.0.0.1:4173',
   'http://localhost:4173'
+];
+const DEFAULT_ALLOWED_MODELS = [
+  'gpt-6-luna',
+  'gpt-6-sol',
+  'gpt-6-astra',
+  'gpt-5.4-mini',
+  'gpt-5-mini'
 ];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -203,6 +209,100 @@ function extractOutputText(payload: any): string {
   return chunks.join('\n').trim();
 }
 
+function allowedModels(): string[] {
+  return (Deno.env.get('OPENAI_ALLOWED_MODELS') || DEFAULT_ALLOWED_MODELS.join(','))
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+}
+
+function openAiHeaders(openaiKey: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${openaiKey}`,
+    'Content-Type': 'application/json'
+  };
+  const organizationId = Deno.env.get('OPENAI_ORGANIZATION_ID')?.trim();
+  const projectId = Deno.env.get('OPENAI_PROJECT_ID')?.trim();
+  if (organizationId) headers['OpenAI-Organization'] = organizationId;
+  if (projectId) headers['OpenAI-Project'] = projectId;
+  return headers;
+}
+
+async function openAiConnectionStatus(openaiKey: string | undefined): Promise<Record<string, unknown>> {
+  const models = allowedModels();
+  const account = {
+    label: Deno.env.get('OPENAI_ACCOUNT_LABEL')?.trim() || null,
+    organization_id: Deno.env.get('OPENAI_ORGANIZATION_ID')?.trim() || null,
+    project_id: Deno.env.get('OPENAI_PROJECT_ID')?.trim() || null
+  };
+  if (!openaiKey) {
+    return {
+      provider: 'OpenAI',
+      configured: false,
+      connected: false,
+      code: 'OPENAI_NOT_CONFIGURED',
+      message: 'Falta configurar la credencial de proyecto de OpenAI en el servidor.',
+      account,
+      allowed_models: models,
+      available_models: []
+    };
+  }
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: openAiHeaders(openaiKey),
+      signal: AbortSignal.timeout(15_000)
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const code = String(payload?.error?.code || payload?.error?.type || `HTTP_${response.status}`);
+      return {
+        provider: 'OpenAI',
+        configured: true,
+        connected: false,
+        code,
+        message: response.status === 401
+          ? 'La credencial de OpenAI no es valida o ya no tiene acceso al proyecto.'
+          : 'OpenAI rechazo la verificacion de la conexion.',
+        account,
+        allowed_models: models,
+        available_models: []
+      };
+    }
+    const available = new Set((payload?.data || []).map((item: any) => String(item?.id || '')));
+    return {
+      provider: 'OpenAI',
+      configured: true,
+      connected: true,
+      code: 'CONNECTED',
+      message: 'Conexion verificada con OpenAI.',
+      account,
+      allowed_models: models,
+      available_models: models.filter((model) => available.has(model))
+    };
+  } catch {
+    return {
+      provider: 'OpenAI',
+      configured: true,
+      connected: false,
+      code: 'OPENAI_UNREACHABLE',
+      message: 'No se pudo verificar OpenAI en este momento.',
+      account,
+      allowed_models: models,
+      available_models: []
+    };
+  }
+}
+
+function openAiPublicError(status: number, payload: any, model: string): { code: string; message: string } {
+  const code = String(payload?.error?.code || payload?.error?.type || `HTTP_${status}`);
+  if (status === 401) return { code, message: 'La conexion con OpenAI vencio o la credencial no es valida. Revisala en Configuracion > Integraciones.' };
+  if (status === 404) return { code, message: `El modelo ${model} no esta disponible para el proyecto conectado.` };
+  if (status === 429) return { code, message: 'OpenAI alcanzo un limite de uso o no tiene credito disponible. Revisa el proyecto y la facturacion.' };
+  if (status === 403) return { code, message: 'El proyecto conectado no tiene permiso para ejecutar este modelo o herramienta.' };
+  return { code, message: 'OpenAI rechazo la solicitud. Revisa la conexion, el modelo autorizado y volve a intentar.' };
+}
+
 Deno.serve(async (req) => {
   const origin = req.headers.get('Origin') || '';
   const headers = corsHeaders(origin);
@@ -246,9 +346,13 @@ Deno.serve(async (req) => {
   if (permissionError || !allowed) return jsonResponse({ error: 'Forbidden' }, 403, headers);
 
   if (body?.action === 'connection_status') {
-    return jsonResponse({ configured: Boolean(openaiKey) }, 200, headers);
+    return jsonResponse(await openAiConnectionStatus(openaiKey), 200, headers);
   }
-  if (!openaiKey) return jsonResponse({ error: 'OpenAI is not configured' }, 503, headers);
+  if (!openaiKey) return jsonResponse({
+    error: 'OpenAI is not configured',
+    code: 'OPENAI_NOT_CONFIGURED',
+    message: 'OpenAI todavia no esta conectado. Un propietario debe completar Configuracion > Integraciones.'
+  }, 503, headers);
 
   const input = body?.input;
   if (!input || typeof input !== 'object' || Array.isArray(input)) return jsonResponse({ error: 'Invalid input' }, 400, headers);
@@ -276,11 +380,15 @@ Deno.serve(async (req) => {
     .gte('created_at', oneHourAgo);
   if ((count || 0) >= 20) return jsonResponse({ error: 'Hourly usage limit reached' }, 429, headers);
 
-  const allowedModels = new Set((Deno.env.get('OPENAI_ALLOWED_MODELS') || 'gpt-5-mini').split(',').map(value => value.trim()).filter(Boolean));
+  const allowedModelSet = new Set(allowedModels());
   const legacyModelKey = agentType === 'prospecting' ? 'OPENAI_PROSPECTING_MODEL' : agentType === 'quote' ? 'OPENAI_QUOTE_MODEL' : null;
   const legacyModel = legacyModelKey ? Deno.env.get(legacyModelKey) || '' : '';
   const requestedModel = String(snapshot.model || legacyModel || 'gpt-5-mini');
-  if (!allowedModels.has(requestedModel)) return jsonResponse({ error: 'Agent model is not allowed by the server' }, 422, headers);
+  if (!allowedModelSet.has(requestedModel)) return jsonResponse({
+    error: 'Agent model is not allowed by the server',
+    code: 'MODEL_NOT_ALLOWED',
+    message: `El modelo ${requestedModel} no esta habilitado en la conexion de OpenAI.`
+  }, 422, headers);
   const model = requestedModel;
   const specialistPrompt = agentType === 'prospecting' ? PROSPECTING_PROMPT : agentType === 'quote' ? QUOTE_PROMPT : '';
   const instructions = `${SC_CONTEXT}\n${specialistPrompt}\nCONFIGURACION PUBLICADA DEL AGENTE:\n${String(snapshot.instructions || '').slice(0, 20_000)}`;
@@ -366,10 +474,7 @@ Deno.serve(async (req) => {
   try {
     const response = await fetch('https://api.openai.com/v1/responses', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json'
-      },
+      headers: openAiHeaders(openaiKey),
       body: JSON.stringify({
         model,
         instructions,
@@ -382,7 +487,10 @@ Deno.serve(async (req) => {
     });
 
     const raw = await response.json();
-    if (!response.ok) throw new Error(raw?.error?.message || 'OpenAI request failed');
+    if (!response.ok) {
+      const publicError = openAiPublicError(response.status, raw, model);
+      throw Object.assign(new Error(raw?.error?.message || 'OpenAI request failed'), { publicError });
+    }
     const result = JSON.parse(extractOutputText(raw));
 
     await supabase
@@ -401,12 +509,15 @@ Deno.serve(async (req) => {
     return jsonResponse({ run_id: run.id, agent_id: definition.id, agent_type: agentType, agent_version: definition.current_version, model, result }, 200, headers);
   } catch (error) {
     const internalMessage = error instanceof Error ? error.message : String(error);
+    const publicError = typeof error === 'object' && error && 'publicError' in error
+      ? (error as { publicError: { code: string; message: string } }).publicError
+      : { code: 'AGENT_EXECUTION_FAILED', message: 'El agente no pudo completar esta ejecucion. Volve a intentar o revisa la integracion.' };
     console.error('ai-agent execution failed', { run_id: run.id, message: internalMessage });
     await supabase
       .from('agent_runs')
       .update({ status: 'failed', error_message: internalMessage.slice(0, 500), duration_ms: Date.now() - startedAt })
       .eq('organization_id', organizationId)
       .eq('id', run.id);
-    return jsonResponse({ error: 'The agent could not complete this request', run_id: run.id }, 502, headers);
+    return jsonResponse({ error: 'The agent could not complete this request', code: publicError.code, message: publicError.message, run_id: run.id }, 502, headers);
   }
 });

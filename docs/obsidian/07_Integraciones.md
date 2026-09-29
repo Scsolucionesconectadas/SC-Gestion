@@ -32,13 +32,16 @@ La Edge Function usa Responses API con salida estructurada. Variables:
 
 ```env
 OPENAI_API_KEY=
-OPENAI_ALLOWED_MODELS=
+OPENAI_ACCOUNT_LABEL=
+OPENAI_ORGANIZATION_ID=
+OPENAI_PROJECT_ID=
+OPENAI_ALLOWED_MODELS=gpt-6-luna,gpt-6-sol,gpt-6-astra,gpt-5.4-mini,gpt-5-mini
 OPENAI_PROSPECTING_MODEL=
 OPENAI_QUOTE_MODEL=
-ALLOWED_ORIGINS=
+ALLOWED_ORIGINS=https://erp.scsolucionesconectadas.com.ar
 ```
 
-No hay acciones destructivas automáticas por IA. Las versiones configurables pueden exigir aprobación humana y cada ejecución queda registrada.
+No hay acciones destructivas automáticas por IA. Las versiones configurables pueden exigir aprobación humana y cada ejecución queda registrada. La integración se autentica con una clave de proyecto en el servidor, no con un login de ChatGPT en el navegador. El portal verifica cuenta, proyecto y modelos sin devolver la clave.
 
 ## Resend
 

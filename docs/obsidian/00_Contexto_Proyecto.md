@@ -14,8 +14,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Sidebar responsive, formularios y modales actualizados y cubiertos por Playwright.
 - Colaboración de tareas con checklist, subtareas, comentarios y seguidores; notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
 - Avisos diarios de tareas vencidas programados a las 08:15 de Argentina mediante `pg_cron`.
-- Agent Studio implementado con borradores, versiones publicadas y modelos autorizados desde servidor.
-- Hosting privado y dominio interno pendientes.
+- Agent Studio implementado con borradores, versiones publicadas, selector de modelos verificados, estado de cuenta operativa y diagnóstico accionable.
+- Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
 ## Stack técnico
 
@@ -37,8 +37,9 @@ npm run serve
 
 - [ ] Confirmar que `areyes` y `orojas` reemplazaron su contraseña temporal.
 - [ ] Validar separación con dos empresas y usuarios reales.
-- [ ] Definir hosting privado, dominio y recuperación de contraseña.
+- [ ] Configurar recuperación de contraseña para las identidades internas.
 - [ ] Configurar y verificar Resend con un dominio remitente validado.
+- [ ] Configurar la clave y los metadatos del proyecto OpenAI en Supabase Secrets y ejecutar una prueba controlada.
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 

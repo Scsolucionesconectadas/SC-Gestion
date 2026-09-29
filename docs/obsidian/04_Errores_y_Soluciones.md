@@ -26,9 +26,9 @@
 
 **Causa:** el plan actual de la cuenta no permite GitHub Pages desde este repositorio privado.
 
-**Solución aplicada:** se mantuvo el repositorio privado y no se expuso el código interno.
+**Solución aplicada inicialmente:** se mantuvo el repositorio privado y no se expuso el código interno.
 
-**Cómo resolverlo:** usar GitHub Pro, un hosting externo compatible con repositorios privados o aprobar explícitamente una publicación pública del frontend.
+**Estado posterior:** se aprobó la publicación del frontend, el repositorio pasó a público y GitHub Pages quedó activo con dominio propio y HTTPS. Los datos continúan protegidos por Auth y RLS.
 
 ## 2026-09-28 - Alta pública rechazada para emails internos
 
@@ -91,3 +91,25 @@
 **Solución aplicada:** conservar la ruta recién subida, eliminarla ante error y borrar el avatar reemplazado únicamente después de confirmar la actualización.
 
 **Cómo evitarlo:** implementar compensación explícita cuando Storage y base de datos no comparten una transacción.
+
+## 2026-09-29 - Agente mostraba un error genérico non-2xx
+
+**Síntoma:** al buscar oportunidades, la interfaz mostraba `Edge Function returned a non-2xx status code` sin explicar cómo resolverlo.
+
+**Causa:** `OPENAI_API_KEY` no estaba configurada en Supabase Secrets. La función devolvía `503` antes de registrar una fila en `agent_runs` y el cliente descartaba el cuerpo JSON de la respuesta.
+
+**Solución aplicada:** la Edge Function devuelve códigos y mensajes públicos seguros; el cliente lee el cuerpo de `FunctionsHttpError`; Configuración permite verificar la conexión y muestra el procedimiento correcto para una clave de proyecto.
+
+**Cómo evitarlo:** verificar la integración después de cada rotación de credenciales y mantener `OPENAI_ACCOUNT_LABEL`, `OPENAI_PROJECT_ID`, `OPENAI_ORGANIZATION_ID` y `OPENAI_ALLOWED_MODELS` junto con la clave en el servidor.
+
+**Archivos relacionados:** `supabase/functions/ai-agent/index.ts`, `assets/js/agents.js`, `assets/js/workspace.js`.
+
+## 2026-09-29 - Agent Studio cortaba las acciones inferiores
+
+**Síntoma:** en pantallas de poca altura, el pie del formulario quedaba debajo del límite visual del modal.
+
+**Causa:** el cuerpo usaba una altura calculada rígida que no coincidía siempre con la altura real de la cabecera.
+
+**Solución aplicada:** el modal ahora es una columna flexible; el layout ocupa el espacio restante, el editor desplaza su contenido y las acciones permanecen visibles en el borde inferior.
+
+**Cómo evitarlo:** usar `flex: 1` y `min-height: 0` para regiones desplazables dentro de diálogos, y probar también resoluciones con poca altura.

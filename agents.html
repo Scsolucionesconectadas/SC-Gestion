@@ -4,7 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#2C3A46">
+  <meta name="description" content="Agentes internos de SC Gestión">
+  <meta name="robots" content="noindex,nofollow,noarchive,nosnippet">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; script-src 'self' https://unpkg.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://rcvzfzuisnactwepvcup.supabase.co; connect-src 'self' https://rcvzfzuisnactwepvcup.supabase.co wss://rcvzfzuisnactwepvcup.supabase.co; worker-src 'self' blob:; form-action 'self'; upgrade-insecure-requests">
   <title>SC · Agentes IA</title>
+  <link rel="icon" href="./assets/img/sc-isotipo-color.webp" type="image/webp">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
@@ -33,7 +38,7 @@
     <main class="agents-main">
       <header class="agents-top">
         <div><span class="eyebrow">SC · INTELIGENCIA COMERCIAL</span><h1 id="agentPageTitle">Agente Comercial</h1><p id="agentPageSub">Encontrá negocios con afinidad real para SC y prepará el primer contacto.</p></div>
-        <div class="agents-top-actions"><button type="button" class="btn btn-secondary" id="agentStudioBtn" hidden><i data-lucide="sliders-horizontal"></i>Configurar agentes</button><div class="agents-user"><span class="live-dot"></span><span id="agentUserLabel">Conectando...</span></div></div>
+        <div class="agents-top-actions"><div class="agent-provider is-pending" id="agentConnectionStatus"><span></span><div><b>OpenAI</b><small>Verificando conexión...</small></div></div><button type="button" class="btn btn-secondary" id="agentStudioBtn" hidden><i data-lucide="sliders-horizontal"></i>Configurar agentes</button><div class="agents-user"><span class="live-dot"></span><span id="agentUserLabel">Conectando...</span></div></div>
       </header>
 
       <section class="agent-workspace active" id="prospectingWorkspace">

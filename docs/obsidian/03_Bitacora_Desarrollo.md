@@ -124,3 +124,39 @@
 
 **Validaciones realizadas:**
 - Playwright cubre alta y completado de checklist y alta de subtarea en modo demo.
+
+## 2026-09-29 - Dominio productivo y endurecimiento del frontend
+
+**Cambios realizados:**
+- Se confirmó GitHub Pages activo con HTTPS en `erp.scsolucionesconectadas.com.ar`.
+- Las Edge Functions ahora autorizan el dominio productivo y rechazan orígenes ajenos.
+- Se agregaron CSP, política de referencia, `noindex`, `robots.txt`, favicon y página 404 con identidad SC.
+- Se actualizó la documentación para reflejar que el repositorio y el frontend son públicos.
+
+**Validaciones realizadas:**
+- GitHub Pages respondió `200`, certificado aprobado y HTTPS forzado.
+- CORS devolvió `204` para el dominio productivo y `403` para un origen no autorizado.
+- Lint, validación HTML y Playwright con cobertura de la página 404.
+
+## 2026-09-29 - Configuración y diagnóstico de agentes IA
+
+**Cambios realizados:**
+- Se corrigió el corte vertical de Agent Studio con una composición flexible, editor desplazable y acciones fijas.
+- Se incorporó un selector de modelos ampliado y alimentado por los modelos autorizados y disponibles en el proyecto de OpenAI.
+- La cabecera de agentes muestra conexión y etiqueta de cuenta solo a quienes administran agentes; Integraciones permite verificar y abrir un asistente de configuración seguro.
+- La Edge Function valida la credencial con `GET /v1/models`, informa cuenta, proyecto y modelos sin exponer secretos.
+- Los errores de credencial, cuota, permisos y modelo ahora llegan al usuario como mensajes claros en lugar de `Edge Function returned a non-2xx status code`.
+- Se compactó la barra superior y se adaptaron sus controles por resolución.
+
+**Archivos modificados:**
+- `agents.html`, `index.html`, `assets/css/app.css`, `assets/css/agents-studio.css`.
+- `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/agents.js`.
+- `supabase/functions/ai-agent/index.ts`, `.env.example`, documentación y pruebas.
+
+**Validaciones realizadas:**
+- Sintaxis JavaScript y validación HTML.
+- Playwright en escritorio, pantalla baja y móvil.
+- Logs de Supabase: el `503` ocurrió antes de crear una corrida porque faltaba `OPENAI_API_KEY`.
+
+**Pendientes detectados:**
+- Cargar la credencial y metadatos de la cuenta real en Supabase Secrets y ejecutar una prueba controlada.

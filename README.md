@@ -54,7 +54,7 @@ La Edge Function `communications` envía mensajes preparados desde el portal med
 
 ## Agentes IA
 
-La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa, permiso `agents.run` y `organization_id`. Agent Studio permite a quienes tienen `agents.manage` crear borradores, definir instrucciones, contexto, herramientas, modelo permitido y publicar versiones inmutables. La clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
+La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa, permiso `agents.run` y `organization_id`. Agent Studio permite a quienes tienen `agents.manage` crear borradores, definir instrucciones, contexto, herramientas, seleccionar un modelo verificado y publicar versiones inmutables. Configuración muestra el estado, la cuenta operativa y los modelos disponibles; la clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
 
 ## Colaboración
 
@@ -69,4 +69,6 @@ La memoria operativa y las decisiones están en `docs/obsidian/00_Contexto_Proye
 
 ## Publicación
 
-El código se mantiene en el repositorio privado `Scsolucionesconectadas/SC-Gestion`. Antes de exponer el portal en Internet hay que completar el aprovisionamiento inicial, definir el hosting privado, configurar el dominio permitido y validar acceso real con al menos dos empresas de prueba.
+El frontend está publicado mediante GitHub Pages en `https://erp.scsolucionesconectadas.com.ar/` desde el repositorio público `Scsolucionesconectadas/SC-Gestion`. La interfaz estática es pública; los datos requieren Supabase Auth y permanecen aislados mediante permisos y RLS.
+
+El portal declara `noindex`, publica `robots.txt`, utiliza una CSP compatible con sus dependencias fijadas y ofrece una página `404.html` propia. Las Edge Functions aceptan únicamente el dominio productivo y los orígenes locales de desarrollo definidos en código o `ALLOWED_ORIGINS`.

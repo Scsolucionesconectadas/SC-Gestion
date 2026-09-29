@@ -6,7 +6,7 @@ Los agentes se ejecutan mediante la Edge Function `ai-agent`. El navegador nunca
 
 Los usuarios con `agents.manage` pueden crear agentes especializados, guardar borradores y publicar versiones inmutables. Cada definición contiene nombre, propósito, instrucciones, modelo, fuentes internas, herramientas habilitadas y requisito de aprobación humana. Los usuarios con `agents.run` solo ejecutan versiones publicadas.
 
-El modelo solicitado por una definición debe existir también en `OPENAI_ALLOWED_MODELS`; la validación final siempre ocurre en la Edge Function.
+El modelo solicitado por una definición debe existir también en `OPENAI_ALLOWED_MODELS`; la validación final siempre ocurre en la Edge Function. Agent Studio consulta el estado del servidor y ofrece los modelos autorizados disponibles para el proyecto conectado.
 
 ## Agente comercial
 
@@ -40,10 +40,15 @@ El modelo solicitado por una definición debe existir también en `OPENAI_ALLOWE
 
 ```env
 OPENAI_API_KEY=
-OPENAI_ALLOWED_MODELS=gpt-5-mini
+OPENAI_ACCOUNT_LABEL=SC Produccion
+OPENAI_ORGANIZATION_ID=
+OPENAI_PROJECT_ID=
+OPENAI_ALLOWED_MODELS=gpt-6-luna,gpt-6-sol,gpt-6-astra,gpt-5.4-mini,gpt-5-mini
 OPENAI_PROSPECTING_MODEL=gpt-5-mini
 OPENAI_QUOTE_MODEL=gpt-5-mini
-ALLOWED_ORIGINS=https://app.example.com
+ALLOWED_ORIGINS=https://erp.scsolucionesconectadas.com.ar
 ```
 
-Los modelos son configurables sin modificar el frontend, pero la lista autorizada y la clave permanecen exclusivamente en Supabase Secrets. Las ejecuciones registran agente, versión, duración y consumo informado por la API sin almacenar secretos.
+OpenAI API autentica con una clave de proyecto, no mediante un inicio de sesión de ChatGPT dentro del CRM. La clave, la organización y el proyecto permanecen exclusivamente en Supabase Secrets. `OPENAI_ACCOUNT_LABEL` es una etiqueta operativa sin secretos que permite identificar en la interfaz qué cuenta financia las ejecuciones.
+
+El estado de la integración verifica `GET /v1/models`, cruza la respuesta con `OPENAI_ALLOWED_MODELS` y muestra únicamente metadatos seguros. Las ejecuciones registran agente, versión, duración y consumo informado por la API sin almacenar secretos. Los errores de credencial, cuota, permisos y modelo se transforman en mensajes accionables sin exponer la respuesta interna completa.

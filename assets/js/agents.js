@@ -5,7 +5,15 @@ const configured=Boolean(cfg.SUPABASE_URL&&cfg.SUPABASE_PUBLISHABLE_KEY);
 const supabase=configured?createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true}}):null;
 
 const ORG_KEY='sc_gestion_active_organization';
-let session=null,profile=null,prospects=[],definitions=[],activeAgent='prospecting',membership=null,organization=null,canRun=false,canManage=false,studioAgentId=null;
+const FALLBACK_MODELS=['gpt-6-luna','gpt-6-sol','gpt-6-astra','gpt-5.4-mini','gpt-5-mini'];
+const MODEL_LABELS={
+  'gpt-6-luna':'GPT-6 Luna · eficiente',
+  'gpt-6-sol':'GPT-6 Sol · equilibrado',
+  'gpt-6-astra':'GPT-6 Astra · máxima calidad',
+  'gpt-5.4-mini':'GPT-5.4 Mini · rápido',
+  'gpt-5-mini':'GPT-5 Mini · compatible'
+};
+let session=null,profile=null,prospects=[],definitions=[],activeAgent='prospecting',membership=null,organization=null,canRun=false,canManage=false,studioAgentId=null,connection=null;
 
 const $=id=>document.getElementById(id);
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -16,6 +24,49 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTim
 function loading(target,text){target.innerHTML='<div class="agent-loading"><span class="loading-orbit"></span><span>'+esc(text)+'</span></div>'}
 function errorBox(target,msg){target.innerHTML='<div class="agent-error">'+esc(msg)+'</div>'}
 function copy(text){navigator.clipboard.writeText(text).then(()=>toast('Copiado'))}
+
+async function functionErrorMessage(error){
+  let payload=null;
+  try{
+    if(error?.context instanceof Response)payload=await error.context.clone().json();
+  }catch{}
+  return payload?.message||payload?.error||error?.message||'No se pudo completar la solicitud.';
+}
+
+async function invokeAgent(body){
+  const {data,error}=await supabase.functions.invoke('ai-agent',{body});
+  if(error)throw new Error(await functionErrorMessage(error));
+  return data;
+}
+
+async function loadConnectionStatus(){
+  if(!canManage)return;
+  try{
+    connection=await invokeAgent({action:'connection_status',organization_id:organization.id});
+  }catch(error){
+    connection={configured:false,connected:false,message:error.message,allowed_models:FALLBACK_MODELS,available_models:[]};
+  }
+  renderConnectionStatus();
+}
+
+function renderConnectionStatus(){
+  const target=$('agentConnectionStatus');if(!target)return;
+  const label=connection?.account?.label;
+  target.className='agent-provider '+(connection?.connected?'is-connected':'is-pending');
+  target.innerHTML='<span></span><div><b>'+(connection?.connected?'OpenAI conectado':'OpenAI pendiente')+'</b><small>'+esc(connection?.connected?(label||'Cuenta sin identificar'):'Configuración requerida')+'</small></div>';
+}
+
+function modelOptions(selected){
+  const available=Array.isArray(connection?.available_models)&&connection.available_models.length?connection.available_models:connection?.allowed_models;
+  const models=[...new Set([...(Array.isArray(available)?available:FALLBACK_MODELS),selected].filter(Boolean))];
+  return models.map(model=>'<option value="'+esc(model)+'" '+(model===selected?'selected':'')+'>'+esc(MODEL_LABELS[model]||model)+'</option>').join('');
+}
+
+function connectionBanner(){
+  const account=connection?.account||{};
+  const details=[account.label,account.project_id].filter(Boolean).join(' · ');
+  return '<section class="studio-connection '+(connection?.connected?'is-connected':'is-pending')+'"><span class="studio-connection-icon"><i data-lucide="'+(connection?.connected?'badge-check':'unplug')+'"></i></span><div><b>'+(connection?.connected?'Conexión OpenAI verificada':'OpenAI requiere configuración')+'</b><p>'+esc(connection?.connected?(details||'La credencial funciona, pero falta identificar la cuenta operativa.'):(connection?.message||'Falta la credencial de proyecto en el servidor.'))+'</p></div><a class="btn btn-secondary" href="./index.html?view=settings&tab=integrations"><i data-lucide="settings-2"></i>'+(connection?.connected?'Ver integración':'Configurar')+'</a></section>';
+}
 
 async function init(){
   bind();
@@ -60,6 +111,8 @@ async function init(){
     :'Acceso restringido · '+organization.name;
   $('quoteProspect').innerHTML='<option value="">Sin prospecto asociado</option>'+prospects.map(p=>'<option value="'+p.id+'">'+esc(p.business_name)+'</option>').join('');
   $('agentStudioBtn').hidden=!canManage;$('newAgentBtn').hidden=!canManage;
+  $('agentConnectionStatus').hidden=!canManage;
+  await loadConnectionStatus();
   renderAgentSelector();
   if(!definitions.some(item=>item.slug===activeAgent))activeAgent=definitions[0]?.slug||'prospecting';
   setAgent(activeAgent);
@@ -110,9 +163,10 @@ async function runProspecting(e){
   loading($('prospectingResults'),'Investigando negocios y contrastando fuentes públicas...');
   const f=new FormData(e.target);
   const input={city:f.get('city'),nearby:f.get('nearby'),sectors:f.get('sectors'),limit:Number(f.get('limit')||8),depth:f.get('depth'),notes:f.get('notes')};
-  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_type:'prospecting',input}});
-  if(error){errorBox($('prospectingResults'),error.message||'No se pudo ejecutar el agente.');return}
-  renderProspecting(data?.result||{});
+  try{
+    const data=await invokeAgent({organization_id:organization.id,agent_type:'prospecting',input});
+    renderProspecting(data?.result||{});
+  }catch(error){errorBox($('prospectingResults'),error.message||'No se pudo ejecutar el agente.')}
 }
 function renderProspecting(result){
   const leads=result?.leads||[];
@@ -173,9 +227,10 @@ async function runQuote(e){
     research_hosting_market:f.get('research_hosting_market')==='on'
   };
   const prospect_id=f.get('prospect_id')||null;
-  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_type:'quote',prospect_id,input}});
-  if(error){errorBox($('quoteResults'),error.message||'No se pudo ejecutar el agente.');return}
-  renderQuote(data?.result||{},prospect_id,input);
+  try{
+    const data=await invokeAgent({organization_id:organization.id,agent_type:'quote',prospect_id,input});
+    renderQuote(data?.result||{},prospect_id,input);
+  }catch(error){errorBox($('quoteResults'),error.message||'No se pudo ejecutar el agente.')}
 }
 function renderQuote(q,prospectId,input){
   if(q.raw_text){$('quoteResults').innerHTML='<div class="quote-block"><pre style="white-space:pre-wrap;font-size:10px">'+esc(q.raw_text)+'</pre></div>';return}
@@ -219,11 +274,12 @@ async function runGenericAgent(event){
   event.preventDefault();const definition=definitions.find(item=>item.slug===activeAgent);if(!definition)return;
   $('genericPlaceholder').hidden=true;loading($('genericResults'),'Ejecutando la versión publicada y registrando trazabilidad...');
   const values=new FormData(event.target),input={request:values.get('request').trim(),context:values.get('context').trim()||null};
-  const {data,error}=await supabase.functions.invoke('ai-agent',{body:{organization_id:organization.id,agent_id:definition.id,input}});
-  if(error){errorBox($('genericResults'),error.message||'No se pudo ejecutar el agente.');return}
-  const result=data?.result||{};
-  $('genericResults').innerHTML='<section class="quote-hero"><span class="status-pill status-green">Ejecución registrada</span><h3>'+esc(result.summary||definition.name)+'</h3><p class="agent-result-text">'+esc(result.result_markdown||JSON.stringify(result,null,2))+'</p></section>'+((result.next_actions||[]).length?'<section class="quote-block"><h4>Próximas acciones</h4><ul>'+result.next_actions.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>':'')+((result.warnings||[]).length?'<div class="warning-box"><b>Revisión humana</b><br>'+esc(result.warnings.join(' · '))+'</div>':'');
-  iconRefresh();
+  try{
+    const data=await invokeAgent({organization_id:organization.id,agent_id:definition.id,input});
+    const result=data?.result||{};
+    $('genericResults').innerHTML='<section class="quote-hero"><span class="status-pill status-green">Ejecución registrada</span><h3>'+esc(result.summary||definition.name)+'</h3><p class="agent-result-text">'+esc(result.result_markdown||JSON.stringify(result,null,2))+'</p></section>'+((result.next_actions||[]).length?'<section class="quote-block"><h4>Próximas acciones</h4><ul>'+result.next_actions.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ul></section>':'')+((result.warnings||[]).length?'<div class="warning-box"><b>Revisión humana</b><br>'+esc(result.warnings.join(' · '))+'</div>':'');
+    iconRefresh();
+  }catch(error){errorBox($('genericResults'),error.message||'No se pudo ejecutar el agente.')}
 }
 
 function openStudio(agentId=null,create=false){
@@ -239,6 +295,10 @@ async function editStudioAgent(agentId){
   const versions=agent?await supabase.from('agent_versions').select('id,version,published_at,published_by').eq('organization_id',organization.id).eq('agent_id',agent.id).order('version',{ascending:false}).limit(12):{data:[]};
   const tools=Array.isArray(agent?.tools)?agent.tools:[],sources=Array.isArray(agent?.context_sources)?agent.context_sources:[];
   $('studioEditor').innerHTML='<form id="agentDefinitionForm" class="agent-definition-form"><input type="hidden" name="id" value="'+esc(agent?.id||'')+'"><div class="studio-editor-head"><div><span class="eyebrow">'+(agent?'BORRADOR DE CONFIGURACIÓN':'NUEVO AGENTE')+'</span><h3>'+(agent?esc(agent.name):'Definí un asistente especializado')+'</h3></div>'+(agent?'<span class="status-pill '+(agent.status==='active'?'status-green':'status-amber')+'">'+(agent.status==='active'?'Publicado v'+agent.current_version:'Borrador')+'</span>':'')+'</div><div class="studio-fields"><label>Nombre<input name="name" required minlength="2" maxlength="120" value="'+esc(agent?.name||'')+'" placeholder="Ej.: Analista de proyectos"></label><label>Identificador<input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" '+(agent?'readonly':'')+' value="'+esc(agent?.slug||'')+'" placeholder="analista-proyectos"></label><label class="full">Descripción<input name="description" maxlength="300" value="'+esc(agent?.description||'')+'" placeholder="Qué resuelve y para quién."></label><label class="full">Prompt del sistema<textarea name="instructions" required minlength="20" maxlength="20000" rows="10" placeholder="Rol, objetivo, reglas, límites y formato esperado.">'+esc(agent?.instructions||'')+'</textarea><small>Los secretos y claves nunca deben incluirse en el prompt.</small></label><label>Modelo autorizado<input name="model" list="modelOptions" value="'+esc(agent?.model||'gpt-5-mini')+'"><datalist id="modelOptions"><option value="gpt-5-mini"></datalist><small>También debe estar permitido en OPENAI_ALLOWED_MODELS.</small></label><label class="approval-control">Aprobación humana<span class="toggle-field"><input name="requires_approval" type="checkbox" '+(agent?.requires_approval!==false?'checked':'')+'><span></span><b>Requerida</b></span></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label class="check-row"><input type="checkbox" name="web_search" '+(tools.includes('web_search')?'checked':'')+'><span>Búsqueda web pública</span></label></fieldset><fieldset><legend>Fuentes internas</legend><label class="check-row"><input type="checkbox" name="prospects" '+(sources.includes('prospects')?'checked':'')+'><span>Oportunidades</span></label><label class="check-row"><input type="checkbox" name="pricing_catalog" '+(sources.includes('pricing_catalog')?'checked':'')+'><span>Catálogo de precios</span></label></fieldset></div><div class="studio-history"><div><b>Versiones publicadas</b><small>Historial inmutable para auditoría</small></div><div class="version-list">'+((versions.data||[]).length?(versions.data||[]).map(version=>'<span><b>v'+version.version+'</b><small>'+new Date(version.published_at).toLocaleString('es-AR')+'</small></span>').join(''):'<span><small>Sin versiones publicadas.</small></span>')+'</div></div><div class="form-actions">'+(agent?'<button type="button" class="btn btn-secondary danger-soft" data-archive-agent="'+agent.id+'"><i data-lucide="archive"></i>Archivar</button>':'')+'<span class="form-actions-spacer"></span><button type="button" class="btn btn-secondary" data-agent-close>Cancelar</button><button class="btn btn-secondary" type="submit"><i data-lucide="save"></i>Guardar borrador</button>'+(agent?'<button type="button" class="btn btn-primary" data-publish-agent="'+agent.id+'"><i data-lucide="rocket"></i>Publicar versión</button>':'')+'</div></form>';
+  const selectedModel=agent?.model||'gpt-5-mini';
+  const modelField=$('studioEditor').querySelector('input[name="model"]');
+  modelField.closest('label').innerHTML='Modelo autorizado<select name="model" required>'+modelOptions(selectedModel)+'</select><small>La lista se valida contra los modelos habilitados en el servidor.</small>';
+  $('agentDefinitionForm').insertAdjacentHTML('afterbegin',connectionBanner());
   $('agentDefinitionForm').onsubmit=saveAgentDefinition;$('studioEditor').querySelectorAll('[data-agent-close]').forEach(button=>button.onclick=closeStudio);iconRefresh();
 }
 async function saveAgentDefinition(event){
