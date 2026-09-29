@@ -10,11 +10,13 @@
 - Proyecto: `sc-crm-comercial`.
 - Región: `sa-east-1`.
 - Edge Function: `ai-agent`, JWT obligatorio.
+- Migraciones de perfiles y equipo aplicadas hasta `20260929111500_consolidate_profile_update_policy.sql`.
+- Bucket privado `profile-avatars`: máximo 2 MB, JPEG/PNG/WebP y acceso controlado por membresías.
 
 ## Requisitos antes de producción
 
-1. Aprovisionar propietarios con contraseñas fuertes.
-2. Activar recuperación de contraseña y MFA.
+1. Confirmar el reemplazo de todas las contraseñas temporales por claves fuertes y únicas.
+2. Activar recuperación de contraseña, MFA y protección contra contraseñas filtradas.
 3. Ejecutar prueba multi-tenant con usuarios reales.
 4. Elegir un hosting que permita acceso privado y variables de entorno.
 5. Configurar dominio en `ALLOWED_ORIGINS`.

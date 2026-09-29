@@ -40,6 +40,7 @@ const ROLE_LABELS = {
 };
 const FINANCE_ROLES = new Set(['owner','admin','accounting']);
 const WRITE_ROLES = new Set(['owner','admin','commercial','project_manager','accounting','collaborator']);
+const TEAM_MANAGER_ROLES = new Set(['owner']);
 
 let mode = configured ? 'supabase' : 'demo';
 let currentUser = null;
@@ -52,6 +53,7 @@ let activeView = 'dashboard';
 let realtimeChannel = null;
 let reloadTimer = null;
 let charts = [];
+const avatarUrls = new Map();
 let data = {
   profiles: [],
   prospects: [],
@@ -85,6 +87,8 @@ const activeOrganizationId = () => activeOrganization?.id || null;
 const roleLabel = (role) => ROLE_LABELS[role] || 'Sin rol';
 const canWrite = () => WRITE_ROLES.has(currentMembership?.role);
 const canManageFinance = () => FINANCE_ROLES.has(currentMembership?.role);
+const canManageTeam = () => TEAM_MANAGER_ROLES.has(currentMembership?.role);
+const activeMemberIds = () => new Set(data.organizationMemberships.filter(m=>m.active!==false).map(m=>m.user_id));
 const projectById = (id) => data.projects.find(project => project.id === id);
 const clientById = (id) => data.clients.find(client => client.id === id);
 const invoiceById = (id) => data.invoices.find(invoice => invoice.id === id);
@@ -148,13 +152,44 @@ function setSync(label,sub,ok=true){
   if(dot) dot.style.background=ok?'var(--sc-cyan)':'var(--red)';
 }
 function openModal(id){ $(id).hidden=false; lucideRefresh(); }
-function closeModal(id){ $(id).hidden=true; }
+function requiresPasswordChange(){
+  return mode==='supabase' && Boolean(currentProfile?.must_change_password);
+}
+function closeModal(id){
+  if(id==='actionModal' && requiresPasswordChange()){
+    notify('Primero tenés que cambiar la contraseña inicial.');
+    return false;
+  }
+  $(id).hidden=true;
+  return true;
+}
 function ownerOptions(selected=''){
-  return data.profiles.filter(p=>p.active!==false).map(p=>'<option value="'+p.id+'" '+(p.id===selected?'selected':'')+'>'+esc(p.full_name)+'</option>').join('');
+  const memberIds=activeMemberIds();
+  return data.profiles.filter(p=>p.active!==false&&memberIds.has(p.id)).map(p=>'<option value="'+p.id+'" '+(p.id===selected?'selected':'')+'>'+esc(p.full_name)+'</option>').join('');
+}
+
+function profileAvatarUrl(profile){
+  if(!profile?.avatar_url)return '';
+  if(/^data:image\//.test(profile.avatar_url)||/^https?:\/\//.test(profile.avatar_url))return profile.avatar_url;
+  return avatarUrls.get(profile.id)||'';
+}
+function avatarMarkup(profile,className=''){
+  const name=profile?.full_name||'Usuario',url=profileAvatarUrl(profile);
+  return '<span class="avatar '+className+'">'+(url?'<img src="'+esc(url)+'" alt="">':esc(initials(name)))+'</span>';
+}
+async function hydrateAvatarUrls(profiles=data.profiles){
+  avatarUrls.clear();
+  if(mode!=='supabase'||!supabase)return;
+  const withAvatar=profiles.filter(profile=>profile.avatar_url&&!/^https?:\/\//.test(profile.avatar_url));
+  await Promise.all(withAvatar.map(async profile=>{
+    const {data:signed,error}=await supabase.storage.from('profile-avatars').createSignedUrl(profile.avatar_url,3600);
+    if(!error&&signed?.signedUrl)avatarUrls.set(profile.id,signed.signedUrl);
+  }));
 }
 
 async function init(){
   bindStaticEvents();
+  setSidebar(false);
   if(localStorage.getItem(THEME_KEY)==='dark') document.body.classList.add('dark');
 
   if(!configured){
@@ -228,13 +263,14 @@ async function enterAuthenticated(user){
 }
 function enterDemo(){
   mode='demo';
-  currentProfile={id:'demo-maikol',username:'mbetancourt',full_name:'Maikol Betancourt',role:'admin',active:true};
+  currentProfile={id:'demo-maikol',username:'mbetancourt',full_name:'Maikol Betancourt',email:'mbetancourt@sc.demo',phone:'3442000000',job_title:'Dirección y automatización',bio:'Coordina proyectos, procesos y soluciones conectadas.',role:'admin',active:true};
   currentUser={id:'demo-maikol'};
   activeOrganization={id:'demo-sc',name:'Soluciones Conectadas',slug:'soluciones-conectadas',default_currency:'ARS',status:'active'};
   organizations=[activeOrganization];
   currentMembership={organization_id:activeOrganization.id,user_id:currentUser.id,role:'owner',active:true,organizations:activeOrganization};
   memberships=[currentMembership];
   data=loadDemoData();
+  currentProfile=profileById(currentUser.id)||currentProfile;
   $('authShell').hidden=true;
   $('appShell').hidden=false;
   renderOrganizationSwitcher();
@@ -247,7 +283,8 @@ function applyUserIdentity(){
   const n=currentProfile?.full_name || 'Usuario';
   $('userName').textContent=n.split(' ')[0];
   $('userRole').textContent=roleLabel(currentMembership?.role);
-  $('userAvatar').textContent=initials(n);
+  const avatarUrl=profileAvatarUrl(currentProfile);
+  $('userAvatar').innerHTML=avatarUrl?'<img src="'+esc(avatarUrl)+'" alt="">':esc(initials(n));
   const hour=new Date().getHours();
   const greeting=hour<12?'Buenos días':hour<19?'Buenas tardes':'Buenas noches';
   $('heroGreeting').textContent=greeting+', '+n.split(' ')[0]+'.';
@@ -310,8 +347,7 @@ async function loadRemoteData(){
   setSync('Sincronizando','PostgreSQL');
   const membersQuery=await supabase.from('memberships')
     .select('user_id,role,active')
-    .eq('organization_id',organizationId)
-    .eq('active',true);
+    .eq('organization_id',organizationId);
   const profileIds=(membersQuery.data||[]).map(item=>item.user_id);
   const queries = await Promise.all([
     profileIds.length?supabase.from('profiles').select('*').in('id',profileIds).order('full_name'):Promise.resolve({data:[],error:null}),
@@ -330,6 +366,10 @@ async function loadRemoteData(){
   let failed=Boolean(membersQuery.error);
   queries.forEach((q,i)=>{ if(q.error){ console.error(names[i],q.error); failed=true; } else data[names[i]]=q.data||[]; });
   data.organizationMemberships=membersQuery.data||[];
+  const refreshedProfile=profileById(currentProfile?.id);
+  if(refreshedProfile)currentProfile=refreshedProfile;
+  await hydrateAvatarUrls();
+  applyUserIdentity();
   setSync(failed?'Con advertencias':'Conectado',failed?'Revisar consola':'Supabase · tiempo real',!failed);
   renderAll();
 }
@@ -360,9 +400,9 @@ function loadDemoData(){
   }
   const p1='demo-maikol',p2='demo-alexis',p3='demo-oriana';
   const profiles=[
-    {id:p1,username:'mbetancourt',full_name:'Maikol Betancourt',role:'admin',active:true},
-    {id:p2,username:'areyes',full_name:'Alexis Reyes',role:'commercial',active:true},
-    {id:p3,username:'orojas',full_name:'Oriana Rojas',role:'commercial',active:true}
+    {id:p1,username:'mbetancourt',full_name:'Maikol Betancourt',email:'mbetancourt@sc.demo',phone:'3442000000',job_title:'Dirección y automatización',bio:'Coordina proyectos, procesos y soluciones conectadas.',role:'admin',active:true},
+    {id:p2,username:'areyes',full_name:'Alexis Reyes',email:'areyes@sc.demo',phone:'',job_title:'Desarrollo comercial',bio:'Seguimiento de oportunidades y relaciones comerciales.',role:'commercial',active:true},
+    {id:p3,username:'orojas',full_name:'Oriana Rojas',email:'orojas@sc.demo',phone:'',job_title:'Desarrollo comercial',bio:'Organización de clientes, agenda y próximos pasos.',role:'commercial',active:true}
   ];
   const prospects=[
     {id:uuid(),business_name:'Distribuidora Norte · Demo',sector:'Mayorista distribuidor',city:'Cdelu',contact_name:'Marina',job_title:'Dueña',phone:'3442000001',email:'',need_interest:'Integrar pedidos, stock, entregas y reportes.',brand:'SC',status:'Reunión pendiente',next_action:'Coordinar reunión',next_followup:isoDate(),notes:'Respondió con interés.',owner_id:p1,created_at:new Date().toISOString(),updated_at:new Date().toISOString()},
@@ -389,6 +429,7 @@ function loadDemoData(){
   return demo;
 }
 function normalizeDemoData(demo){
+  demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
   ['prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','payments'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
@@ -398,6 +439,24 @@ function normalizeDemoData(demo){
   return demo;
 }
 function saveDemo(){ localStorage.setItem(DEMO_KEY,JSON.stringify(data)); renderAll(); }
+
+function isMobileSidebar(){
+  return window.matchMedia('(max-width: 840px)').matches;
+}
+function setSidebar(open,{restoreFocus=false}={}){
+  const sidebar=$('sidebar'),appShell=$('appShell'),menuBtn=$('menuBtn');
+  if(!sidebar||!appShell||!menuBtn)return;
+  const mobile=isMobileSidebar(),expanded=mobile&&Boolean(open);
+  sidebar.classList.toggle('open',expanded);
+  appShell.classList.toggle('sidebar-open',expanded);
+  document.body.classList.toggle('sidebar-open',expanded);
+  menuBtn.setAttribute('aria-expanded',String(expanded));
+  sidebar.toggleAttribute('inert',mobile&&!expanded);
+  if(mobile)sidebar.setAttribute('aria-hidden',String(!expanded));
+  else sidebar.removeAttribute('aria-hidden');
+  if(expanded)requestAnimationFrame(()=>$('sidebarCloseBtn')?.focus());
+  else if(restoreFocus&&mobile)menuBtn.focus();
+}
 
 function setView(view){
   if(view==='billing'&&!canManageFinance()){
@@ -410,7 +469,7 @@ function setView(view){
   $(view+'View').classList.add('active');
   $('viewTitle').textContent=VIEW_META[view][0];
   $('contextLabel').textContent=VIEW_META[view][1];
-  $('sidebar').classList.remove('open');
+  setSidebar(false);
   if(view==='reports') renderReports();
   if(view==='pipeline') setTimeout(enableKanban,0);
   lucideRefresh();
@@ -617,9 +676,16 @@ function renderBilling(){
 }
 function renderTeam(){
   const rows=data.organizationMemberships.map(membership=>({membership,profile:profileById(membership.user_id)}));
+  const active=rows.filter(row=>row.membership.active!==false).length;
+  const owners=rows.filter(row=>row.membership.active!==false&&row.membership.role==='owner').length;
+  $('teamOverview').innerHTML=[
+    ['Miembros',rows.length,'users-round'],
+    ['Activos',active,'user-check'],
+    ['Propietarios',owners,'shield-check']
+  ].map(item=>'<article><span class="team-overview-icon"><i data-lucide="'+item[2]+'"></i></span><div><strong>'+item[1]+'</strong><small>'+item[0]+'</small></div></article>').join('');
   $('teamGrid').innerHTML=rows.length?rows.map(({membership,profile})=>
-    '<article class="team-card"><span class="avatar team-avatar">'+initials(profile?.full_name||'Usuario')+'</span><div><h3>'+esc(profile?.full_name||'Usuario')+'</h3><p>'+esc(profile?.username||'Sin usuario')+'</p><span class="role-chip">'+esc(roleLabel(membership.role))+'</span></div><span class="status-pill '+(membership.active?'status-green':'status-red')+'">'+(membership.active?'Activo':'Inactivo')+'</span></article>'
-  ).join(''):emptyState('No hay miembros activos en esta empresa.','users');
+    '<article class="team-card '+(membership.active?'':'is-inactive')+'">'+avatarMarkup(profile,'team-avatar')+'<div class="team-card-copy"><h3>'+esc(profile?.full_name||'Usuario')+'</h3><p>'+esc(profile?.job_title||profile?.username||'Sin cargo definido')+'</p><a href="mailto:'+esc(profile?.email||'')+'">'+esc(profile?.email||'Sin correo de contacto')+'</a><span class="role-chip">'+esc(roleLabel(membership.role))+'</span></div><div class="team-card-actions"><span class="status-pill '+(membership.active?'status-green':'status-red')+'">'+(membership.active?'Activo':'Inactivo')+'</span>'+(canManageTeam()?'<button type="button" class="mini-btn team-edit-btn" data-team-edit="'+membership.user_id+'" aria-label="Editar perfil de '+esc(profile?.full_name||'usuario')+'"><i data-lucide="settings-2"></i></button>':'')+'</div></article>'
+  ).join(''):emptyState('Todavía no hay miembros en esta empresa.','users');
 }
 function renderReports(){
   charts.forEach(c=>c.destroy());charts=[];
@@ -739,14 +805,51 @@ function money(amount,currency='ARS'){
   try{return new Intl.NumberFormat('es-AR',{style:'currency',currency}).format(amount)}catch{return currency+' '+amount}
 }
 
+function teamRoleOptions(selected){
+  return Object.entries(ROLE_LABELS).map(([value,label])=>'<option value="'+value+'" '+(value===selected?'selected':'')+'>'+esc(label)+'</option>').join('');
+}
+function profileFormMarkup(profile,membership=null,teamMode=false){
+  const name=profile?.full_name||'',avatarUrl=profileAvatarUrl(profile);
+  return '<form class="action-form profile-form" id="actionForm">'+
+    '<div class="profile-form-lead"><span class="profile-photo-preview" id="profilePhotoPreview">'+(avatarUrl?'<img src="'+esc(avatarUrl)+'" alt="">':esc(initials(name)))+'</span><div><strong>'+esc(name||'Perfil de usuario')+'</strong><small>'+esc(profile?.username?'@'+profile.username:'Identidad del equipo')+'</small><label class="avatar-upload"><i data-lucide="camera"></i><span>Cambiar foto</span><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp"></label><small>JPG, PNG o WebP. Máximo 2 MB.</small></div></div>'+
+    '<label>Nombre completo<input name="full_name" value="'+esc(name)+'" maxlength="120" autocomplete="name" required></label>'+
+    '<label>Correo electrónico<input name="email" type="email" value="'+esc(profile?.email||'')+'" maxlength="180" autocomplete="email"></label>'+
+    '<label>Teléfono<input name="phone" type="tel" value="'+esc(profile?.phone||'')+'" maxlength="40" autocomplete="tel"></label>'+
+    '<label>Cargo o función<input name="job_title" value="'+esc(profile?.job_title||'')+'" maxlength="100"></label>'+
+    '<label class="full-field">Presentación breve<textarea name="bio" rows="3" maxlength="600" placeholder="Responsabilidades, especialidad o foco dentro del equipo.">'+esc(profile?.bio||'')+'</textarea></label>'+
+    (teamMode?'<label>Rol en esta empresa<select name="role">'+teamRoleOptions(membership?.role)+'</select></label><label class="member-status-control">Acceso a la empresa<span class="toggle-field"><input name="active" type="checkbox" '+(membership?.active!==false?'checked':'')+'><span aria-hidden="true"></span><b>'+((membership?.active!==false)?'Activo':'Inactivo')+'</b></span></label>':'')+
+    '<div class="form-actions profile-form-actions">'+(!teamMode?'<button type="button" class="btn btn-secondary" data-action="changePassword"><i data-lucide="key-round"></i>Cambiar contraseña</button>':'')+'<span class="form-actions-spacer"></span><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar</button></div>'+
+  '</form>';
+}
+function bindAvatarPreview(){
+  const input=$('actionBody').querySelector('input[name="avatar"]'),preview=$('profilePhotoPreview');
+  const active=$('actionBody').querySelector('input[name="active"]');
+  if(active)active.addEventListener('change',()=>{const label=active.closest('.toggle-field')?.querySelector('b');if(label)label.textContent=active.checked?'Activo':'Inactivo'});
+  if(!input||!preview)return;
+  let objectUrl='';
+  input.addEventListener('change',()=>{
+    if(objectUrl)URL.revokeObjectURL(objectUrl);
+    const file=input.files?.[0];
+    if(!file)return;
+    objectUrl=URL.createObjectURL(file);
+    preview.innerHTML='<img src="'+esc(objectUrl)+'" alt="Vista previa de la foto">';
+  });
+}
+
 function openAction(type,prospectId=null){
+  if(type!=='changePassword' && requiresPasswordChange()){
+    openAction('changePassword');
+    notify('Primero tenés que cambiar la contraseña inicial.');
+    return;
+  }
+  if(type==='teamMember'&&!canManageTeam()){notify('Solo el propietario puede administrar el equipo.');return}
   if(['invoice','payment'].includes(type)&&!ensureWriteAccess(true))return;
-  if(!['invoice','payment','changePassword'].includes(type)&&!ensureWriteAccess())return;
+  if(!['invoice','payment','changePassword','profile','teamMember'].includes(type)&&!ensureWriteAccess())return;
   const p=prospectId?data.prospects.find(x=>x.id===prospectId):null;
   const titles={
     interaction:'Registrar interacción',meeting:'Programar reunión',task:'Nueva tarea',proposal:'Nueva propuesta',
     client:'Nuevo cliente',project:'Nuevo proyecto',projectProgress:'Actualizar proyecto',document:'Subir documento',
-    invoice:'Nuevo comprobante interno',payment:'Registrar pago',changePassword:'Cambiar contraseña'
+    invoice:'Nuevo comprobante interno',payment:'Registrar pago',profile:'Mi perfil',teamMember:'Editar miembro',changePassword:'Cambiar contraseña'
   };
   $('actionTitle').textContent=titles[type]||'Acción';
   $('actionEyebrow').textContent=p?esc(p.business_name).toUpperCase():'SC CRM';
@@ -801,8 +904,27 @@ function openAction(type,prospectId=null){
     $('actionBody').innerHTML='<form class="action-form" id="actionForm"><div class="payment-summary"><span>Saldo pendiente</span><strong>'+money(balance,invoice.currency)+'</strong></div><label>Importe<input name="amount" type="number" min="0.01" max="'+balance+'" step="0.01" value="'+balance+'" required></label><label>Medio<select name="method"><option value="transfer">Transferencia</option><option value="cash">Efectivo</option><option value="card">Tarjeta</option><option value="other">Otro</option></select></label><label>Referencia<input name="reference" maxlength="120"></label><label>Fecha y hora<input name="paid_at" type="datetime-local" value="'+dayjs().format('YYYY-MM-DDTHH:mm')+'" required></label><label>Notas<textarea name="notes" rows="2" maxlength="1000"></textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary">Registrar pago</button></div></form>';
     $('actionForm').onsubmit=e=>submitPayment(e,invoice.id);
   }
+  if(type==='profile'){
+    const profile=profileById(currentProfile?.id)||currentProfile;
+    $('actionEyebrow').textContent='IDENTIDAD PROFESIONAL';
+    $('actionBody').innerHTML=profileFormMarkup(profile);
+    $('actionForm').onsubmit=e=>submitProfile(e,profile.id);
+    bindAvatarPreview();
+  }
+  if(type==='teamMember'){
+    const profile=profileById(prospectId),membership=data.organizationMemberships.find(item=>item.user_id===prospectId);
+    if(!profile||!membership){notify('No se encontró el miembro del equipo.');return}
+    $('actionEyebrow').textContent='GESTIÓN DEL EQUIPO';
+    $('actionBody').innerHTML=profileFormMarkup(profile,membership,true);
+    $('actionForm').onsubmit=e=>submitTeamMember(e,profile,membership);
+    bindAvatarPreview();
+  }
   if(type==='changePassword'){
-    $('actionBody').innerHTML='<form class="action-form" id="actionForm"><label>Nueva contraseña<input name="password" type="password" minlength="8" required></label><label>Repetir contraseña<input name="password2" type="password" minlength="8" required></label><p style="font-size:10px;color:var(--muted);line-height:1.55">Usá una contraseña distinta al nombre de usuario para mejorar la seguridad del acceso.</p><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary">Cambiar contraseña</button></div></form>';
+    const required=requiresPasswordChange();
+    const closeButton=$('actionModal').querySelector('[data-close="actionModal"]');
+    closeButton.hidden=required;
+    $('actionTitle').textContent=required?'Protegé tu cuenta':'Cambiar contraseña';
+    $('actionBody').innerHTML='<form class="action-form" id="actionForm"><label>Nueva contraseña<input name="password" type="password" minlength="8" autocomplete="new-password" required></label><label>Repetir contraseña<input name="password2" type="password" minlength="8" autocomplete="new-password" required></label><p style="font-size:10px;color:var(--muted);line-height:1.55">Usá al menos 8 caracteres y una contraseña distinta al nombre de usuario.</p><div class="form-actions">'+(required?'':'<button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button>')+'<button class="btn btn-primary">Cambiar contraseña</button></div></form>';
     $('actionForm').onsubmit=submitPassword;
   }
   $('actionBody').querySelectorAll('form button:not([type])').forEach(button=>button.type='submit');
@@ -1003,13 +1125,82 @@ async function submitProposal(e,fixedId){
   }
   closeModal('actionModal');closeModal('detailModal');notify('Propuesta guardada');
 }
+async function avatarValue(file,userId,currentValue=''){
+  if(!file?.size)return currentValue||null;
+  const allowed=new Set(['image/jpeg','image/png','image/webp']);
+  if(!allowed.has(file.type))throw new Error('La foto debe ser JPG, PNG o WebP.');
+  if(file.size>2*1024*1024)throw new Error('La foto no puede superar los 2 MB.');
+  if(mode==='demo')return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('No se pudo leer la imagen.'));reader.readAsDataURL(file)});
+  const extension={
+    'image/jpeg':'jpg','image/png':'png','image/webp':'webp'
+  }[file.type];
+  const path=userId+'/'+uuid()+'.'+extension;
+  const {error}=await supabase.storage.from('profile-avatars').upload(path,file,{cacheControl:'3600',upsert:false});
+  if(error)throw error;
+  return path;
+}
+function profilePayload(form){
+  const values=new FormData(form);
+  return {
+    values,
+    profile:{
+      full_name:values.get('full_name').trim(),email:values.get('email').trim()||null,
+      phone:values.get('phone').trim()||null,job_title:values.get('job_title').trim()||null,
+      bio:values.get('bio').trim()||null
+    }
+  };
+}
+async function submitProfile(event,userId){
+  event.preventDefault();
+  const {values,profile}=profilePayload(event.target),existing=profileById(userId)||currentProfile;
+  try{
+    profile.avatar_url=await avatarValue(values.get('avatar'),userId,existing?.avatar_url);
+    if(mode==='supabase'){
+      const {data:updated,error}=await supabase.from('profiles').update(profile).eq('id',userId).select('*').single();
+      if(error||!updated)throw error||new Error('No se pudo confirmar la actualización del perfil.');
+      currentProfile=updated;
+      await loadRemoteData();
+    }else{
+      Object.assign(existing,profile);currentProfile=existing;saveDemo();applyUserIdentity();
+    }
+    closeModal('actionModal');notify('Perfil actualizado');
+  }catch(error){notify(error?.message||'No se pudo actualizar el perfil.');}
+}
+async function submitTeamMember(event,existing,membership){
+  event.preventDefault();
+  const {values,profile}=profilePayload(event.target);
+  try{
+    profile.avatar_url=await avatarValue(values.get('avatar'),existing.id,existing.avatar_url);
+    const role=values.get('role'),active=values.get('active')==='on';
+    if(mode==='supabase'){
+      const {error}=await supabase.rpc('update_team_member',{
+        target_organization_id:activeOrganizationId(),target_user_id:existing.id,
+        new_full_name:profile.full_name,new_email:profile.email,new_phone:profile.phone,
+        new_job_title:profile.job_title,new_bio:profile.bio,new_avatar_url:profile.avatar_url,
+        new_role:role,new_active:active
+      });
+      if(error)throw error;
+      await loadRemoteData();
+    }else{
+      Object.assign(existing,profile);Object.assign(membership,{role,active});
+      if(existing.id===currentProfile?.id)currentProfile=existing;
+      saveDemo();applyUserIdentity();
+    }
+    closeModal('actionModal');notify('Miembro del equipo actualizado');
+  }catch(error){notify(error?.message||'No se pudo actualizar el equipo.');}
+}
 async function submitPassword(e){
   e.preventDefault();const f=new FormData(e.target),a=f.get('password'),b=f.get('password2');
   if(a!==b){notify('Las contraseñas no coinciden');return}
+  if(a.toLowerCase()===currentProfile?.username?.toLowerCase()){notify('La nueva contraseña debe ser distinta al usuario');return}
   if(mode!=='supabase'){notify('Disponible con Supabase conectado');return}
   const {error}=await supabase.auth.updateUser({password:a});
   if(error){notify(error.message);return}
-  await supabase.from('profiles').update({must_change_password:false}).eq('id',currentProfile.id);
+  const {data:updatedProfile,error:profileError}=await supabase.from('profiles').update({must_change_password:false}).eq('id',currentProfile.id).select('*').single();
+  if(profileError||!updatedProfile){notify('La contraseña cambió, pero no se pudo cerrar el control inicial. Contactá a un administrador.');return}
+  currentProfile=updatedProfile;
+  const closeButton=$('actionModal').querySelector('[data-close="actionModal"]');
+  closeButton.hidden=false;
   closeModal('actionModal');notify('Contraseña actualizada');
 }
 async function updateProspectStatus(id,status){
@@ -1045,7 +1236,10 @@ function bindStaticEvents(){
   $('demoLoginBtn').addEventListener('click',enterDemo);
   $('logoutBtn').addEventListener('click',logout);
   $('exportBtn').addEventListener('click',exportBackup);
-  $('menuBtn').addEventListener('click',()=>$('sidebar').classList.toggle('open'));
+  $('menuBtn').addEventListener('click',()=>setSidebar(!$('sidebar').classList.contains('open')));
+  $('sidebarCloseBtn').addEventListener('click',()=>setSidebar(false,{restoreFocus:true}));
+  $('sidebarBackdrop').addEventListener('click',()=>setSidebar(false,{restoreFocus:true}));
+  window.matchMedia('(max-width: 840px)').addEventListener('change',()=>setSidebar(false));
   $('themeBtn').addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem(THEME_KEY,document.body.classList.contains('dark')?'dark':'light');if(activeView==='reports')renderReports()});
   $('organizationSelect').addEventListener('change',event=>switchOrganization(event.target.value));
   $('newProspectBtn').addEventListener('click',()=>{resetProspectForm();openModal('prospectModal')});
@@ -1055,23 +1249,28 @@ function bindStaticEvents(){
   $('newProjectBtn').addEventListener('click',()=>openAction('project'));
   $('newDocumentBtn').addEventListener('click',()=>openAction('document'));
   $('newInvoiceBtn').addEventListener('click',()=>openAction('invoice'));
-  $('userPill').addEventListener('click',()=>openAction('changePassword'));
+  $('myProfileBtn').addEventListener('click',()=>openAction('profile'));
+  $('userPill').addEventListener('click',()=>openAction('profile'));
   $('prospectForm').addEventListener('submit',submitProspect);
   $('prospectSearch').addEventListener('input',renderProspects);
   ['statusFilter','ownerFilter','sectorFilter'].forEach(id=>$(id).addEventListener('change',renderProspects));
   $('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')globalSearch()});
   document.addEventListener('keydown',e=>{
     if(e.key==='/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();$('globalSearch').focus()}
-    if(e.key==='Escape') document.querySelectorAll('.modal-backdrop:not([hidden])').forEach(m=>m.hidden=true);
+    if(e.key==='Escape'){
+      if($('sidebar').classList.contains('open'))setSidebar(false,{restoreFocus:true});
+      document.querySelectorAll('.modal-backdrop:not([hidden])').forEach(m=>closeModal(m.id));
+    }
   });
   document.querySelectorAll('.nav button').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.view)));
   document.querySelectorAll('[data-view-jump]').forEach(b=>b.addEventListener('click',()=>setView(b.dataset.viewJump)));
-  document.querySelectorAll('[data-close]').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.close)));
-  document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.hidden=true}));
+  document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id)}));
   document.body.addEventListener('click',async e=>{
+    const close=e.target.closest('[data-close]');if(close){closeModal(close.dataset.close);return}
     const open=e.target.closest('[data-open]'); if(open?.dataset.open) openDetail(open.dataset.open);
     const edit=e.target.closest('[data-edit]'); if(edit){closeModal('detailModal');editProspect(edit.dataset.edit)}
     const action=e.target.closest('[data-action]'); if(action) openAction(action.dataset.action,action.dataset.prospect||null);
+    const teamMember=e.target.closest('[data-team-edit]');if(teamMember)openAction('teamMember',teamMember.dataset.teamEdit);
     const task=e.target.closest('[data-task-toggle]'); if(task) toggleTask(task.dataset.taskToggle);
     const project=e.target.closest('[data-project-progress]');if(project)openAction('projectProgress',project.dataset.projectProgress);
     const documentButton=e.target.closest('[data-document-open]');if(documentButton)await openDocument(documentButton.dataset.documentOpen);

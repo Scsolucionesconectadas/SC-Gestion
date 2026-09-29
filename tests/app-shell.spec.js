@@ -18,7 +18,25 @@ test('recorre y opera los módulos multiempresa en modo demo', async ({ page }) 
   const runtimeErrors = await enterDemo(page);
   await expect(page.locator('#organizationSelect')).toHaveValue('demo-sc');
 
+  await page.locator('#userPill').click();
+  await expect(page.locator('#actionTitle')).toHaveText('Mi perfil');
+  await page.locator('#actionForm [data-close="actionModal"]').click();
+  await expect(page.locator('#actionModal')).toBeHidden();
+
+  await page.locator('[data-view="team"]').click();
+  await expect(page.locator('#teamOverview')).toContainText('3');
+  const alexisCard = page.locator('.team-card').filter({ hasText: 'Alexis Reyes' });
+  await alexisCard.locator('[data-team-edit]').click();
+  await page.locator('#actionForm [name="job_title"]').fill('Coordinación comercial');
+  await page.locator('#actionForm [name="role"]').selectOption('project_manager');
+  await page.locator('#actionForm button[type="submit"]').click();
+  await expect(alexisCard).toContainText('Coordinación comercial');
+  await expect(alexisCard).toContainText('Responsable de proyectos');
+
   await page.locator('[data-view="clients"]').click();
+  await page.locator('#newClientBtn').click();
+  await page.locator('#actionForm [data-close="actionModal"]').click();
+  await expect(page.locator('#actionModal')).toBeHidden();
   await page.locator('#newClientBtn').click();
   await page.locator('#actionForm [name="business_name"]').fill('Cliente de prueba');
   await page.locator('#actionForm [name="contact_name"]').fill('Persona Demo');
@@ -64,8 +82,34 @@ test('mantiene navegación usable y sin desborde horizontal en móvil', async ({
   const runtimeErrors = await enterDemo(page);
   await page.locator('#menuBtn').click();
   await expect(page.locator('#sidebar')).toHaveClass(/open/);
-  await page.locator('[data-view="projects"]').click();
+  await expect(page.locator('#menuBtn')).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.locator('#sidebarBackdrop')).toBeVisible();
+  await expect(page.locator('body')).toHaveClass(/sidebar-open/);
+
+  const mobileSidebar = await page.locator('#sidebar').boundingBox();
+  expect(mobileSidebar).not.toBeNull();
+  expect(mobileSidebar.width).toBeLessThanOrEqual(321);
+  expect(mobileSidebar.width).toBeGreaterThanOrEqual(280);
+  expect(Math.abs(mobileSidebar.height - 844)).toBeLessThanOrEqual(1);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('#sidebar')).not.toHaveClass(/open/);
+  await expect(page.locator('#menuBtn')).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('#menuBtn')).toBeFocused();
+
+  await page.locator('#menuBtn').click();
+  await page.locator('#sidebar [data-view="projects"]').click();
   await expect(page.locator('#projectsView')).toBeVisible();
+  await expect(page.locator('#sidebarBackdrop')).toBeHidden();
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  await page.locator('#menuBtn').click();
+  const tabletSidebar = await page.locator('#sidebar').boundingBox();
+  expect(tabletSidebar).not.toBeNull();
+  expect(tabletSidebar.width).toBeLessThanOrEqual(321);
+  expect(Math.abs(tabletSidebar.height - 1024)).toBeLessThanOrEqual(1);
+  await page.locator('#sidebarCloseBtn').click();
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
   expect(overflow).toBe(false);
   expect(runtimeErrors).toEqual([]);

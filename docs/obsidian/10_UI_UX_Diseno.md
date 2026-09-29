@@ -23,3 +23,23 @@
 - Botones e inputs con tipos explícitos.
 - Landmarks nombrados, labels y navegación por teclado.
 - `[hidden]` tiene una regla global para evitar superposición de pantallas.
+
+## Acceso inicial seguro
+
+- Las cuentas con `must_change_password` ven un diálogo bloqueante antes de operar.
+- El diálogo no ofrece cancelar y no cierra con el botón superior, el fondo ni `Escape`.
+- La nueva contraseña requiere al menos ocho caracteres y no puede coincidir con el usuario.
+- Tras actualizar Auth y el perfil, la interfaz se libera sin recargar la página.
+
+## Navegación y formularios
+
+- En escritorio la barra lateral conserva ancho estable y desplazamiento propio; en móvil funciona como drawer con fondo, cierre explícito, `Escape` y devolución del foco.
+- Los formularios usan una grilla de dos columnas en escritorio y una columna en móvil, campos de 44 px y foco visible.
+- Los selectores, toggles, previews de foto y acciones mantienen estados hover, focus, disabled, error y carga.
+- Los modales entran con movimiento breve y se convierten en panel inferior en teléfonos angostos.
+
+## Equipo
+
+- La vista resume integrantes activos, responsables comerciales y propietarios.
+- Cada ficha presenta foto o iniciales, contacto, cargo, rol, estado y edición contextual.
+- El propietario puede editar el equipo; otros roles conservan una vista informativa.

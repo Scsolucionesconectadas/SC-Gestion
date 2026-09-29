@@ -78,9 +78,14 @@
 
   <div class="app-shell" id="appShell" hidden>
     <aside class="sidebar" id="sidebar" aria-label="Panel de navegación">
-      <div class="side-brand">
-        <div class="side-logo-box"><img src="./assets/img/sc-isotipo-color.webp" alt="SC" class="brand-logo"></div>
-        <div><b>SC Gestión</b><small>Portal multiempresa</small></div>
+      <div class="sidebar-head">
+        <div class="side-brand">
+          <div class="side-logo-box"><img src="./assets/img/sc-isotipo-color.webp" alt="SC" class="brand-logo"></div>
+          <div><b>SC Gestión</b><small>Portal multiempresa</small></div>
+        </div>
+        <button type="button" class="sidebar-close" id="sidebarCloseBtn" aria-label="Cerrar menú">
+          <i data-lucide="x"></i>
+        </button>
       </div>
 
       <label class="organization-switcher">
@@ -113,10 +118,12 @@
       </div>
     </aside>
 
+    <button type="button" class="sidebar-backdrop" id="sidebarBackdrop" aria-label="Cerrar menú" tabindex="-1"></button>
+
     <main class="main">
       <header class="topbar">
         <div class="top-left">
-          <button type="button" class="icon-btn mobile-menu" id="menuBtn" aria-label="Abrir menú"><i data-lucide="menu"></i></button>
+          <button type="button" class="icon-btn mobile-menu" id="menuBtn" aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false"><i data-lucide="menu"></i></button>
           <div><span class="eyebrow" id="contextLabel">SC COMERCIAL</span><h1 id="viewTitle">Inicio</h1></div>
         </div>
         <div class="top-actions">
@@ -263,7 +270,11 @@
       </section>
 
       <section class="content view" id="teamView">
-        <div class="page-toolbar"><div><span class="eyebrow">ACCESOS</span><h2 class="page-subtitle">Equipo y permisos</h2></div></div>
+        <div class="page-toolbar">
+          <div><span class="eyebrow">ACCESOS</span><h2 class="page-subtitle">Equipo y permisos</h2></div>
+          <button type="button" class="btn btn-secondary" id="myProfileBtn"><i data-lucide="user-round-cog"></i>Mi perfil</button>
+        </div>
+        <div class="team-overview" id="teamOverview"></div>
         <div class="team-grid" id="teamGrid"></div>
       </section>
     </main>

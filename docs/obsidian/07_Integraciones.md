@@ -4,9 +4,19 @@
 
 - Auth: login por email interno derivado del nombre de usuario.
 - Database: PostgreSQL con RLS.
-- Storage: bucket privado `organization-documents`.
+- Storage: buckets privados `organization-documents` y `profile-avatars`.
 - Realtime: refresco de entidades filtradas por `organization_id`.
 - Edge Function: `ai-agent` con JWT obligatorio.
+
+Usuarios iniciales aprovisionados:
+
+- `mbetancourt`: `owner`.
+- `areyes`: `commercial`.
+- `orojas`: `commercial`.
+
+Las contraseñas no se documentan. `mbetancourt` completó el cambio inicial; `areyes` y `orojas` lo mantienen pendiente.
+
+Las fotos admiten JPEG, PNG o WebP de hasta 2 MB, se guardan bajo `{user_id}/archivo` y se entregan con URLs firmadas. La membresía determina quién puede ver o administrar esos archivos.
 
 Variables administrativas:
 
