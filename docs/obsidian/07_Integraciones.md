@@ -7,6 +7,7 @@
 - Storage: buckets privados `organization-documents`, `profile-avatars` y `generated-pdfs`.
 - Realtime: refresco de entidades filtradas por `organization_id`.
 - Edge Functions: `ai-agent` y `communications`, ambas con JWT obligatorio.
+- `pg_cron`: evaluación diaria de tareas vencidas y creación deduplicada de avisos internos.
 
 Usuarios iniciales aprovisionados:
 

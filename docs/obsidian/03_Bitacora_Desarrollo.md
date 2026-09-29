@@ -94,3 +94,33 @@
 - Configurar Resend y validar un envío controlado.
 - Activar protección contra contraseñas filtradas desde Supabase Auth.
 - Completar prueba de aislamiento con una segunda empresa real.
+
+## 2026-09-29 - Robustez de perfiles y avisos de vencimiento
+
+**Cambios realizados:**
+- La carga de avatares conserva la ruta temporal y elimina el archivo nuevo si falla la persistencia del perfil.
+- Cuando el reemplazo se confirma, se elimina de forma segura el avatar anterior para evitar archivos huérfanos.
+- Se programó `enqueue_overdue_task_notifications()` todos los días a las 08:15 de Argentina.
+- Los avisos omiten usuarios o membresías inactivas y respetan la preferencia personal `in_app`.
+
+**Archivos modificados:**
+- `assets/js/app.js`.
+- `supabase/migrations/20260929150000_schedule_overdue_notifications.sql`.
+
+**Validaciones realizadas:**
+- Job `sc-overdue-task-notifications` confirmado como activo en `cron.job`.
+- Validación de sintaxis, HTML y pruebas E2E.
+
+## 2026-09-29 - Checklist y subtareas
+
+**Cambios realizados:**
+- El detalle de tarea incorpora pasos comprobables con progreso, alta, marcado y eliminación.
+- Se pueden crear subtareas heredando oportunidad, prioridad y vencimiento de la tarea principal.
+- Las subtareas permiten responsable, acceso a su propio detalle y cambio rápido de estado.
+- La composición se adapta a una columna en móvil sin desborde horizontal.
+
+**Archivos modificados:**
+- `assets/js/workspace.js`, `assets/css/app.css` y `tests/app-shell.spec.js`.
+
+**Validaciones realizadas:**
+- Playwright cubre alta y completado de checklist y alta de subtarea en modo demo.

@@ -12,7 +12,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Empresa y tres usuarios iniciales aprovisionados y validados contra Auth y RLS; `mbetancourt` completó el cambio inicial y los otros dos usuarios lo mantienen pendiente.
 - Perfiles profesionales, fotos privadas y administración del equipo por el propietario implementados.
 - Sidebar responsive, formularios y modales actualizados y cubiertos por Playwright.
-- Colaboración de tareas, notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
+- Colaboración de tareas con checklist, subtareas, comentarios y seguidores; notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
+- Avisos diarios de tareas vencidas programados a las 08:15 de Argentina mediante `pg_cron`.
 - Agent Studio implementado con borradores, versiones publicadas y modelos autorizados desde servidor.
 - Hosting privado y dominio interno pendientes.
 

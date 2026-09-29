@@ -196,10 +196,50 @@ async function saveMemberPermissions(event,person,member){
 function openTaskDetail(taskId){
   const item=task(taskId);if(!item)return;
   const comments=app.data.taskComments.filter(comment=>comment.task_id===taskId);
+  const checklist=Array.isArray(item.checklist)?item.checklist.filter(entry=>entry&&entry.id&&entry.label):[];
+  const completedItems=checklist.filter(entry=>entry.done).length;
+  const subtasks=app.data.tasks.filter(entry=>entry.parent_task_id===taskId);
   const watched=app.data.taskWatchers.some(watcher=>watcher.task_id===taskId&&watcher.user_id===app.currentUser?.id);
   const status={pendiente:'Pendiente',en_progreso:'En progreso',completada:'Completada',cancelada:'Cancelada'}[item.status]||item.status;
-  showAction(item.title,'DETALLE DE TAREA','<div class="task-detail"><div class="task-detail-grid"><div><span>Estado</span><b>'+esc(status)+'</b></div><div><span>Responsable</span><b>'+esc(profile(item.assigned_to)?.full_name||'Sin asignar')+'</b></div><div><span>Prioridad</span><b>'+esc(item.priority)+'</b></div><div><span>Vencimiento</span><b>'+app.format.fmtDateTime(item.due_at)+'</b></div></div><p class="task-description">'+esc(item.description||'Sin descripción')+'</p><div class="task-detail-actions"><button type="button" class="btn btn-secondary" data-task-watch="'+item.id+'"><i data-lucide="'+(watched?'eye-off':'eye')+'"></i>'+(watched?'Dejar de seguir':'Seguir tarea')+'</button></div><section class="comment-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="messages-square"></i></span><div><h3>Conversación</h3><p>'+comments.length+' comentario'+(comments.length===1?'':'s')+'</p></div></div><div class="comment-list">'+(comments.length?comments.map(comment=>'<article class="comment"><span class="avatar">'+esc(app.format.initials(profile(comment.author_id)?.full_name||'Usuario'))+'</span><div><b>'+esc(profile(comment.author_id)?.full_name||'Usuario')+'</b><time>'+app.format.fmtDateTime(comment.created_at)+'</time><p>'+esc(comment.body)+'</p></div></article>').join(''):'<div class="popover-empty"><b>Sin comentarios</b><span>Dejá una actualización para el equipo.</span></div>')+'</div>'+(app.hasPermission('tasks.comment')?'<form id="taskCommentForm" class="comment-form"><textarea name="body" required maxlength="5000" placeholder="Escribí una actualización. Podés mencionar con @usuario."></textarea><button class="btn btn-primary" type="submit"><i data-lucide="send"></i>Comentar</button></form>':'')+'</section></div>',{wide:true});
+  const checklistMarkup='<section class="task-work-section"><div class="task-section-head"><div><span class="eyebrow">CHECKLIST</span><h3>Pasos de la tarea</h3></div><strong>'+completedItems+'/'+checklist.length+'</strong></div><div class="task-progress-track"><i style="width:'+(checklist.length?Math.round(completedItems/checklist.length*100):0)+'%"></i></div><div class="checklist-list">'+(checklist.length?checklist.map(entry=>'<div class="checklist-row '+(entry.done?'is-done':'')+'"><button type="button" data-checklist-toggle="'+item.id+'" data-checklist-item="'+esc(entry.id)+'" aria-label="'+(entry.done?'Marcar pendiente':'Marcar completado')+'"><i data-lucide="'+(entry.done?'circle-check-big':'circle')+'"></i></button><span>'+esc(entry.label)+'</span>'+(app.hasPermission('tasks.write')?'<button type="button" class="checklist-remove" data-checklist-remove="'+item.id+'" data-checklist-item="'+esc(entry.id)+'" aria-label="Eliminar paso"><i data-lucide="x"></i></button>':'')+'</div>').join(''):'<div class="task-empty-inline">Todavía no hay pasos definidos.</div>')+'</div>'+(app.hasPermission('tasks.write')?'<form id="taskChecklistForm" class="task-inline-form"><input name="label" maxlength="180" required placeholder="Agregar un paso concreto"><button class="icon-btn" type="submit" aria-label="Agregar paso"><i data-lucide="plus"></i></button></form>':'')+'</section>';
+  const memberOptions=app.data.organizationMemberships.filter(entry=>entry.active!==false).map(entry=>profile(entry.user_id)).filter(Boolean).map(person=>'<option value="'+person.id+'" '+(person.id===item.assigned_to?'selected':'')+'>'+esc(person.full_name)+'</option>').join('');
+  const subtasksMarkup='<section class="task-work-section"><div class="task-section-head"><div><span class="eyebrow">SUBTAREAS</span><h3>Trabajo relacionado</h3></div><strong>'+subtasks.filter(entry=>entry.status==='completada').length+'/'+subtasks.length+'</strong></div><div class="subtask-list">'+(subtasks.length?subtasks.map(entry=>'<article class="subtask-row"><button type="button" class="subtask-open" data-task-open="'+entry.id+'"><i data-lucide="'+(entry.status==='completada'?'circle-check-big':'circle-dashed')+'"></i><span><b>'+esc(entry.title)+'</b><small>'+esc(profile(entry.assigned_to)?.full_name||'Sin asignar')+' · '+app.format.fmtDateTime(entry.due_at)+'</small></span></button>'+(app.hasPermission('tasks.write')?'<button type="button" class="mini-btn" data-subtask-toggle="'+entry.id+'" data-parent-task="'+item.id+'">'+(entry.status==='completada'?'Reabrir':'Completar')+'</button>':'')+'</article>').join(''):'<div class="task-empty-inline">Sin subtareas pendientes.</div>')+'</div>'+(app.hasPermission('tasks.write')?'<form id="taskSubtaskForm" class="task-subtask-form"><input name="title" maxlength="180" required placeholder="Nueva subtarea"><select name="assigned_to"><option value="">Sin asignar</option>'+memberOptions+'</select><button class="btn btn-secondary" type="submit"><i data-lucide="corner-down-right"></i>Agregar</button></form>':'')+'</section>';
+  const commentsMarkup='<section class="comment-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="messages-square"></i></span><div><h3>Conversación</h3><p>'+comments.length+' comentario'+(comments.length===1?'':'s')+'</p></div></div><div class="comment-list">'+(comments.length?comments.map(comment=>'<article class="comment"><span class="avatar">'+esc(app.format.initials(profile(comment.author_id)?.full_name||'Usuario'))+'</span><div><b>'+esc(profile(comment.author_id)?.full_name||'Usuario')+'</b><time>'+app.format.fmtDateTime(comment.created_at)+'</time><p>'+esc(comment.body)+'</p></div></article>').join(''):'<div class="popover-empty"><b>Sin comentarios</b><span>Dejá una actualización para el equipo.</span></div>')+'</div>'+(app.hasPermission('tasks.comment')?'<form id="taskCommentForm" class="comment-form"><textarea name="body" required maxlength="5000" placeholder="Escribí una actualización. Podés mencionar con @usuario."></textarea><button class="btn btn-primary" type="submit"><i data-lucide="send"></i>Comentar</button></form>':'')+'</section>';
+  showAction(item.title,'DETALLE DE TAREA','<div class="task-detail"><div class="task-detail-grid"><div><span>Estado</span><b>'+esc(status)+'</b></div><div><span>Responsable</span><b>'+esc(profile(item.assigned_to)?.full_name||'Sin asignar')+'</b></div><div><span>Prioridad</span><b>'+esc(item.priority)+'</b></div><div><span>Vencimiento</span><b>'+app.format.fmtDateTime(item.due_at)+'</b></div></div><p class="task-description">'+esc(item.description||'Sin descripción')+'</p><div class="task-detail-actions"><button type="button" class="btn btn-secondary" data-task-watch="'+item.id+'"><i data-lucide="'+(watched?'eye-off':'eye')+'"></i>'+(watched?'Dejar de seguir':'Seguir tarea')+'</button></div><div class="task-work-grid">'+checklistMarkup+subtasksMarkup+'</div>'+commentsMarkup+'</div>',{wide:true});
   $('taskCommentForm')?.addEventListener('submit',event=>saveTaskComment(event,item.id));
+  $('taskChecklistForm')?.addEventListener('submit',event=>addChecklistItem(event,item.id));
+  $('taskSubtaskForm')?.addEventListener('submit',event=>addSubtask(event,item));
+}
+async function persistTaskPatch(taskId,patch,parentTaskId=taskId){
+  const item=task(taskId);if(!item)return;
+  if(app.mode==='demo'){Object.assign(item,patch,{updated_at:new Date().toISOString()});app.saveDemo();openTaskDetail(parentTaskId);return}
+  const {error}=await app.supabase.from('tasks').update(patch).eq('organization_id',app.activeOrganization.id).eq('id',taskId);
+  if(error)return app.notify(error.message);
+  await app.reload();openTaskDetail(parentTaskId);
+}
+async function addChecklistItem(event,taskId){
+  event.preventDefault();const item=task(taskId),label=new FormData(event.target).get('label').trim();if(!item||!label)return;
+  const checklist=Array.isArray(item.checklist)?item.checklist.slice():[];
+  checklist.push({id:crypto.randomUUID(),label,done:false});
+  await persistTaskPatch(taskId,{checklist});app.notify('Paso agregado');
+}
+async function updateChecklist(taskId,itemId,action){
+  const item=task(taskId);if(!item)return;
+  const checklist=(Array.isArray(item.checklist)?item.checklist:[]).map(entry=>({...entry}));
+  const next=action==='remove'?checklist.filter(entry=>entry.id!==itemId):checklist.map(entry=>entry.id===itemId?{...entry,done:!entry.done}:entry);
+  await persistTaskPatch(taskId,{checklist:next});
+}
+async function addSubtask(event,parent){
+  event.preventDefault();const values=new FormData(event.target),title=values.get('title').trim();if(!title)return;
+  const payload={organization_id:app.activeOrganization.id,parent_task_id:parent.id,prospect_id:parent.prospect_id||null,assigned_to:values.get('assigned_to')||null,created_by:app.currentUser.id,title,description:null,priority:parent.priority||'media',status:'pendiente',due_at:parent.due_at||null,checklist:[]};
+  if(app.mode==='demo'){app.data.tasks.push({id:crypto.randomUUID(),...payload,created_at:new Date().toISOString(),updated_at:new Date().toISOString()});app.saveDemo();openTaskDetail(parent.id);app.notify('Subtarea creada');return}
+  const {error}=await app.supabase.from('tasks').insert(payload);if(error)return app.notify(error.message);
+  await app.reload();openTaskDetail(parent.id);app.notify('Subtarea creada');
+}
+async function toggleSubtask(taskId,parentTaskId){
+  const item=task(taskId);if(!item)return;
+  const status=item.status==='completada'?'pendiente':'completada';
+  await persistTaskPatch(taskId,{status,completed_at:status==='completada'?new Date().toISOString():null},parentTaskId);
 }
 async function saveTaskComment(event,taskId){
   event.preventDefault();const body=new FormData(event.target).get('body').trim();if(!body)return;
@@ -320,6 +360,9 @@ function bind(){
     const notification=event.target.closest('[data-notification]');if(notification){markNotification(notification.dataset.notification,notification.dataset.entity);return}
     const taskButton=event.target.closest('[data-task-open]');if(taskButton){openTaskDetail(taskButton.dataset.taskOpen);return}
     const watch=event.target.closest('[data-task-watch]');if(watch){toggleTaskWatch(watch.dataset.taskWatch);return}
+    const checklistToggle=event.target.closest('[data-checklist-toggle]');if(checklistToggle){updateChecklist(checklistToggle.dataset.checklistToggle,checklistToggle.dataset.checklistItem,'toggle');return}
+    const checklistRemove=event.target.closest('[data-checklist-remove]');if(checklistRemove){updateChecklist(checklistRemove.dataset.checklistRemove,checklistRemove.dataset.checklistItem,'remove');return}
+    const subtaskToggle=event.target.closest('[data-subtask-toggle]');if(subtaskToggle){toggleSubtask(subtaskToggle.dataset.subtaskToggle,subtaskToggle.dataset.parentTask);return}
     const pdf=event.target.closest('[data-invoice-pdf]');if(pdf){generateInvoicePdf(pdf.dataset.invoicePdf);return}
     const email=event.target.closest('[data-invoice-email]');if(email){invoiceEmail(email.dataset.invoiceEmail);return}
     const permissions=event.target.closest('[data-member-permissions]');if(permissions){openMemberPermissions(permissions.dataset.memberPermissions);return}

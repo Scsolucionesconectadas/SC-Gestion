@@ -58,7 +58,7 @@ La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa,
 
 ## Colaboración
 
-- Tareas con responsables, prioridad, vencimiento, comentarios, menciones y seguidores.
+- Tareas con responsables, prioridad, vencimiento, checklist, subtareas, comentarios, menciones y seguidores.
 - Notificaciones dentro de la aplicación para asignaciones, comentarios y vencimientos.
 - Preferencias personales de avisos por empresa.
 - Gestión multiempresa de usuarios, roles y excepciones de permisos.

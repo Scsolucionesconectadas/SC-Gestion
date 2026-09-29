@@ -14,7 +14,7 @@
 
 ## Módulos
 
-Oportunidades, interacciones, reuniones, propuestas, clientes, proyectos, tareas colaborativas, documentos, comprobantes internos, pagos, comunicaciones, notificaciones, reportes, equipo, configuración y agentes IA.
+Oportunidades, interacciones, reuniones, propuestas, clientes, proyectos, tareas colaborativas con checklist y subtareas, documentos, comprobantes internos, pagos, comunicaciones, notificaciones, reportes, equipo, configuración y agentes IA.
 
 ## Límite de confianza
 

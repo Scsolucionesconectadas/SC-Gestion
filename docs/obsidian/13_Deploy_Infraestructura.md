@@ -10,7 +10,7 @@
 - Proyecto: `sc-crm-comercial`.
 - Región: `sa-east-1`.
 - Edge Functions: `ai-agent` y `communications`, JWT obligatorio.
-- Migraciones aplicadas hasta `20260929144000_task_watcher_user_index.sql`.
+- Migraciones aplicadas hasta `20260929150000_schedule_overdue_notifications.sql`.
 - Bucket privado `profile-avatars`: máximo 2 MB, JPEG/PNG/WebP y acceso controlado por membresías.
 - Bucket privado `generated-pdfs`: documentos internos no fiscales accesibles por permisos de facturación y comunicaciones.
 
@@ -23,6 +23,10 @@
 5. Configurar dominio en `ALLOWED_ORIGINS`.
 6. Definir backups, monitoreo y rollback.
 7. Configurar un dominio remitente de Resend y validar un envío controlado.
+
+## Jobs
+
+- `sc-overdue-task-notifications`: diario a las `11:15 UTC`, equivalente a `08:15` de Argentina; ejecuta una función interna sin acceso para `anon` ni `authenticated`.
 
 No publicar el portal interno como GitHub Pages abierto. La autenticación protege datos, pero el hosting privado reduce superficie y evita exponer innecesariamente la aplicación operativa.
 

@@ -49,7 +49,9 @@
 - Menú de creación rápida, centro de notificaciones y menú de usuario en la barra superior.
 - Configuración separada en Empresa, Roles y permisos, Notificaciones e Integraciones.
 - Detalle de tareas con conversación, menciones y seguimiento sin anidar cards decorativas.
+- Checklist y subtareas comparten el detalle, muestran progreso y pasan de dos columnas a una en móvil.
 - Historial de comunicaciones y compositor de correo con estados de envío visibles.
 - Agent Studio usa selector lateral y editor enfocado, con historial de versiones.
 - Los botones emplean brillo y presión breves inspirados en patrones públicos de Uiverse, adaptados al sistema SC y desactivados con `prefers-reduced-motion`.
 - Lectura y escritura se reflejan por permiso específico; una persona puede consultar un módulo sin recibir acciones de edición.
+- La preferencia `in_app` controla también los recordatorios automáticos de tareas vencidas.

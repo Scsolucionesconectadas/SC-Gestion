@@ -81,3 +81,13 @@
 **Solución aplicada:** separar explícitamente el payload remoto y dejar que PostgreSQL genere el UUID.
 
 **Cómo evitarlo:** construir payloads de persistencia sin propiedades auxiliares ni valores indefinidos.
+
+## 2026-09-29 - Avatares huérfanos tras una actualización fallida
+
+**Síntoma:** una imagen podía subirse a Storage y quedar sin referencia si luego fallaba la actualización del perfil o la membresía.
+
+**Causa:** la carga del archivo y la persistencia de datos son operaciones separadas.
+
+**Solución aplicada:** conservar la ruta recién subida, eliminarla ante error y borrar el avatar reemplazado únicamente después de confirmar la actualización.
+
+**Cómo evitarlo:** implementar compensación explícita cuando Storage y base de datos no comparten una transacción.

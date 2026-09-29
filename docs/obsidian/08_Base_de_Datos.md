@@ -33,6 +33,7 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 - `20260929142000_notification_preferences.sql`: actualización segura de preferencias personales.
 - `20260929143500_collaboration_performance.sql`: índices de claves foráneas y políticas sin superposición.
 - `20260929144000_task_watcher_user_index.sql`: cobertura específica de la relación entre seguidores y perfiles.
+- `20260929150000_schedule_overdue_notifications.sql`: `pg_cron` diario para avisos de tareas vencidas, filtrado por preferencias y membresías activas.
 
 ## Perfiles y membresías
 

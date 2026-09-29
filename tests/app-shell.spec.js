@@ -90,6 +90,17 @@ test('opera colaboración, comunicaciones, PDF y configuración', async ({ page 
   await page.locator('[data-view="tasks"]').click();
   await page.locator('[data-task-open]').first().click();
   await expect(page.locator('#actionEyebrow')).toHaveText('DETALLE DE TAREA');
+  await page.locator('#taskChecklistForm input[name="label"]').fill('Validar entrega con el cliente');
+  await page.locator('#taskChecklistForm button[type="submit"]').click();
+  await expect(page.locator('.checklist-list')).toContainText('Validar entrega con el cliente');
+  const checklistRow=page.locator('.checklist-row').filter({hasText:'Validar entrega con el cliente'});
+  await checklistRow.locator('[data-checklist-toggle]').click();
+  await expect(page.locator('.checklist-row').filter({hasText:'Validar entrega con el cliente'})).toHaveClass(/is-done/);
+
+  await page.locator('#taskSubtaskForm input[name="title"]').fill('Preparar evidencia de cierre');
+  await page.locator('#taskSubtaskForm button[type="submit"]').click();
+  await expect(page.locator('.subtask-list')).toContainText('Preparar evidencia de cierre');
+
   await page.locator('#taskCommentForm textarea').fill('Actualización de prueba para @areyes');
   await page.locator('#taskCommentForm button[type="submit"]').click();
   await expect(page.locator('.comment-list')).toContainText('Actualización de prueba');

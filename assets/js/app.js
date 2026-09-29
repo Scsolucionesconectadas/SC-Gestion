@@ -1173,19 +1173,27 @@ async function submitProposal(e,fixedId){
   }
   closeModal('actionModal');closeModal('detailModal');notify('Propuesta guardada');
 }
-async function avatarValue(file,userId,currentValue=''){
-  if(!file?.size)return currentValue||null;
+async function prepareAvatar(file,userId,currentValue=''){
+  if(!file?.size)return {value:currentValue||null,uploadedPath:null};
   const allowed=new Set(['image/jpeg','image/png','image/webp']);
   if(!allowed.has(file.type))throw new Error('La foto debe ser JPG, PNG o WebP.');
   if(file.size>2*1024*1024)throw new Error('La foto no puede superar los 2 MB.');
-  if(mode==='demo')return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('No se pudo leer la imagen.'));reader.readAsDataURL(file)});
+  if(mode==='demo'){
+    const value=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('No se pudo leer la imagen.'));reader.readAsDataURL(file)});
+    return {value,uploadedPath:null};
+  }
   const extension={
     'image/jpeg':'jpg','image/png':'png','image/webp':'webp'
   }[file.type];
   const path=userId+'/'+uuid()+'.'+extension;
   const {error}=await supabase.storage.from('profile-avatars').upload(path,file,{cacheControl:'3600',upsert:false});
   if(error)throw error;
-  return path;
+  return {value:path,uploadedPath:path};
+}
+async function removeAvatarPath(path){
+  if(mode!=='supabase'||!path||path.startsWith('data:')||/^https?:/i.test(path))return;
+  const {error}=await supabase.storage.from('profile-avatars').remove([path]);
+  if(error)console.error('avatar cleanup',error);
 }
 function profilePayload(form){
   const values=new FormData(form);
@@ -1201,24 +1209,35 @@ function profilePayload(form){
 async function submitProfile(event,userId){
   event.preventDefault();
   const {values,profile}=profilePayload(event.target),existing=profileById(userId)||currentProfile;
+  const previousAvatar=existing?.avatar_url||null;
+  let preparedAvatar={value:previousAvatar,uploadedPath:null},persisted=false;
   try{
-    profile.avatar_url=await avatarValue(values.get('avatar'),userId,existing?.avatar_url);
+    preparedAvatar=await prepareAvatar(values.get('avatar'),userId,previousAvatar);
+    profile.avatar_url=preparedAvatar.value;
     if(mode==='supabase'){
       const {data:updated,error}=await supabase.from('profiles').update(profile).eq('id',userId).select('*').single();
       if(error||!updated)throw error||new Error('No se pudo confirmar la actualización del perfil.');
+      persisted=true;
+      if(preparedAvatar.uploadedPath&&previousAvatar!==preparedAvatar.uploadedPath)await removeAvatarPath(previousAvatar);
       currentProfile=updated;
       await loadRemoteData();
     }else{
       Object.assign(existing,profile);currentProfile=existing;saveDemo();applyUserIdentity();
     }
     closeModal('actionModal');notify('Perfil actualizado');
-  }catch(error){notify(error?.message||'No se pudo actualizar el perfil.');}
+  }catch(error){
+    if(preparedAvatar.uploadedPath&&!persisted)await removeAvatarPath(preparedAvatar.uploadedPath);
+    notify(error?.message||'No se pudo actualizar el perfil.');
+  }
 }
 async function submitTeamMember(event,existing,membership){
   event.preventDefault();
   const {values,profile}=profilePayload(event.target);
+  const previousAvatar=existing.avatar_url||null;
+  let preparedAvatar={value:previousAvatar,uploadedPath:null},persisted=false;
   try{
-    profile.avatar_url=await avatarValue(values.get('avatar'),existing.id,existing.avatar_url);
+    preparedAvatar=await prepareAvatar(values.get('avatar'),existing.id,previousAvatar);
+    profile.avatar_url=preparedAvatar.value;
     const role=values.get('role'),active=values.get('active')==='on';
     if(mode==='supabase'){
       const {error}=await supabase.rpc('update_team_member',{
@@ -1228,6 +1247,8 @@ async function submitTeamMember(event,existing,membership){
         new_role:role,new_active:active
       });
       if(error)throw error;
+      persisted=true;
+      if(preparedAvatar.uploadedPath&&previousAvatar!==preparedAvatar.uploadedPath)await removeAvatarPath(previousAvatar);
       await loadRemoteData();
     }else{
       Object.assign(existing,profile);Object.assign(membership,{role,active});
@@ -1235,7 +1256,10 @@ async function submitTeamMember(event,existing,membership){
       saveDemo();applyUserIdentity();
     }
     closeModal('actionModal');notify('Miembro del equipo actualizado');
-  }catch(error){notify(error?.message||'No se pudo actualizar el equipo.');}
+  }catch(error){
+    if(preparedAvatar.uploadedPath&&!persisted)await removeAvatarPath(preparedAvatar.uploadedPath);
+    notify(error?.message||'No se pudo actualizar el equipo.');
+  }
 }
 async function submitPassword(e){
   e.preventDefault();const f=new FormData(e.target),a=f.get('password'),b=f.get('password2');
