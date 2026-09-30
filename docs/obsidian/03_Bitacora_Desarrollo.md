@@ -231,3 +231,24 @@
 
 **Pendientes detectados:**
 - Validar el primer presupuesto real con un usuario autenticado y definir si la aceptación abrirá un asistente de conversión a cliente y proyecto.
+
+## 2026-09-30 - Filtros de pipeline y control comercial por empresa
+
+**Cambios realizados:**
+- Se agregaron búsqueda y filtros por responsable, rubro y estado del seguimiento, junto con limpieza, conteo de resultados y ocultamiento de etapas vacías.
+- Cada etapa limita sus tarjetas y usa scroll interno, evitando que una columna numerosa extienda toda la página.
+- Se incorporó la pestaña exclusiva para propietarios `Comercial y documentos` con preferencias de pipeline y valores iniciales de presupuestos.
+- Los nuevos presupuestos toman prefijo, vigencia, impuesto, margen, plazo y condición de pago de la empresa activa.
+- Se corrigió un desborde horizontal causado por el checkbox visual de Configuración y se ajustaron filtros para notebook, tablet y móvil.
+
+**Archivos modificados:**
+- `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/quotes.js`.
+- `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- `npm run lint`: correcto.
+- Playwright: 7 pruebas aprobadas, incluida persistencia de preferencias y valores iniciales del presupuesto.
+- Revisión visual en 1440 x 900 y 390 x 844; ancho del documento estable y controles sin superposiciones.
+
+**Pendientes detectados:**
+- Diseñar vistas guardadas, etapas configurables y conversión asistida de oportunidad aceptada a cliente y proyecto.

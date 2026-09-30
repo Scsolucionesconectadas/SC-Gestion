@@ -71,3 +71,11 @@
 - Cada etapa admite conceptos con categoría, descripción, cantidad, unidad, costo y margen. Los totales se actualizan sin recargar la página.
 - En pantallas de hasta 840 px el modal ocupa el viewport, usa una sola columna, conserva las acciones visibles y desplaza únicamente su contenido.
 - El PDF oculta costo y margen, respeta el logo sin deformarlo y diferencia borradores antes de la emisión.
+
+## Pipeline comercial
+
+- La franja de filtros combina búsqueda, responsable, rubro, seguimiento, límite por etapa y ocultamiento de vacías; en notebooks usa dos filas y en móvil una sola columna.
+- El tablero conserva desplazamiento horizontal entre etapas, pero cada lista tiene altura acotada y scroll vertical propio para que una etapa numerosa no extienda el documento.
+- El conteo indica resultados filtrados sobre el total y el estado sin coincidencias reemplaza las columnas vacías por un mensaje único.
+- La configuración `Comercial y documentos` mantiene secciones sin cards anidadas, acciones fijas y reglas de gobierno visibles.
+- Los controles conservan foco visible, etiquetas accesibles, estados deshabilitados y soporte de `prefers-reduced-motion`.

@@ -233,6 +233,76 @@ test('crea, calcula, versiona y exporta presupuestos por etapas', async ({ page 
   expect(runtimeErrors).toEqual([]);
 });
 
+test('filtra un pipeline extenso y aplica los valores comerciales de la empresa', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+
+  await page.locator('[data-view="pipeline"]').click();
+  await expect(page.locator('#pipelineView')).toBeVisible();
+  await expect(page.locator('#pipelineResultCount')).toContainText(/oportunidades/);
+  const visibleCards = await page.locator('.lead-card').count();
+  expect(visibleCards).toBeGreaterThan(0);
+  const listOverflow = await page.locator('.kanban-list').first().evaluate(element => ({
+    maxHeight: getComputedStyle(element).maxHeight,
+    overflowY: getComputedStyle(element).overflowY
+  }));
+  expect(listOverflow.maxHeight).not.toBe('none');
+  expect(listOverflow.overflowY).toBe('auto');
+
+  await page.locator('#pipelineSearch').fill('__sin_resultados__');
+  await expect(page.locator('.pipeline-empty')).toBeVisible();
+  await expect(page.locator('#pipelineResultCount')).toHaveText(/^0 de \d+ oportunidades$/);
+  await page.locator('#pipelineClearFilters').click();
+  await expect(page.locator('.lead-card').first()).toBeVisible();
+
+  await page.locator('#pipelineHideEmpty').check();
+  const populatedColumns = await page.locator('.kanban-col').evaluateAll(columns => columns.every(column => column.querySelectorAll('.lead-card').length > 0));
+  expect(populatedColumns).toBe(true);
+
+  await page.locator('[data-view="settings"]').click();
+  await page.locator('[data-settings-tab="commercial"]').click();
+  await expect(page.locator('#settingsSurface')).toContainText('Pipeline comercial');
+  const form = page.locator('#commercialSettingsForm');
+  await form.locator('[name="pipeline_card_limit"]').selectOption('10');
+  await form.locator('[name="pipeline_stale_days"]').fill('21');
+  await form.locator('.settings-switch-row').click();
+  await expect(form.locator('[name="pipeline_hide_empty"]')).toBeChecked();
+  await form.locator('[name="quote_document_prefix"]').fill('COT');
+  await form.locator('[name="quote_validity_days"]').selectOption('30');
+  await form.locator('[name="quote_tax_percent"]').fill('21');
+  await form.locator('[name="quote_margin_percent"]').fill('35');
+  await form.locator('[name="quote_delivery_weeks"]').fill('6');
+  await form.locator('[name="quote_payment_terms"]').fill('40% al inicio y saldo contra entrega');
+  await form.locator('button[type="submit"]').click();
+  await expect(page.locator('#toast')).toContainText('Configuración comercial guardada');
+
+  await page.locator('[data-view="pipeline"]').click();
+  await expect(page.locator('#pipelineLimitFilter')).toHaveValue('10');
+  await expect(page.locator('#pipelineHideEmpty')).toBeChecked();
+
+  await page.locator('[data-view="budgets"]').click();
+  await page.locator('#newBudgetBtn').click();
+  await expect(page.locator('[data-header="document_code"]')).toHaveValue(/^COT-\d{4}-0001$/);
+  await expect(page.locator('[data-header="tax_percent"]')).toHaveValue('21');
+  await expect(page.locator('[data-header="delivery_weeks"]')).toHaveValue('6');
+  await expect(page.locator('[data-header="payment_terms"]')).toHaveValue('40% al inicio y saldo contra entrega');
+  await expect(page.locator('[data-item-field="margin_percent"]').first()).toHaveValue('35');
+  const validityDays = await page.evaluate(() => {
+    const issue = document.querySelector('[data-header="issue_date"]').value;
+    const validUntil = document.querySelector('[data-header="valid_until"]').value;
+    return Math.round((new Date(validUntil + 'T12:00:00') - new Date(issue + 'T12:00:00')) / 86400000);
+  });
+  expect(validityDays).toBe(30);
+  await page.locator('[data-close="budgetModal"]').last().click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#menuBtn').click();
+  await page.locator('#sidebar [data-view="pipeline"]').click();
+  const documentOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(documentOverflow).toBeLessThanOrEqual(1);
+  await expect(page.locator('.pipeline-filters')).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('mantiene Agent Studio completo y desplazable en pantallas bajas', async ({ page }) => {
   await page.setViewportSize({ width: 1365, height: 768 });
   await page.route('**/assets/js/config.js', route => route.fulfill({contentType:'application/javascript',body:'window.SC_CONFIG = {};'}));

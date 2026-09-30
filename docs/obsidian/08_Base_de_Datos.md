@@ -20,6 +20,10 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 
 Los presupuestos usan columnas generadas para precio unitario y subtotales. La RPC `save_commercial_proposal` vuelve a calcular descuento, impuesto y total dentro de PostgreSQL, guarda un snapshot por versión y deja las tablas de detalle en modo de lectura para `authenticated`.
 
+## Configuración comercial
+
+`organizations.settings` conserva preferencias de bajo volumen separadas por dominio. `pipeline` incluye `card_limit`, `hide_empty` y `stale_days`; `quotes` incluye `document_prefix`, `validity_days`, `tax_percent`, `margin_percent`, `delivery_weeks` y `payment_terms`. La interfaz mezcla estos valores con predeterminados seguros y solo el propietario puede actualizarlos.
+
 ## Migraciones
 
 - Migraciones heredadas: esquema CRM e IA.

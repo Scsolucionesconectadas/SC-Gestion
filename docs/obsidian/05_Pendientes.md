@@ -15,6 +15,8 @@
 - [ ] Conectar una cuenta real de ChatGPT, validar el catálogo de modelos y ejecutar un agente controlado con `store: false` y `stream: true`.
 - [ ] Validar el primer presupuesto comercial real con un usuario autenticado.
 - [ ] Definir el asistente de conversión de presupuesto aceptado a cliente y proyecto, sin crear duplicados automáticamente.
+- [ ] Incorporar vistas guardadas personales del pipeline y decidir qué roles pueden compartirlas.
+- [ ] Diseñar etapas configurables por empresa con historial de cambios y mapeo seguro de oportunidades existentes.
 
 ## Configuración propuesta
 
@@ -28,6 +30,8 @@
 
 ## Resueltos
 
+- [x] Pipeline con búsqueda, filtros, conteo, límite por columna, scroll interno y ocultamiento de etapas vacías - 2026-09-30.
+- [x] Configuración comercial por empresa para pipeline y valores iniciales de presupuestos - 2026-09-30.
 - [x] Constructor de presupuestos por etapas, conceptos, margen, aprobación, versiones y PDF comercial - 2026-09-30.
 - [x] Presentar a OpenAI la solicitud comercial para Sign in with ChatGPT - 2026-09-29.
 - [x] Migrar el CRM provisorio: 65 oportunidades y 65 interacciones sin duplicados ni huérfanos - 2026-09-29.

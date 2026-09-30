@@ -220,7 +220,19 @@
       </section>
 
       <section class="content view" id="pipelineView">
-        <div class="section-note"><i data-lucide="grab"></i><span>Arrastrá una tarjeta para cambiar su etapa comercial.</span></div>
+        <div class="page-toolbar pipeline-toolbar">
+          <div><span class="eyebrow">OPORTUNIDADES</span><h2 class="page-subtitle">Pipeline comercial</h2><p class="page-description">Priorizá el trabajo y mové cada negocio a su próxima etapa.</p></div>
+          <button type="button" class="btn btn-secondary" id="pipelineClearFilters"><i data-lucide="filter-x"></i>Limpiar filtros</button>
+        </div>
+        <div class="pipeline-filters" role="group" aria-label="Filtros del pipeline">
+          <label class="pipeline-search"><i data-lucide="search"></i><input id="pipelineSearch" type="search" placeholder="Buscar negocio, contacto o ciudad" aria-label="Buscar en el pipeline"></label>
+          <select id="pipelineOwnerFilter" aria-label="Filtrar por responsable"><option value="">Todos los responsables</option></select>
+          <select id="pipelineSectorFilter" aria-label="Filtrar por rubro"><option value="">Todos los rubros</option></select>
+          <select id="pipelineFollowupFilter" aria-label="Filtrar por seguimiento"><option value="">Todos los seguimientos</option><option value="overdue">Vencidos</option><option value="next7">Próximos 7 días</option><option value="no_date">Sin fecha</option><option value="stale">Sin actividad reciente</option></select>
+          <select id="pipelineLimitFilter" aria-label="Cantidad máxima por etapa"><option value="10">10 por etapa</option><option value="25">25 por etapa</option><option value="50">50 por etapa</option><option value="all">Todos</option></select>
+          <label class="pipeline-toggle"><input id="pipelineHideEmpty" type="checkbox"><span>Ocultar vacías</span></label>
+        </div>
+        <div class="pipeline-context"><span class="section-note"><i data-lucide="grab"></i><span>Arrastrá una tarjeta para cambiar su etapa.</span></span><strong id="pipelineResultCount"></strong></div>
         <div class="kanban" id="kanban"></div>
       </section>
 
@@ -332,6 +344,7 @@
         </div>
         <div class="settings-tabs" role="tablist" aria-label="Configuración">
           <button type="button" class="active" data-settings-tab="company">Empresa</button>
+          <button type="button" data-settings-tab="commercial">Comercial y documentos</button>
           <button type="button" data-settings-tab="permissions">Roles y permisos</button>
           <button type="button" data-settings-tab="notifications">Notificaciones</button>
           <button type="button" data-settings-tab="integrations">Integraciones</button>

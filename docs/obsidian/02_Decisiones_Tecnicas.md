@@ -147,3 +147,15 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** replicar el Excel completo y permitir escrituras directas desde el navegador. Se descartaron por complejidad visual, riesgo de datos parciales y manipulación de importes.
 
 **Archivos relacionados:** `assets/js/quotes.js`, `supabase/migrations/20260930024955_commercial_quote_builder.sql`, `supabase/migrations/20260930111554_commercial_quote_fk_indexes.sql`.
+
+## 2026-09-30 - Pipeline acotado y configuración comercial por empresa
+
+**Decisión:** mantener todas las etapas disponibles para arrastrar oportunidades, limitar la cantidad visible por columna y desplazar cada lista internamente. Los valores operativos se guardan en `organizations.settings` bajo `pipeline` y `quotes`.
+
+**Motivo:** el volumen importado hacía crecer la página completa y volvía difícil comparar etapas. A la vez, los criterios documentales deben pertenecer a cada empresa y no quedar fijos en el navegador.
+
+**Impacto:** el propietario define límite por etapa, días sin actividad, ocultamiento de vacías, prefijo, vigencia, impuesto, margen, plazo y condición de pago. El pipeline aplica esos valores inmediatamente y los nuevos presupuestos los toman como base editable.
+
+**Alternativas consideradas:** paginar todo el tablero o crear nuevas tablas de preferencias. Se descartaron por cortar la lectura transversal del kanban y por agregar una migración innecesaria para una configuración estructurada de bajo volumen.
+
+**Archivos relacionados:** `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/quotes.js`.

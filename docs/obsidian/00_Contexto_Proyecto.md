@@ -19,6 +19,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - CRM provisorio migrado desde Google Sheets: 65 oportunidades y 65 interacciones vinculadas, sin duplicados ni relaciones huérfanas.
 - Constructor de presupuestos comerciales implementado con alcance, etapas, conceptos, costos internos, márgenes, impuestos, aprobación, versiones y PDF para clientes.
 - Los importes se recalculan en PostgreSQL y los presupuestos cerrados solo pueden continuar mediante una nueva versión.
+- Pipeline comercial con búsqueda, filtros por responsable, rubro y seguimiento, límite por etapa, ocultamiento de etapas vacías y scroll interno para volúmenes altos.
+- El propietario configura por empresa la densidad del pipeline y los valores iniciales de presupuestos: prefijo, vigencia, impuestos, margen, plazo y condición de pago.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
 ## Stack técnico
@@ -47,6 +49,7 @@ npm run serve
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 - [ ] Validar el primer presupuesto real con un usuario autenticado y definir la conversión guiada de oportunidad aceptada a cliente/proyecto.
+- [ ] Diseñar vistas guardadas y etapas configurables del pipeline sin romper el historial comercial.
 
 ## Notas relacionadas
 

@@ -103,6 +103,12 @@ const isOpportunity = (p) => ['Interesado','Reunión pendiente','Reunión realiz
 const activeProspect = (p) => !['Cliente','No interesado'].includes(p.status);
 const activeOrganizationId = () => activeOrganization?.id || null;
 const roleLabel = (role) => ROLE_LABELS[role] || 'Sin rol';
+function pipelinePreferences(){
+  const settings=activeOrganization?.settings?.pipeline||{};
+  const cardLimit=['10','25','50','all'].includes(String(settings.card_limit))?String(settings.card_limit):'25';
+  const staleDays=Math.max(1,Math.min(365,Number(settings.stale_days)||30));
+  return {cardLimit,hideEmpty:settings.hide_empty===true,staleDays};
+}
 function hasPermission(code){
   if(currentMembership?.role==='owner')return true;
   const overrides=currentMembership?.permission_overrides||{};
@@ -300,6 +306,7 @@ function enterDemo(){
   currentMembership={organization_id:activeOrganization.id,user_id:currentUser.id,role:'owner',active:true,permission_overrides:{},notification_preferences:{in_app:true,email:true,daily_digest:false},organizations:activeOrganization};
   memberships=[currentMembership];
   data=loadDemoData();
+  activeOrganization.settings=data.organizationSettings||{};
   currentProfile=profileById(currentUser.id)||currentProfile;
   $('authShell').hidden=true;
   $('appShell').hidden=false;
@@ -569,6 +576,23 @@ function renderFilters(){
   rf.innerHTML='<option value="">Todos los rubros</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('');
   sf.value=keep[0];of.value=keep[1];rf.value=keep[2];
   $('status').innerHTML=STATUSES.map(s=>'<option>'+esc(s)+'</option>').join('');
+  renderPipelineFilterOptions(sectors);
+}
+function renderPipelineFilterOptions(sectors=[]){
+  const ownerFilter=$('pipelineOwnerFilter'),sectorFilter=$('pipelineSectorFilter');
+  if(!ownerFilter||!sectorFilter)return;
+  const organizationId=activeOrganizationId()||'demo';
+  const previousOwner=ownerFilter.value,previousSector=sectorFilter.value;
+  ownerFilter.innerHTML='<option value="">Todos los responsables</option><option value="unassigned">Sin responsable</option>'+data.profiles.filter(person=>person.active!==false).map(person=>'<option value="'+person.id+'">'+esc(person.full_name)+'</option>').join('');
+  sectorFilter.innerHTML='<option value="">Todos los rubros</option>'+sectors.map(sector=>'<option>'+esc(sector)+'</option>').join('');
+  ownerFilter.value=previousOwner;sectorFilter.value=previousSector;
+  const search=$('pipelineSearch'),limit=$('pipelineLimitFilter'),hideEmpty=$('pipelineHideEmpty');
+  if(limit.dataset.organization!==organizationId){
+    const preferences=pipelinePreferences();
+    search.value='';ownerFilter.value='';sectorFilter.value='';$('pipelineFollowupFilter').value='';
+    limit.value=preferences.cardLimit;hideEmpty.checked=preferences.hideEmpty;
+    limit.dataset.organization=organizationId;
+  }
 }
 function renderDashboard(){
   const p=data.prospects;
@@ -622,11 +646,44 @@ function renderProspects(){
 }
 function renderPipeline(){
   const stages=STATUSES.filter(s=>s!=='No interesado');
-  $('kanban').innerHTML=stages.map(status=>{
-    const items=data.prospects.filter(p=>p.status===status);
-    return '<section class="kanban-col" data-status="'+esc(status)+'"><div class="kanban-head"><b>'+esc(status)+'</b><span class="count-pill">'+items.length+'</span></div><div class="kanban-list" data-status="'+esc(status)+'">'+(items.length?items.map(p=>'<article class="lead-card" data-id="'+p.id+'" data-open="'+p.id+'"><b>'+esc(p.business_name)+'</b><p>'+esc(p.sector||'Sin rubro')+'</p><div class="lead-card-foot"><span>'+esc(ownerShort(p.owner_id))+'</span><span>'+fmtDate(p.next_followup)+'</span></div></article>').join(''):'<div class="empty-state">Vacío</div>')+'</div></section>';
-  }).join('');
+  const query=$('pipelineSearch').value.toLowerCase().trim(),owner=$('pipelineOwnerFilter').value,sector=$('pipelineSectorFilter').value,followup=$('pipelineFollowupFilter').value;
+  const preferences=pipelinePreferences(),hideEmpty=$('pipelineHideEmpty').checked;
+  const limitValue=$('pipelineLimitFilter').value,limit=limitValue==='all'?Number.POSITIVE_INFINITY:Number(limitValue||preferences.cardLimit);
+  const stageProspects=data.prospects.filter(item=>stages.includes(item.status));
+  const filtered=stageProspects.filter(item=>{
+    const haystack=[item.business_name,item.contact_name,item.sector,item.city,item.phone,item.email,item.need_interest].join(' ').toLowerCase();
+    const ownerMatches=!owner||(owner==='unassigned'?!item.owner_id:item.owner_id===owner);
+    const days=daysFromToday(item.next_followup);
+    const staleBase=item.updated_at||item.created_at;
+    const followupMatches=!followup
+      ||(followup==='overdue'&&item.next_followup&&days<0)
+      ||(followup==='next7'&&item.next_followup&&days>=0&&days<=7)
+      ||(followup==='no_date'&&!item.next_followup)
+      ||(followup==='stale'&&staleBase&&dayjs(staleBase).isBefore(dayjs().subtract(preferences.staleDays,'day')));
+    return (!query||haystack.includes(query))&&ownerMatches&&(!sector||item.sector===sector)&&followupMatches;
+  });
+  const visibleStages=hideEmpty?stages.filter(status=>filtered.some(item=>item.status===status)):stages;
+  $('pipelineResultCount').textContent=filtered.length+' de '+stageProspects.length+' oportunidades';
+  $('pipelineClearFilters').disabled=!query&&!owner&&!sector&&!followup&&limitValue===preferences.cardLimit&&hideEmpty===preferences.hideEmpty;
+  $('kanban').innerHTML=filtered.length&&visibleStages.length?visibleStages.map(status=>{
+    const items=filtered.filter(item=>item.status===status).sort((a,b)=>(a.next_followup||'9999').localeCompare(b.next_followup||'9999')||a.business_name.localeCompare(b.business_name));
+    const shown=items.slice(0,limit),remaining=Math.max(0,items.length-shown.length);
+    const cards=shown.map(item=>'<article class="lead-card" data-id="'+item.id+'" data-open="'+item.id+'"><b>'+esc(item.business_name)+'</b><p>'+esc(item.sector||'Sin rubro')+'</p><div class="lead-card-foot"><span>'+esc(ownerShort(item.owner_id))+'</span><span>'+fmtDate(item.next_followup)+'</span></div></article>').join('');
+    return '<section class="kanban-col" data-status="'+esc(status)+'"><div class="kanban-head"><b>'+esc(status)+'</b><span class="count-pill">'+items.length+'</span></div><div class="kanban-list" data-status="'+esc(status)+'">'+(items.length?cards:'<div class="empty-state">Vacío</div>')+(remaining?'<div class="kanban-more"><b>'+remaining+'</b> más en esta etapa</div>':'')+'</div></section>';
+  }).join(''):'<div class="pipeline-empty">No hay oportunidades que coincidan con los filtros.</div>';
   lucideRefresh();
+  if(activeView==='pipeline')setTimeout(enableKanban,0);
+}
+function clearPipelineFilters(){
+  const preferences=pipelinePreferences();
+  $('pipelineSearch').value='';$('pipelineOwnerFilter').value='';$('pipelineSectorFilter').value='';$('pipelineFollowupFilter').value='';
+  $('pipelineLimitFilter').value=preferences.cardLimit;$('pipelineHideEmpty').checked=preferences.hideEmpty;
+  renderPipeline();
+}
+function applyPipelinePreferences(){
+  const preferences=pipelinePreferences();
+  $('pipelineLimitFilter').value=preferences.cardLimit;$('pipelineHideEmpty').checked=preferences.hideEmpty;
+  renderPipeline();
 }
 function enableKanban(){
   if(!hasPermission('crm.write'))return;
@@ -1329,6 +1386,9 @@ function bindStaticEvents(){
   $('prospectForm').addEventListener('submit',submitProspect);
   $('prospectSearch').addEventListener('input',renderProspects);
   ['statusFilter','ownerFilter','sectorFilter'].forEach(id=>$(id).addEventListener('change',renderProspects));
+  $('pipelineSearch').addEventListener('input',renderPipeline);
+  ['pipelineOwnerFilter','pipelineSectorFilter','pipelineFollowupFilter','pipelineLimitFilter','pipelineHideEmpty'].forEach(id=>$(id).addEventListener('change',renderPipeline));
+  $('pipelineClearFilters').addEventListener('click',clearPipelineFilters);
   $('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')globalSearch()});
   document.addEventListener('keydown',e=>{
     if(e.key==='/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();$('globalSearch').focus()}
@@ -1374,6 +1434,7 @@ window.SC_APP={
   reload:async()=>mode==='supabase'?loadRemoteData():(renderAll(),data),
   switchOrganization,
   saveDemo,
+  applyPipelinePreferences,
   format:{esc,money,fmtDate,fmtDateTime,labelFrom,roleLabel,initials}
 };
 

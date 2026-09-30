@@ -22,6 +22,18 @@ const proposal=id=>app.data.proposals.find(item=>item.id===id);
 const prospect=id=>app.data.prospects.find(item=>item.id===id);
 const money=(value,currency)=>app.format.money(number(value),currency||'ARS');
 const icon=()=>window.lucide?.createIcons();
+function quoteConfiguration(){
+  const settings=app.activeOrganization?.settings?.quotes||{};
+  const documentPrefix=/^[A-Z0-9-]{2,10}$/.test(String(settings.document_prefix||'').toUpperCase())?String(settings.document_prefix).toUpperCase():'PRE';
+  return {
+    documentPrefix,
+    validityDays:Math.max(1,Math.min(365,number(settings.validity_days)||15)),
+    taxPercent:Math.max(0,Math.min(100,number(settings.tax_percent))),
+    marginPercent:Math.max(0,Math.min(1000,number(settings.margin_percent)||30)),
+    deliveryWeeks:Math.max(1,Math.min(520,number(settings.delivery_weeks)||4)),
+    paymentTerms:String(settings.payment_terms||'50% al inicio y 50% contra entrega')
+  };
+}
 
 function proposalSections(proposalId){
   return app.data.proposalSections
@@ -79,16 +91,17 @@ function renderKpis(){
 }
 
 function nextDocumentCode(){
-  const year=dayjs().format('YYYY');
+  const year=dayjs().format('YYYY'),prefix=quoteConfiguration().documentPrefix;
+  const escapedPrefix=prefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const values=app.data.proposals.map(item=>{
-    const match=String(item.document_code||'').match(new RegExp('^PRE-'+year+'-(\\d+)$'));
+    const match=String(item.document_code||'').match(new RegExp('^'+escapedPrefix+'-'+year+'-(\\d+)$'));
     return match?Number(match[1]):0;
   });
-  return 'PRE-'+year+'-'+String(Math.max(0,...values)+1).padStart(4,'0');
+  return prefix+'-'+year+'-'+String(Math.max(0,...values)+1).padStart(4,'0');
 }
 
 function blankItem(){
-  return {id:uuid(),category:CATEGORIES[0],description:'',quantity:1,unit:'hora',unit_cost:0,margin_percent:30,notes:''};
+  return {id:uuid(),category:CATEGORIES[0],description:'',quantity:1,unit:'hora',unit_cost:0,margin_percent:quoteConfiguration().marginPercent,notes:''};
 }
 
 function blankSection(position=0){
@@ -96,13 +109,14 @@ function blankSection(position=0){
 }
 
 function createEditor(prospectId=null){
+  const configuration=quoteConfiguration();
   const selected=prospectId||app.data.prospects.find(item=>!['Cliente','No interesado'].includes(item.status))?.id||'';
   const lead=prospect(selected);
   return {
     id:null,organization_id:app.activeOrganization?.id||'demo-sc',prospect_id:selected,
     document_code:nextDocumentCode(),version:1,title:lead?'Propuesta para '+lead.business_name:'Nueva propuesta comercial',
-    project_name:lead?.need_interest||'',currency:'ARS',status:'borrador',issue_date:today(),valid_until:datePlusDays(15),
-    delivery_weeks:4,tax_percent:0,discount_percent:0,payment_terms:'50% al inicio y 50% contra entrega',
+    project_name:lead?.need_interest||'',currency:app.activeOrganization?.default_currency||'ARS',status:'borrador',issue_date:today(),valid_until:datePlusDays(configuration.validityDays),
+    delivery_weeks:configuration.deliveryWeeks,tax_percent:configuration.taxPercent,discount_percent:0,payment_terms:configuration.paymentTerms,
     scope:lead?.need_interest||'',exclusions:'Servicios de terceros, licencias y equipamiento no indicados expresamente.',notes:'',change_reason:'',
     sections:[blankSection(0)],locked:false,persistedStatus:null
   };

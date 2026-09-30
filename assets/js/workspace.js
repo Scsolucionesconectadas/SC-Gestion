@@ -12,9 +12,13 @@ const fallbackPermissions=[
   ['reports.view','Reportes','Ver reportes'],['team.manage','Configuración','Administrar equipo'],['organization.manage','Configuración','Administrar empresa'],['audit.view','Configuración','Ver auditoría']
 ].map(([code,module,label],position)=>({code,module,label,position}));
 const requestedSettingsTab=new URLSearchParams(location.search).get('tab');
-let settingsTab=['company','permissions','notifications','integrations'].includes(requestedSettingsTab)?requestedSettingsTab:'company';
+let settingsTab=['company','commercial','permissions','notifications','integrations'].includes(requestedSettingsTab)?requestedSettingsTab:'company';
 let integrationState={chatgpt:null,email:null};
 let chatGptCallbackHandled=false;
+const COMMERCIAL_DEFAULTS={
+  pipeline:{card_limit:25,hide_empty:false,stale_days:30},
+  quotes:{document_prefix:'PRE',validity_days:15,tax_percent:0,margin_percent:30,delivery_weeks:4,payment_terms:'50% al inicio y 50% contra entrega'}
+};
 
 const esc=value=>app.format.esc(value);
 const icon=()=>window.lucide?.createIcons();
@@ -99,13 +103,16 @@ const emailStatusClass=status=>({sent:'status-green',queued:'status-amber',faile
 
 function renderSettings(){
   if(!$('settingsSurface')||app.activeView!=='settings')return;
+  const ownerSettings=document.querySelector('[data-settings-tab="commercial"]');
+  if(ownerSettings)ownerSettings.hidden=app.currentMembership?.role!=='owner';
+  if(settingsTab==='commercial'&&app.currentMembership?.role!=='owner')settingsTab='company';
   document.querySelectorAll('[data-settings-tab]').forEach(button=>{
     const active=button.dataset.settingsTab===settingsTab;
     button.classList.toggle('active',active);
     button.setAttribute('aria-selected',String(active));
     button.setAttribute('tabindex',active?'0':'-1');
   });
-  const render={company:companySettings,permissions:permissionsSettings,notifications:notificationSettings,integrations:integrationSettings}[settingsTab];
+  const render={company:companySettings,commercial:commercialSettings,permissions:permissionsSettings,notifications:notificationSettings,integrations:integrationSettings}[settingsTab];
   $('settingsSurface').innerHTML=render();
   bindSettingsForm();
   icon();
@@ -114,6 +121,24 @@ function renderSettings(){
 function companySettings(){
   const org=app.activeOrganization||{};
   return '<div class="settings-layout"><section class="settings-main"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="building-2"></i></span><div><h3>Identidad de la empresa</h3><p>Datos operativos que se usan en documentos y comunicaciones.</p></div></div><form class="action-form settings-form" id="companySettingsForm"><label>Nombre<input name="name" required maxlength="120" value="'+esc(org.name||'')+'"></label><label>Identificador fiscal<input name="tax_identifier" maxlength="40" value="'+esc(org.tax_identifier||'')+'"></label><label>Correo<input name="contact_email" type="email" maxlength="180" value="'+esc(org.contact_email||'')+'"></label><label>Teléfono<input name="phone" maxlength="40" value="'+esc(org.phone||'')+'"></label><label>Moneda<select name="default_currency"><option '+(org.default_currency==='ARS'?'selected':'')+'>ARS</option><option '+(org.default_currency==='USD'?'selected':'')+'>USD</option></select></label><label>Zona horaria<select name="timezone"><option value="America/Argentina/Buenos_Aires">Argentina · Buenos Aires</option></select></label><label>Color de marca<input name="brand_color" type="color" value="'+esc(org.brand_color||'#0360BD')+'"></label><div class="form-actions"><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar empresa</button></div></form></section><aside class="settings-aside"><span class="eyebrow">EMPRESA ACTIVA</span><h3>'+esc(org.name||'Empresa')+'</h3><p>'+esc(org.slug||'')+'</p><dl><div><dt>Rol actual</dt><dd>'+esc(app.format.roleLabel(app.currentMembership?.role))+'</dd></div><div><dt>Moneda</dt><dd>'+esc(org.default_currency||'ARS')+'</dd></div><div><dt>Estado</dt><dd>Activa</dd></div></dl></aside></div>';
+}
+
+function commercialConfiguration(){
+  const settings=app.activeOrganization?.settings||{};
+  return {
+    pipeline:{...COMMERCIAL_DEFAULTS.pipeline,...(settings.pipeline||{})},
+    quotes:{...COMMERCIAL_DEFAULTS.quotes,...(settings.quotes||{})}
+  };
+}
+
+function commercialSettings(){
+  const settings=commercialConfiguration(),pipeline=settings.pipeline,quotes=settings.quotes;
+  const option=(value,label,current)=>'<option value="'+value+'" '+(String(value)===String(current)?'selected':'')+'>'+label+'</option>';
+  return '<form id="commercialSettingsForm" class="settings-control-form">'+
+    '<section class="settings-control-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="columns-3"></i></span><div><h3>Pipeline comercial</h3><p>Controlá cuánto muestra el tablero y cuándo una oportunidad necesita atención.</p></div></div><div class="settings-control-grid"><label>Tarjetas visibles por etapa<select name="pipeline_card_limit">'+option(10,'10 tarjetas',pipeline.card_limit)+option(25,'25 tarjetas',pipeline.card_limit)+option(50,'50 tarjetas',pipeline.card_limit)+option('all','Sin límite',pipeline.card_limit)+'</select></label><label>Días sin actividad<input name="pipeline_stale_days" type="number" min="1" max="365" value="'+esc(pipeline.stale_days)+'" required></label><label class="settings-switch-row full"><span><b>Ocultar etapas vacías</b><small>Usar un tablero más compacto cuando no hay negocios en una etapa.</small></span><span class="toggle-field"><input name="pipeline_hide_empty" type="checkbox" '+(pipeline.hide_empty?'checked':'')+'><span></span></span></label></div></section>'+
+    '<section class="settings-control-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="file-spreadsheet"></i></span><div><h3>Presupuestos y documentos</h3><p>Valores iniciales para nuevas propuestas; cada presupuesto puede ajustarlos.</p></div></div><div class="settings-control-grid"><label>Prefijo documental<input name="quote_document_prefix" maxlength="10" pattern="[A-Za-z0-9-]{2,10}" value="'+esc(quotes.document_prefix)+'" required></label><label>Vigencia predeterminada<select name="quote_validity_days">'+option(7,'7 días',quotes.validity_days)+option(15,'15 días',quotes.validity_days)+option(30,'30 días',quotes.validity_days)+option(45,'45 días',quotes.validity_days)+'</select></label><label>Impuesto predeterminado %<input name="quote_tax_percent" type="number" min="0" max="100" step="0.01" value="'+esc(quotes.tax_percent)+'" required></label><label>Margen inicial %<input name="quote_margin_percent" type="number" min="0" max="1000" step="0.01" value="'+esc(quotes.margin_percent)+'" required></label><label>Plazo inicial (semanas)<input name="quote_delivery_weeks" type="number" min="1" max="520" value="'+esc(quotes.delivery_weeks)+'" required></label><label class="full">Condición de pago inicial<textarea name="quote_payment_terms" rows="3" maxlength="500" required>'+esc(quotes.payment_terms)+'</textarea></label></div></section>'+
+    '<section class="settings-control-section settings-governance"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="shield-check"></i></span><div><h3>Reglas de gobierno</h3><p>Controles permanentes que protegen el proceso comercial.</p></div></div><div class="governance-list"><div><i data-lucide="badge-check"></i><span><b>Aprobación antes de enviar</b><small>Solo propietarios y administradores autorizados pueden aprobar.</small></span><span class="status-pill status-green">Activa</span></div><div><i data-lucide="lock-keyhole"></i><span><b>Documentos cerrados inmutables</b><small>Las correcciones se realizan mediante una nueva versión.</small></span><span class="status-pill status-green">Activa</span></div><div><i data-lucide="calculator"></i><span><b>Totales calculados en servidor</b><small>Costos, descuentos e impuestos no dependen del navegador.</small></span><span class="status-pill status-green">Activa</span></div></div></section>'+
+    '<div class="form-actions settings-save-bar"><button class="btn btn-primary" type="submit"><i data-lucide="save"></i>Guardar configuración comercial</button></div></form>';
 }
 
 function permissionsSettings(){
@@ -142,6 +167,7 @@ function integrationSettings(){
 
 function bindSettingsForm(){
   $('companySettingsForm')?.addEventListener('submit',saveCompany);
+  $('commercialSettingsForm')?.addEventListener('submit',saveCommercialSettings);
   $('notificationSettingsForm')?.addEventListener('submit',saveNotificationPreferences);
 }
 
@@ -153,6 +179,25 @@ async function saveCompany(event){
   const {error}=await app.supabase.from('organizations').update(payload).eq('id',app.activeOrganization.id);
   if(error)return app.notify(error.message);
   Object.assign(app.activeOrganization,payload);renderSettings();app.notify('Datos de empresa actualizados');
+}
+
+async function saveCommercialSettings(event){
+  event.preventDefault();
+  if(app.currentMembership?.role!=='owner')return app.notify('Solo el propietario puede cambiar estas reglas.');
+  const values=Object.fromEntries(new FormData(event.target));
+  const prefix=values.quote_document_prefix.trim().toUpperCase();
+  if(!/^[A-Z0-9-]{2,10}$/.test(prefix))return app.notify('El prefijo debe tener entre 2 y 10 letras, números o guiones.');
+  const previous=app.activeOrganization?.settings||{};
+  const settings={...previous,
+    pipeline:{...(previous.pipeline||{}),card_limit:values.pipeline_card_limit==='all'?'all':Number(values.pipeline_card_limit),hide_empty:values.pipeline_hide_empty==='on',stale_days:Number(values.pipeline_stale_days)},
+    quotes:{...(previous.quotes||{}),document_prefix:prefix,validity_days:Number(values.quote_validity_days),tax_percent:Number(values.quote_tax_percent),margin_percent:Number(values.quote_margin_percent),delivery_weeks:Number(values.quote_delivery_weeks),payment_terms:values.quote_payment_terms.trim()}
+  };
+  if(app.mode==='demo'){
+    app.activeOrganization.settings=settings;app.currentMembership.organizations=app.activeOrganization;app.data.organizationSettings=settings;app.saveDemo();app.applyPipelinePreferences();renderSettings();window.dispatchEvent(new CustomEvent('sc:workspace',{detail:{reason:'organization-settings'}}));app.notify('Configuración comercial guardada en la demo');return;
+  }
+  const {error}=await app.supabase.from('organizations').update({settings}).eq('id',app.activeOrganization.id);
+  if(error)return app.notify(error.message);
+  app.activeOrganization.settings=settings;app.currentMembership.organizations=app.activeOrganization;app.applyPipelinePreferences();renderSettings();window.dispatchEvent(new CustomEvent('sc:workspace',{detail:{reason:'organization-settings'}}));app.notify('Configuración comercial actualizada');
 }
 
 async function saveNotificationPreferences(event){
