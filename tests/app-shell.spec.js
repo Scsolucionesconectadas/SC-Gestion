@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { stat } from 'node:fs/promises';
 
 async function enterDemo(page) {
   const runtimeErrors = [];
@@ -229,6 +230,51 @@ test('crea, calcula, versiona y exporta presupuestos por etapas', async ({ page 
   expect(mobileOverflow).toBeLessThanOrEqual(1);
   await page.locator('#budgetBuilder').evaluate(element => { element.scrollTop = element.scrollHeight; });
   await expect(page.locator('.quote-form-actions')).toBeVisible();
+  await page.locator('[data-close="budgetModal"]').last().click();
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('crea una propuesta conceptual con portada, módulos y PDF profesional', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+  await page.locator('[data-view="budgets"]').click();
+  await page.locator('#newBudgetBtn').click();
+  await page.locator('[data-header="proposal_type"]').selectOption('conceptual');
+
+  await expect(page.locator('#budgetModalTitle')).toContainText('propuesta conceptual');
+  await expect(page.locator('[data-header="pricing_display"]')).toHaveValue('section_total');
+  await expect(page.locator('[data-header="cover_enabled"]')).toBeChecked();
+  await expect(page.locator('[data-header="executive_summary"]')).toBeVisible();
+  await page.locator('[data-header="title"]').fill('Gestión administrativa y documental conectada');
+  await page.locator('[data-header="project_name"]').fill('Administración integral SC');
+  await page.locator('[data-header="cover_subtitle"]').fill('Una operación ordenada, trazable y preparada para crecer');
+  await page.locator('[data-header="executive_summary"]').fill('La propuesta centraliza la información administrativa y reduce tareas manuales con un recorrido claro para cada responsable.');
+  await page.locator('[data-header="objective"]').fill('Unificar documentación, seguimiento y reportes en una única operación controlada.');
+  await page.locator('[data-section-field="title"]').first().fill('Gestión documental');
+  await page.locator('[data-section-field="description"]').first().fill('Centralización de documentos, vencimientos y responsables.');
+  await page.locator('[data-item-field="description"]').first().fill('Repositorio y circuito de aprobación');
+  await page.locator('[data-item-field="notes"]').first().fill('Carga ordenada por cliente\nAlertas de vencimiento\nHistorial de aprobaciones');
+  await page.locator('[data-item-field="quantity"]').first().fill('1');
+  await page.locator('[data-item-field="unit_cost"]').first().fill('250000');
+  await page.locator('[data-item-field="margin_percent"]').first().fill('20');
+  await page.locator('#budgetForm button[type="submit"]').click();
+  await expect(page.locator('#budgetModal')).toBeHidden();
+
+  const createdRow=page.locator('#budgetRows tr').filter({hasText:'Administración integral SC'});
+  await expect(createdRow).toContainText('Propuesta conceptual');
+  const downloadPromise=page.waitForEvent('download');
+  await createdRow.locator('[data-quote-pdf]').click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^PRE-\d{4}-\d{4}-v1\.pdf$/);
+  const downloadPath=await download.path();
+  expect(downloadPath).not.toBeNull();
+  expect((await stat(downloadPath)).size).toBeGreaterThan(10000);
+
+  await page.setViewportSize({width:390,height:844});
+  const mobileCard=page.locator('#mobileBudgets .budget-mobile-card').filter({hasText:'Administración integral SC'});
+  await mobileCard.locator('[data-quote-edit]').click();
+  await expect(page.locator('[data-header="executive_summary"]')).toBeVisible();
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
   await page.locator('[data-close="budgetModal"]').last().click();
   expect(runtimeErrors).toEqual([]);
 });

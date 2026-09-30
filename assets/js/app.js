@@ -301,7 +301,7 @@ function enterDemo(){
   mode='demo';
   currentProfile={id:'demo-maikol',username:'mbetancourt',full_name:'Maikol Betancourt',email:'mbetancourt@sc.demo',phone:'3442000000',job_title:'Dirección y automatización',bio:'Coordina proyectos, procesos y soluciones conectadas.',role:'admin',active:true};
   currentUser={id:'demo-maikol'};
-  activeOrganization={id:'demo-sc',name:'Soluciones Conectadas',slug:'soluciones-conectadas',default_currency:'ARS',status:'active'};
+  activeOrganization={id:'demo-sc',name:'Soluciones Conectadas',slug:'soluciones-conectadas',default_currency:'ARS',status:'active',contact_email:'contacto.solucionesconectadas@gmail.com',phone:'03442 47-2233'};
   organizations=[activeOrganization];
   currentMembership={organization_id:activeOrganization.id,user_id:currentUser.id,role:'owner',active:true,permission_overrides:{},notification_preferences:{in_app:true,email:true,daily_digest:false},organizations:activeOrganization};
   memberships=[currentMembership];
@@ -477,7 +477,7 @@ function loadDemoData(){
   ];
   const meetings=[{id:uuid(),prospect_id:prospects[0].id,owner_id:p1,starts_at:dayjs().add(1,'day').hour(10).minute(0).toISOString(),duration_minutes:30,modality:'Presencial',location:'Concepción del Uruguay',agenda:'Relevamiento inicial',result:null,next_step:null,status:'programada'}];
   const demoProposalId=uuid(),demoSectionId=uuid();
-  const proposals=[{id:demoProposalId,prospect_id:prospects[3].id,created_by:p1,title:'Sistema de órdenes de trabajo',project_name:'Digitalización del taller',document_code:'PRE-2026-0001',version:1,amount:450000,subtotal_cost:300000,subtotal_sale:450000,tax_percent:0,tax_amount:0,discount_percent:0,currency:'ARS',status:'enviada',issue_date:isoDate(),sent_at:new Date().toISOString(),valid_until:dayjs().add(15,'day').format('YYYY-MM-DD'),delivery_weeks:5,payment_terms:'50% al inicio y 50% contra entrega',scope:'Órdenes de trabajo, clientes, vehículos y seguimiento de servicios.',exclusions:'Servicios de terceros y equipamiento no especificado.',notes:'Propuesta demostrativa.'}];
+  const proposals=[{id:demoProposalId,prospect_id:prospects[3].id,created_by:p1,title:'Sistema de órdenes de trabajo',project_name:'Digitalización del taller',document_code:'PRE-2026-0001',version:1,proposal_type:'detailed',pricing_display:'itemized',cover_enabled:false,cover_subtitle:'',executive_summary:'',objective:'',amount:450000,subtotal_cost:300000,subtotal_sale:450000,tax_percent:0,tax_amount:0,discount_percent:0,currency:'ARS',status:'enviada',issue_date:isoDate(),sent_at:new Date().toISOString(),valid_until:dayjs().add(15,'day').format('YYYY-MM-DD'),delivery_weeks:5,payment_terms:'50% al inicio y 50% contra entrega',scope:'Órdenes de trabajo, clientes, vehículos y seguimiento de servicios.',exclusions:'Servicios de terceros y equipamiento no especificado.',notes:'Propuesta demostrativa.'}];
   const proposalSections=[{id:demoSectionId,proposal_id:demoProposalId,title:'Implementación inicial',description:'Relevamiento, configuración y puesta en marcha.',position:0}];
   const proposalItems=[
     {id:uuid(),proposal_id:demoProposalId,section_id:demoSectionId,category:'Análisis / relevamiento',description:'Relevamiento y diseño funcional',quantity:20,unit:'hora',unit_cost:8000,margin_percent:50,unit_price:12000,subtotal_cost:160000,subtotal_sale:240000,position:0},

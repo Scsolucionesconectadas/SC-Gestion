@@ -13,7 +13,7 @@
 - [ ] Esperar la respuesta de OpenAI a la solicitud comercial de Sign in with ChatGPT; el formulario informa una ampliación de acceso prevista para comienzos del cuarto trimestre.
 - [ ] Configurar `CHATGPT_CLIENT_ID`, `CHATGPT_REDIRECT_URI` y `CHATGPT_TOKEN_ENCRYPTION_KEY` en Supabase Secrets; agregar secreto y método de autenticación solo si el registro lo exige.
 - [ ] Conectar una cuenta real de ChatGPT, validar el catálogo de modelos y ejecutar un agente controlado con `store: false` y `stream: true`.
-- [ ] Validar el primer presupuesto comercial real con un usuario autenticado.
+- [ ] Validar el primer presupuesto detallado y la primera propuesta conceptual real con un usuario autenticado.
 - [ ] Definir el asistente de conversión de presupuesto aceptado a cliente y proyecto, sin crear duplicados automáticamente.
 - [ ] Incorporar vistas guardadas personales del pipeline y decidir qué roles pueden compartirlas.
 - [ ] Diseñar etapas configurables por empresa con historial de cambios y mapeo seguro de oportunidades existentes.
@@ -30,6 +30,7 @@
 
 ## Resueltos
 
+- [x] Propuestas conceptuales con portada, módulos, niveles de precio y PDF SC profesional - 2026-09-30.
 - [x] Pipeline con búsqueda, filtros, conteo, límite por columna, scroll interno y ocultamiento de etapas vacías - 2026-09-30.
 - [x] Configuración comercial por empresa para pipeline y valores iniciales de presupuestos - 2026-09-30.
 - [x] Constructor de presupuestos por etapas, conceptos, margen, aprobación, versiones y PDF comercial - 2026-09-30.

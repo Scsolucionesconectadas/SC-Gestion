@@ -159,3 +159,15 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** paginar todo el tablero o crear nuevas tablas de preferencias. Se descartaron por cortar la lectura transversal del kanban y por agregar una migración innecesaria para una configuración estructurada de bajo volumen.
 
 **Archivos relacionados:** `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/quotes.js`.
+
+## 2026-09-30 - Propuestas conceptuales sobre el mismo núcleo comercial
+
+**Decisión:** extender `proposals` con un tipo conceptual y metadatos de presentación, manteniendo el presupuesto detallado y la misma escritura transaccional.
+
+**Motivo:** las propuestas reales de SKAL y Hospital combinan relato ejecutivo, módulos, funcionalidades, alternativas e inversión; duplicar el módulo produciría estados, permisos y versiones inconsistentes.
+
+**Impacto:** cada documento elige portada, resumen, objetivo y visibilidad de precios por concepto, módulo o solo total. El PDF adopta una composición administrativa SC inspirada en el recibo de referencia, preserva la proporción del logo, agrega pie por página y superpone una marca de agua clara mientras el documento no fue enviado.
+
+**Alternativas consideradas:** generar un PDF fijo fuera del sistema o crear tablas separadas para propuestas conceptuales. Se descartaron por falta de reutilización, trazabilidad y control de versiones.
+
+**Archivos relacionados:** `assets/js/quotes.js`, `assets/css/app.css`, `supabase/migrations/20260930214821_conceptual_proposals.sql`.

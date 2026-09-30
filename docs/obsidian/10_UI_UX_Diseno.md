@@ -69,8 +69,10 @@
 - La vista combina KPIs, filtro por estado, tabla para escritorio y fichas compactas en móvil.
 - El constructor de formato amplio separa identificación, alcance, costeo y condiciones; un resumen económico y un control previo acompañan la edición.
 - Cada etapa admite conceptos con categoría, descripción, cantidad, unidad, costo y margen. Los totales se actualizan sin recargar la página.
+- El selector de tipo conserva el presupuesto detallado y activa una experiencia conceptual con resumen, objetivo, módulos, funcionalidades y control de precios visibles.
+- La propuesta conceptual puede usar portada ejecutiva y mostrar importes por concepto, por módulo o únicamente como inversión total.
 - En pantallas de hasta 840 px el modal ocupa el viewport, usa una sola columna, conserva las acciones visibles y desplaza únicamente su contenido.
-- El PDF oculta costo y margen, respeta el logo sin deformarlo y diferencia borradores antes de la emisión.
+- El PDF oculta costo y margen, respeta el logo sin deformarlo y diferencia borradores antes de la emisión. La composición usa cabecera SC, metadatos, módulos, cierre comercial, pie por página y una marca de agua clara dibujada sobre el contenido.
 
 ## Pipeline comercial
 

@@ -17,7 +17,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Agent Studio implementado con borradores, versiones publicadas y modelos de la cuenta de ChatGPT conectada por empresa.
 - Flujo OAuth de ChatGPT preparado con PKCE, tokens cifrados en servidor, renovación, cambio de cuenta y desconexión. La solicitud comercial fue recibida por OpenAI y la prueba real espera su habilitación y `client_id`.
 - CRM provisorio migrado desde Google Sheets: 65 oportunidades y 65 interacciones vinculadas, sin duplicados ni relaciones huérfanas.
-- Constructor de presupuestos comerciales implementado con alcance, etapas, conceptos, costos internos, márgenes, impuestos, aprobación, versiones y PDF para clientes.
+- Constructor de presupuestos detallados y propuestas conceptuales implementado con alcance, módulos, conceptos, costos internos, márgenes, impuestos, aprobación, versiones y PDF para clientes.
+- Las propuestas conceptuales admiten portada, resumen ejecutivo, objetivo, tres niveles de presentación de precios y PDF SC con metadatos, inversión, próximos pasos, pie estable y marca de agua.
 - Los importes se recalculan en PostgreSQL y los presupuestos cerrados solo pueden continuar mediante una nueva versión.
 - Pipeline comercial con búsqueda, filtros por responsable, rubro y seguimiento, límite por etapa, ocultamiento de etapas vacías y scroll interno para volúmenes altos.
 - El propietario configura por empresa la densidad del pipeline y los valores iniciales de presupuestos: prefijo, vigencia, impuestos, margen, plazo y condición de pago.
@@ -48,7 +49,7 @@ npm run serve
 - [ ] Esperar la respuesta de OpenAI a la solicitud de Sign in with ChatGPT prevista para el cuarto trimestre; luego cargar el `client_id`, los secretos y ejecutar una prueba controlada.
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
-- [ ] Validar el primer presupuesto real con un usuario autenticado y definir la conversión guiada de oportunidad aceptada a cliente/proyecto.
+- [ ] Validar el primer presupuesto o propuesta conceptual real con un usuario autenticado y definir la conversión guiada de oportunidad aceptada a cliente/proyecto.
 - [ ] Diseñar vistas guardadas y etapas configurables del pipeline sin romper el historial comercial.
 
 ## Notas relacionadas

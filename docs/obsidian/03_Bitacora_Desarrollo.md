@@ -252,3 +252,27 @@
 
 **Pendientes detectados:**
 - Diseñar vistas guardadas, etapas configurables y conversión asistida de oportunidad aceptada a cliente y proyecto.
+
+## 2026-09-30 - Propuestas conceptuales y rediseño de PDF
+
+**Cambios realizados:**
+- Se incorporó el tipo `Propuesta conceptual` sin retirar el presupuesto detallado.
+- El editor agrega portada opcional, resumen ejecutivo, objetivo, módulos, funcionalidades por concepto y presentación de precios configurable.
+- El PDF se rediseñó con identidad SC, logo sin deformación, portada, metadatos, módulos, inversión, condiciones, próximos pasos, pie consistente y marca de agua clara por encima del contenido.
+- Supabase guarda y valida los nuevos campos mediante la RPC transaccional existente.
+
+**Archivos modificados:**
+- `assets/js/quotes.js`, `assets/js/app.js`, `assets/css/app.css`.
+- `supabase/migrations/20260930214821_conceptual_proposals.sql`.
+- `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- `npm run lint`: correcto.
+- Playwright: 8 pruebas aprobadas; incluye creación, persistencia demo, PDF y reapertura responsive de una propuesta conceptual a 390 x 844.
+- Revisión visual del editor en escritorio/móvil y de las tres páginas del PDF de ejemplo.
+- Migración `conceptual_proposals` aplicada a `sc-crm-comercial`; columnas, restricciones y función `security definer` verificadas.
+- Security y Performance Advisors revisados: no se introdujeron alertas nuevas atribuibles a esta migración.
+
+**Pendientes detectados:**
+- Validar una propuesta conceptual con datos reales y un usuario autenticado.
+- Implementar la conversión guiada de propuesta aceptada a cliente y proyecto, con confirmación para evitar duplicados.

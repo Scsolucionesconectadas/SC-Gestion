@@ -9,8 +9,10 @@ const STATUS_LABELS={
   aceptada:'Aceptado',rechazada:'Rechazado',vencida:'Vencido'
 };
 const STATUS_CLASSES={borrador:'status-gray',revision:'status-amber',aprobada:'status-cyan',enviada:'status-blue',aceptada:'status-green',rechazada:'status-red',vencida:'status-red'};
+const PROPOSAL_TYPES={detailed:'Presupuesto detallado',conceptual:'Propuesta conceptual'};
+const PRICING_DISPLAYS={itemized:'Conceptos y precios',section_total:'Total por módulo',total_only:'Solo inversión total'};
 const CATEGORIES=['Análisis / relevamiento','Implementación','Integración / API','Desarrollo','Configuración','Pruebas','Capacitación','Documentación','Soporte','Infraestructura','Licencias','Otro'];
-const UNITS=['hora','unidad','etapa','mes','servicio','licencia'];
+const UNITS=['hora','unidad','concepto','etapa','mes','servicio','licencia'];
 const TERMINAL_STATUSES=new Set(['aceptada','rechazada','vencida']);
 let editor=null;
 
@@ -22,6 +24,7 @@ const proposal=id=>app.data.proposals.find(item=>item.id===id);
 const prospect=id=>app.data.prospects.find(item=>item.id===id);
 const money=(value,currency)=>app.format.money(number(value),currency||'ARS');
 const icon=()=>window.lucide?.createIcons();
+const proposalType=item=>PROPOSAL_TYPES[item?.proposal_type]||PROPOSAL_TYPES.detailed;
 function quoteConfiguration(){
   const settings=app.activeOrganization?.settings?.quotes||{};
   const documentPrefix=/^[A-Z0-9-]{2,10}$/.test(String(settings.document_prefix||'').toUpperCase())?String(settings.document_prefix).toUpperCase():'PRE';
@@ -58,7 +61,7 @@ function render(){
   const canWrite=app.mode==='demo'||app.hasPermission('quotes.write');
   $('budgetRows').innerHTML=rows.length?rows.map(item=>{
     const lead=prospect(item.prospect_id);
-    return '<tr><td><span class="row-main"><b>'+esc(item.document_code||'Sin código')+'</b><small>'+app.format.fmtDate(item.issue_date||item.created_at)+'</small></span></td>'+
+    return '<tr><td><span class="row-main"><b>'+esc(item.document_code||'Sin código')+'</b><small>'+esc(proposalType(item))+' · '+app.format.fmtDate(item.issue_date||item.created_at)+'</small></span></td>'+
       '<td><span class="row-main"><b>'+esc(item.project_name||item.title)+'</b><small>'+esc(lead?.business_name||'Sin oportunidad')+'</small></span></td>'+
       '<td>v'+number(item.version||1)+'</td><td><b>'+money(item.amount,item.currency)+'</b></td><td>'+statusPill(item.status)+'</td><td>'+app.format.fmtDate(item.valid_until)+'</td>'+
       '<td><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'"><i data-lucide="pencil"></i>Editar</button>':'')+
@@ -67,7 +70,7 @@ function render(){
   }).join(''):'<tr><td colspan="7"><div class="empty-state"><i data-lucide="file-spreadsheet"></i><div>Todavía no hay presupuestos.</div></div></td></tr>';
   $('mobileBudgets').innerHTML=rows.length?rows.map(item=>{
     const lead=prospect(item.prospect_id);
-    return '<article class="mobile-card budget-mobile-card"><div class="mobile-card-top"><b>'+esc(item.document_code||'Presupuesto')+' · v'+number(item.version||1)+'</b>'+statusPill(item.status)+'</div><p>'+esc(item.project_name||item.title)+' · '+esc(lead?.business_name||'Sin oportunidad')+'</p><strong>'+money(item.amount,item.currency)+'</strong><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'">Editar</button>':'')+'<button class="mini-btn" data-quote-pdf="'+item.id+'">PDF</button>'+(canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'">Nueva versión</button>':'')+'</div></article>';
+    return '<article class="mobile-card budget-mobile-card"><div class="mobile-card-top"><b>'+esc(item.document_code||'Presupuesto')+' · v'+number(item.version||1)+'</b>'+statusPill(item.status)+'</div><p>'+esc(proposalType(item))+' · '+esc(item.project_name||item.title)+' · '+esc(lead?.business_name||'Sin oportunidad')+'</p><strong>'+money(item.amount,item.currency)+'</strong><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'">Editar</button>':'')+'<button class="mini-btn" data-quote-pdf="'+item.id+'">PDF</button>'+(canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'">Nueva versión</button>':'')+'</div></article>';
   }).join(''):'<div class="empty-state"><i data-lucide="file-spreadsheet"></i><div>Todavía no hay presupuestos.</div></div>';
   renderKpis();
   icon();
@@ -115,7 +118,8 @@ function createEditor(prospectId=null){
   return {
     id:null,organization_id:app.activeOrganization?.id||'demo-sc',prospect_id:selected,
     document_code:nextDocumentCode(),version:1,title:lead?'Propuesta para '+lead.business_name:'Nueva propuesta comercial',
-    project_name:lead?.need_interest||'',currency:app.activeOrganization?.default_currency||'ARS',status:'borrador',issue_date:today(),valid_until:datePlusDays(configuration.validityDays),
+    proposal_type:'detailed',pricing_display:'itemized',cover_enabled:false,cover_subtitle:lead?.need_interest||'',
+    executive_summary:'',objective:lead?.need_interest||'',project_name:lead?.need_interest||'',currency:app.activeOrganization?.default_currency||'ARS',status:'borrador',issue_date:today(),valid_until:datePlusDays(configuration.validityDays),
     delivery_weeks:configuration.deliveryWeeks,tax_percent:configuration.taxPercent,discount_percent:0,payment_terms:configuration.paymentTerms,
     scope:lead?.need_interest||'',exclusions:'Servicios de terceros, licencias y equipamiento no indicados expresamente.',notes:'',change_reason:'',
     sections:[blankSection(0)],locked:false,persistedStatus:null
@@ -124,9 +128,12 @@ function createEditor(prospectId=null){
 
 function editFromProposal(item,{newVersion=false}={}){
   const sourceSections=proposalSections(item.id);
+  const configuration=quoteConfiguration();
   const clone={
     ...item,id:newVersion?null:item.id,document_code:item.document_code||nextDocumentCode(),version:number(item.version||1)+(newVersion?1:0),
-    status:newVersion?'borrador':item.status,issue_date:newVersion?today():(item.issue_date||today()),valid_until:newVersion?datePlusDays(15):item.valid_until,
+    proposal_type:item.proposal_type||'detailed',pricing_display:item.pricing_display||'itemized',cover_enabled:item.cover_enabled===true,
+    cover_subtitle:item.cover_subtitle||'',executive_summary:item.executive_summary||'',objective:item.objective||'',
+    status:newVersion?'borrador':item.status,issue_date:newVersion?today():(item.issue_date||today()),valid_until:newVersion?datePlusDays(configuration.validityDays):item.valid_until,
     change_reason:newVersion?'Nueva versión a partir de v'+number(item.version||1):'',
     sections:(sourceSections.length?sourceSections:[blankSection(0)]).map((section,index)=>({...section,id:uuid(),position:index,items:(section.items.length?section.items:[blankItem()]).map((line,lineIndex)=>({...line,id:uuid(),position:lineIndex}))})),
     locked:!newVersion&&TERMINAL_STATUSES.has(item.status),persistedStatus:newVersion?null:item.status
@@ -164,7 +171,7 @@ function totals(){
 
 function qualityChecks(){
   const items=editor.sections.flatMap(section=>section.items);
-  return [
+  const checks=[
     ['Oportunidad identificada',Boolean(prospect(editor.prospect_id))],
     ['Proyecto y alcance definidos',editor.title.trim().length>=3&&editor.scope.trim().length>=10],
     ['Exclusiones declaradas',editor.exclusions.trim().length>=10],
@@ -172,23 +179,47 @@ function qualityChecks(){
     ['Condiciones y vigencia',Boolean(editor.payment_terms.trim()&&editor.valid_until)],
     ['Importe calculado',totals().total>0]
   ];
+  if(editor.proposal_type==='conceptual')checks.splice(2,0,
+    ['Resumen ejecutivo completo',editor.executive_summary.trim().length>=30],
+    ['Objetivo declarado',editor.objective.trim().length>=10]
+  );
+  return checks;
 }
 
 function sectionMarkup(section,sectionIndex,disabled){
-  return '<section class="quote-stage" data-stage="'+sectionIndex+'"><div class="quote-stage-head"><span class="quote-stage-number">'+String(sectionIndex+1).padStart(2,'0')+'</span><label><span>Nombre de la etapa</span><input data-section-field="title" value="'+esc(section.title)+'" maxlength="160" '+disabled+'></label><button type="button" class="icon-btn quote-remove" data-remove-section="'+sectionIndex+'" aria-label="Eliminar etapa" '+disabled+'><i data-lucide="trash-2"></i></button></div><label class="quote-stage-description"><span>Descripción y entregable</span><textarea data-section-field="description" rows="2" maxlength="1200" '+disabled+'>'+esc(section.description||'')+'</textarea></label><div class="quote-lines-head"><span>Conceptos</span><button type="button" class="btn btn-secondary" data-add-item="'+sectionIndex+'" '+disabled+'><i data-lucide="plus"></i>Agregar concepto</button></div><div class="quote-lines">'+section.items.map((item,itemIndex)=>itemMarkup(item,sectionIndex,itemIndex,disabled)).join('')+'</div><div class="quote-stage-total"><span>Total etapa</span><strong data-section-total="'+sectionIndex+'">'+money(section.items.reduce((sum,item)=>sum+number(item.quantity)*number(item.unit_cost)*(1+number(item.margin_percent)/100),0),editor.currency)+'</strong></div></section>';
+  const conceptual=editor.proposal_type==='conceptual';
+  return '<section class="quote-stage '+(conceptual?'is-conceptual':'')+'" data-stage="'+sectionIndex+'"><div class="quote-stage-head"><span class="quote-stage-number">'+String(sectionIndex+1).padStart(2,'0')+'</span><label><span>'+(conceptual?'Nombre del módulo o solución':'Nombre de la etapa')+'</span><input data-section-field="title" value="'+esc(section.title)+'" maxlength="160" '+disabled+'></label><button type="button" class="icon-btn quote-remove" data-remove-section="'+sectionIndex+'" aria-label="Eliminar '+(conceptual?'módulo':'etapa')+'" '+disabled+'><i data-lucide="trash-2"></i></button></div><label class="quote-stage-description"><span>'+(conceptual?'Descripción conceptual y resultado esperado':'Descripción y entregable')+'</span><textarea data-section-field="description" rows="3" maxlength="1200" '+disabled+'>'+esc(section.description||'')+'</textarea></label><div class="quote-lines-head"><span>'+(conceptual?'Conceptos incluidos':'Conceptos')+'</span><button type="button" class="btn btn-secondary" data-add-item="'+sectionIndex+'" '+disabled+'><i data-lucide="plus"></i>Agregar concepto</button></div><div class="quote-lines">'+section.items.map((item,itemIndex)=>itemMarkup(item,sectionIndex,itemIndex,disabled)).join('')+'</div><div class="quote-stage-total"><span>'+(conceptual?'Inversión del módulo':'Total etapa')+'</span><strong data-section-total="'+sectionIndex+'">'+money(section.items.reduce((sum,item)=>sum+number(item.quantity)*number(item.unit_cost)*(1+number(item.margin_percent)/100),0),editor.currency)+'</strong></div></section>';
 }
 
 function itemMarkup(item,sectionIndex,itemIndex,disabled){
   const lineSale=number(item.quantity)*number(item.unit_cost)*(1+number(item.margin_percent)/100);
-  return '<div class="quote-line" data-item="'+itemIndex+'"><label class="quote-concept"><span>Categoría</span><select data-item-field="category" '+disabled+'>'+CATEGORIES.map(category=>'<option '+(category===item.category?'selected':'')+'>'+category+'</option>').join('')+'</select></label><label class="quote-description"><span>Descripción</span><input data-item-field="description" value="'+esc(item.description||'')+'" maxlength="500" placeholder="Ej.: relevamiento, integración o capacitación" '+disabled+'></label><label><span>Cantidad</span><input data-item-field="quantity" type="number" min="0.01" step="0.01" value="'+number(item.quantity||1)+'" '+disabled+'></label><label><span>Unidad</span><select data-item-field="unit" '+disabled+'>'+UNITS.map(unit=>'<option '+(unit===item.unit?'selected':'')+'>'+unit+'</option>').join('')+'</select></label><label><span>Costo unit.</span><input data-item-field="unit_cost" type="number" min="0" step="0.01" value="'+number(item.unit_cost)+'" '+disabled+'></label><label><span>Margen %</span><input data-item-field="margin_percent" type="number" min="0" max="1000" step="0.01" value="'+number(item.margin_percent)+'" '+disabled+'></label><div class="quote-line-total"><span>Venta</span><strong data-line-total>'+money(lineSale,editor.currency)+'</strong></div><button type="button" class="icon-btn quote-remove" data-remove-item="'+sectionIndex+':'+itemIndex+'" aria-label="Eliminar concepto" '+disabled+'><i data-lucide="x"></i></button></div>';
+  return '<div class="quote-line" data-item="'+itemIndex+'"><label class="quote-concept"><span>Categoría</span><select data-item-field="category" '+disabled+'>'+CATEGORIES.map(category=>'<option '+(category===item.category?'selected':'')+'>'+category+'</option>').join('')+'</select></label><label class="quote-description"><span>'+(editor.proposal_type==='conceptual'?'Concepto o solución':'Descripción')+'</span><input data-item-field="description" value="'+esc(item.description||'')+'" maxlength="500" placeholder="Ej.: relevamiento, integración o capacitación" '+disabled+'></label><label><span>Cantidad</span><input data-item-field="quantity" type="number" min="0.01" step="0.01" value="'+number(item.quantity||1)+'" '+disabled+'></label><label><span>Unidad</span><select data-item-field="unit" '+disabled+'>'+UNITS.map(unit=>'<option '+(unit===item.unit?'selected':'')+'>'+unit+'</option>').join('')+'</select></label><label><span>Costo unit.</span><input data-item-field="unit_cost" type="number" min="0" step="0.01" value="'+number(item.unit_cost)+'" '+disabled+'></label><label><span>Margen %</span><input data-item-field="margin_percent" type="number" min="0" max="1000" step="0.01" value="'+number(item.margin_percent)+'" '+disabled+'></label><div class="quote-line-total"><span>Venta</span><strong data-line-total>'+money(lineSale,editor.currency)+'</strong></div><button type="button" class="icon-btn quote-remove" data-remove-item="'+sectionIndex+':'+itemIndex+'" aria-label="Eliminar concepto" '+disabled+'><i data-lucide="x"></i></button><label class="quote-item-notes"><span>'+(editor.proposal_type==='conceptual'?'Funcionalidades o detalle público (una por línea)':'Notas del concepto')+'</span><textarea data-item-field="notes" rows="3" maxlength="2000" placeholder="'+(editor.proposal_type==='conceptual'?'Stock actual por producto\nAlertas por bajo stock\nHistorial de movimientos':'Aclaraciones visibles en la propuesta')+'" '+disabled+'>'+esc(item.notes||'')+'</textarea></label></div>';
 }
 
 function renderEditor(){
   const disabled=editor.locked?'disabled':'';
+  const conceptual=editor.proposal_type==='conceptual';
   const checks=qualityChecks();
-  $('budgetModalTitle').textContent=editor.id?'Editar presupuesto':'Nuevo presupuesto';
-  $('budgetModalSubtitle').textContent=editor.locked?'Documento cerrado. Creá una nueva versión para modificarlo.':'Definí alcance, etapas y conceptos; el total se calcula automáticamente.';
+  const documentLabel=conceptual?'propuesta conceptual':'presupuesto';
+  $('budgetModalTitle').textContent=editor.id?'Editar '+documentLabel:'Nueva '+documentLabel;
+  $('budgetModalSubtitle').textContent=editor.locked?'Documento cerrado. Creá una nueva versión para modificarlo.':conceptual?'Construí una propuesta ejecutiva con objetivos, módulos, resultados e inversión.':'Definí alcance, etapas y conceptos; el total se calcula automáticamente.';
   $('budgetBuilder').innerHTML='<form id="budgetForm" class="quote-builder"><div class="quote-stepbar" aria-label="Flujo del presupuesto"><span class="active"><i data-lucide="clipboard-list"></i>Datos</span><i></i><span class="active"><i data-lucide="layers-3"></i>Etapas</span><i></i><span><i data-lucide="shield-check"></i>Revisión</span><i></i><span><i data-lucide="send"></i>Emisión</span></div><div class="quote-builder-grid"><div class="quote-builder-main"><section class="quote-form-section"><div class="quote-section-title"><div><span class="eyebrow">01 · IDENTIFICACIÓN</span><h3>Datos comerciales</h3></div>'+statusPill(editor.status)+'</div><div class="quote-form-grid"><label><span>Oportunidad</span><select data-header="prospect_id" required '+disabled+'>'+prospectOptions()+'</select></label><label><span>Código documental</span><input data-header="document_code" value="'+esc(editor.document_code)+'" maxlength="80" required '+disabled+'></label><label class="full"><span>Título de la propuesta</span><input data-header="title" value="'+esc(editor.title)+'" maxlength="180" required '+disabled+'></label><label class="full"><span>Nombre visible del proyecto</span><input data-header="project_name" value="'+esc(editor.project_name||'')+'" maxlength="180" '+disabled+'></label><label><span>Fecha de emisión</span><input data-header="issue_date" type="date" value="'+esc(editor.issue_date||today())+'" required '+disabled+'></label><label><span>Válida hasta</span><input data-header="valid_until" type="date" value="'+esc(editor.valid_until||'')+'" required '+disabled+'></label><label><span>Moneda</span><select data-header="currency" '+disabled+'><option '+(editor.currency==='ARS'?'selected':'')+'>ARS</option><option '+(editor.currency==='USD'?'selected':'')+'>USD</option></select></label><label><span>Plazo estimado (semanas)</span><input data-header="delivery_weeks" type="number" min="1" max="520" value="'+number(editor.delivery_weeks||4)+'" '+disabled+'></label></div></section><section class="quote-form-section"><div class="quote-section-title"><div><span class="eyebrow">02 · ALCANCE</span><h3>Qué incluye y qué queda fuera</h3></div></div><div class="quote-form-grid"><label><span>Alcance incluido</span><textarea data-header="scope" rows="5" maxlength="4000" '+disabled+'>'+esc(editor.scope||'')+'</textarea></label><label><span>Exclusiones y supuestos</span><textarea data-header="exclusions" rows="5" maxlength="4000" '+disabled+'>'+esc(editor.exclusions||'')+'</textarea></label></div></section><section class="quote-form-section"><div class="quote-section-title"><div><span class="eyebrow">03 · COSTEO</span><h3>Etapas y conceptos</h3></div><button type="button" class="btn btn-secondary" id="addQuoteSection" '+disabled+'><i data-lucide="plus"></i>Nueva etapa</button></div><div class="quote-stages" id="quoteStages">'+editor.sections.map((section,index)=>sectionMarkup(section,index,disabled)).join('')+'</div></section><section class="quote-form-section"><div class="quote-section-title"><div><span class="eyebrow">04 · CONDICIONES</span><h3>Pago, impuestos y notas</h3></div></div><div class="quote-form-grid"><label class="full"><span>Forma de pago</span><input data-header="payment_terms" value="'+esc(editor.payment_terms||'')+'" maxlength="500" '+disabled+'></label><label><span>Descuento general %</span><input data-header="discount_percent" type="number" min="0" max="100" step="0.01" value="'+number(editor.discount_percent)+'" '+disabled+'></label><label><span>Impuestos %</span><input data-header="tax_percent" type="number" min="0" max="100" step="0.01" value="'+number(editor.tax_percent)+'" '+disabled+'></label><label class="full"><span>Notas comerciales</span><textarea data-header="notes" rows="3" maxlength="2000" '+disabled+'>'+esc(editor.notes||'')+'</textarea></label><label><span>Estado</span><select data-header="status" '+disabled+'>'+statusOptions()+'</select></label><label><span>Motivo de la versión</span><input data-header="change_reason" value="'+esc(editor.change_reason||'')+'" maxlength="500" '+disabled+'></label></div></section></div><aside class="quote-summary"><div class="quote-summary-card"><span class="eyebrow">RESUMEN ECONÓMICO</span><div class="quote-summary-client"><small>Oportunidad</small><strong id="quoteProspectName">'+esc(prospect(editor.prospect_id)?.business_name||'Sin seleccionar')+'</strong></div><dl><div><dt>Costo interno</dt><dd id="quoteCost">-</dd></div><div><dt>Venta antes de descuento</dt><dd id="quoteSale">-</dd></div><div><dt>Descuento</dt><dd id="quoteDiscount">-</dd></div><div><dt>Subtotal</dt><dd id="quoteSubtotal">-</dd></div><div><dt>Impuestos</dt><dd id="quoteTax">-</dd></div><div class="quote-total"><dt>Total final</dt><dd id="quoteTotal">-</dd></div></dl></div><div class="quote-quality"><span class="eyebrow">CONTROL PREVIO</span><div id="quoteQuality">'+checks.map(([label,ok])=>'<div class="'+(ok?'ok':'pending')+'"><i data-lucide="'+(ok?'check-circle-2':'circle-dashed')+'"></i><span>'+label+'</span></div>').join('')+'</div></div></aside></div><div class="quote-form-actions"><div><span class="quote-version-chip">'+esc(editor.document_code)+' · v'+number(editor.version||1)+'</span></div><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="budgetModal">Cerrar</button>'+(!editor.locked?'<button type="submit" class="btn btn-primary"><i data-lucide="save"></i>Guardar presupuesto</button>':'')+'</div></div></form>';
+  const sections=$('budgetForm').querySelectorAll('.quote-form-section');
+  const identityGrid=sections[0].querySelector('.quote-form-grid');
+  identityGrid.insertAdjacentHTML('afterbegin','<label><span>Tipo de documento</span><select data-header="proposal_type" '+disabled+'>'+Object.entries(PROPOSAL_TYPES).map(([value,label])=>'<option value="'+value+'" '+(editor.proposal_type===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label>'+(conceptual?'<label><span>Presentación de precios</span><select data-header="pricing_display" '+disabled+'>'+Object.entries(PRICING_DISPLAYS).map(([value,label])=>'<option value="'+value+'" '+(editor.pricing_display===value?'selected':'')+'>'+label+'</option>').join('')+'</select></label>':''));
+  if(conceptual){
+    identityGrid.insertAdjacentHTML('beforeend','<label class="full"><span>Subtítulo de portada</span><input data-header="cover_subtitle" value="'+esc(editor.cover_subtitle||'')+'" maxlength="300" placeholder="Una propuesta clara para transformar la operación" '+disabled+'></label><label class="full quote-cover-option"><span>Presentación</span><span class="quote-toggle"><input data-header="cover_enabled" type="checkbox" '+(editor.cover_enabled?'checked':'')+' '+disabled+'><i aria-hidden="true"></i><b>Agregar portada ejecutiva al PDF</b></span></label>');
+    const scopeGrid=sections[1].querySelector('.quote-form-grid');
+    scopeGrid.insertAdjacentHTML('afterbegin','<label class="full"><span>Resumen ejecutivo</span><textarea data-header="executive_summary" rows="5" maxlength="8000" placeholder="Situación actual, oportunidad y propuesta de valor" '+disabled+'>'+esc(editor.executive_summary||'')+'</textarea></label><label class="full"><span>Objetivo de la propuesta</span><textarea data-header="objective" rows="3" maxlength="4000" placeholder="Resultado concreto que se busca alcanzar" '+disabled+'>'+esc(editor.objective||'')+'</textarea></label>');
+    sections[1].querySelector('h3').textContent='Historia, objetivo y alcance';
+    sections[2].querySelector('h3').textContent='Módulos y conceptos';
+    const addSection=$('addQuoteSection');
+    addSection.innerHTML='<i data-lucide="plus"></i>Nuevo módulo';
+    const stepLabels=$('budgetForm').querySelectorAll('.quote-stepbar span');
+    if(stepLabels[1])stepLabels[1].innerHTML='<i data-lucide="layers-3"></i>Módulos';
+  }
+  const submit=$('budgetForm').querySelector('button[type="submit"]');
+  if(submit)submit.innerHTML='<i data-lucide="save"></i>Guardar '+documentLabel;
   bindEditor();
   updateCalculations();
   icon();
@@ -213,7 +244,25 @@ function bindEditor(){
 
 function handleEditorInput(event){
   const header=event.target.dataset.header;
-  if(header){editor[header]=event.target.type==='number'?number(event.target.value):event.target.value;if(header==='prospect_id')$('quoteProspectName').textContent=prospect(editor.prospect_id)?.business_name||'Sin seleccionar';if(['currency','status'].includes(header)){renderEditor();return}updateCalculations();return}
+  if(header){
+    editor[header]=event.target.type==='checkbox'?event.target.checked:event.target.type==='number'?number(event.target.value):event.target.value;
+    if(header==='proposal_type'){
+      if(editor.proposal_type==='conceptual'){
+        editor.cover_enabled=true;
+        editor.pricing_display='section_total';
+        editor.sections.forEach(section=>section.items.forEach(item=>{if(item.unit==='hora')item.unit='concepto'}));
+      }else{
+        editor.cover_enabled=false;
+        editor.pricing_display='itemized';
+      }
+      renderEditor();
+      return;
+    }
+    if(header==='prospect_id')$('quoteProspectName').textContent=prospect(editor.prospect_id)?.business_name||'Sin seleccionar';
+    if(['currency','status'].includes(header)){renderEditor();return}
+    updateCalculations();
+    return;
+  }
   const stage=event.target.closest('[data-stage]');
   if(!stage)return;
   const section=editor.sections[number(stage.dataset.stage)];
@@ -260,10 +309,12 @@ function validationMessage(){
   if(!prospect(editor.prospect_id))return 'Seleccioná una oportunidad.';
   if(editor.title.trim().length<3)return 'Ingresá un título para la propuesta.';
   if(!editor.document_code.trim())return 'Ingresá el código documental.';
-  if(!editor.sections.length)return 'Agregá al menos una etapa.';
+  if(editor.proposal_type==='conceptual'&&editor.executive_summary.trim().length<30)return 'Completá el resumen ejecutivo de la propuesta conceptual.';
+  if(editor.proposal_type==='conceptual'&&editor.objective.trim().length<10)return 'Completá el objetivo de la propuesta conceptual.';
+  if(!editor.sections.length)return editor.proposal_type==='conceptual'?'Agregá al menos un módulo.':'Agregá al menos una etapa.';
   for(const section of editor.sections){
-    if(section.title.trim().length<2)return 'Cada etapa necesita un nombre.';
-    if(!section.items.length)return 'Cada etapa necesita al menos un concepto.';
+    if(section.title.trim().length<2)return 'Cada '+(editor.proposal_type==='conceptual'?'módulo':'etapa')+' necesita un nombre.';
+    if(!section.items.length)return 'Cada '+(editor.proposal_type==='conceptual'?'módulo':'etapa')+' necesita al menos un concepto.';
     for(const item of section.items){
       if(item.description.trim().length<2)return 'Completá la descripción de todos los conceptos.';
       if(number(item.quantity)<=0)return 'La cantidad de cada concepto debe ser mayor que cero.';
@@ -280,6 +331,8 @@ function proposalPayload(){
   return {
     id:editor.id||'',organization_id:editor.organization_id,prospect_id:editor.prospect_id,
     document_code:editor.document_code.trim(),version:number(editor.version||1),title:editor.title.trim(),project_name:editor.project_name.trim(),
+    proposal_type:editor.proposal_type,pricing_display:editor.pricing_display,cover_enabled:editor.cover_enabled,
+    cover_subtitle:editor.cover_subtitle.trim(),executive_summary:editor.executive_summary.trim(),objective:editor.objective.trim(),
     currency:editor.currency,status:editor.status,issue_date:editor.issue_date,valid_until:editor.valid_until,
     delivery_weeks:String(number(editor.delivery_weeks||0)||''),tax_percent:number(editor.tax_percent),discount_percent:number(editor.discount_percent),
     scope:editor.scope.trim(),exclusions:editor.exclusions.trim(),payment_terms:editor.payment_terms.trim(),notes:editor.notes.trim(),change_reason:editor.change_reason.trim()
@@ -351,41 +404,178 @@ function pdfText(doc,text,x,y,maxWidth,lineHeight=4){
 async function generatePdf(id){
   const item=proposal(id);if(!item)return;
   const lead=prospect(item.prospect_id)||{},sections=proposalSections(id),org=app.activeOrganization||{};
+  const conceptual=item.proposal_type==='conceptual';
+  const pricingDisplay=item.pricing_display||'itemized';
   const doc=new jsPDF({unit:'mm',format:'a4',compress:true});
-  const addHeader=async()=>{
-    try{const logo=await imageAsPng('./assets/img/sc-isotipo-color.webp');const width=28,height=Math.min(13,width/logo.ratio);doc.addImage(logo.data,'PNG',16,12,width,height)}catch{}
-    doc.setTextColor(31,47,60);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(org.name||'Soluciones Conectadas',194,17,{align:'right'});doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(94,115,130);doc.text('PROPUESTA COMERCIAL Y TÉCNICA',194,23,{align:'right'});doc.setDrawColor(211,224,233);doc.line(16,31,194,31);
+  const brand=org.name||'Soluciones Conectadas';
+  const contactEmail=org.contact_email||'contacto.solucionesconectadas@gmail.com';
+  const contactPhone=org.phone||'03442 47-2233';
+  const website='scsolucionesconectadas.com.ar';
+  let logo=null;
+  try{logo=await imageAsPng('./assets/img/sc-isotipo-color.webp')}catch{}
+
+  const drawLogo=(x,top,width)=>{
+    if(!logo)return;
+    const height=width/logo.ratio;
+    doc.addImage(logo.data,'PNG',x,top,width,height);
   };
-  await addHeader();
+  const drawHeader=()=>{
+    drawLogo(16,11,18);
+    doc.setTextColor(31,47,60);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(brand,39,16);
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(94,115,130);doc.text('AUTOMATIZACIÓN E INTEGRACIÓN PARA EMPRESAS',39,21);
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(31,47,60);doc.text(conceptual?'PROPUESTA CONCEPTUAL':'PRESUPUESTO COMERCIAL',194,15,{align:'right'});
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(94,115,130);doc.text((item.document_code||'PRE')+' · v'+number(item.version||1),194,21,{align:'right'});
+    doc.setDrawColor(211,224,233);doc.setLineWidth(.35);doc.line(16,30,194,30);
+  };
+  const addContentPage=()=>{doc.addPage();drawHeader();y=41};
+  const ensureSpace=space=>{if(y+space>270)addContentPage()};
+  const lineSubtotal=line=>number(line.subtotal_sale)||number(line.quantity)*number(line.unit_cost)*(1+number(line.margin_percent)/100);
+  const short=(value,length=54)=>{const text=String(value||'No informado');return text.length>length?text.slice(0,length-1)+'…':text};
+  const writeNarrative=(title,text)=>{
+    const lines=doc.splitTextToSize(String(text||'No especificado.'),172);
+    ensureSpace(13);
+    doc.setFillColor(49,165,214);doc.rect(16,y-4,2,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(3,96,189);doc.text(title,22,y);y+=7;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(31,47,60);
+    for(const line of lines){ensureSpace(5);doc.text(line,22,y);y+=4.2}
+    y+=5;
+  };
+
+  if(conceptual&&item.cover_enabled){
+    doc.setFillColor(31,47,60);doc.rect(0,0,210,58,'F');
+    doc.setFillColor(49,165,214);doc.rect(0,0,6,297,'F');
+    drawLogo(20,18,24);
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(255,255,255);doc.text(brand,51,27);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(192,230,247);doc.text('SOLUCIONES CONECTADAS PARA OPERACIONES REALES',51,34);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(3,96,189);doc.text('PROPUESTA CONCEPTUAL',20,88);
+    doc.setFontSize(26);doc.setTextColor(31,47,60);
+    const coverTitle=doc.splitTextToSize(String(item.title||'Propuesta comercial'),164);
+    doc.text(coverTitle,20,104);
+    let coverY=104+coverTitle.length*10+8;
+    if(item.cover_subtitle){doc.setFont('helvetica','normal');doc.setFontSize(12);doc.setTextColor(94,115,130);coverY=pdfText(doc,item.cover_subtitle,20,coverY,158,6)+10}
+    doc.setDrawColor(211,224,233);doc.line(20,coverY,190,coverY);coverY+=17;
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(94,115,130);doc.text('PREPARADA PARA',20,coverY);
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(31,47,60);doc.text(short(lead.business_name||'Cliente',48),20,coverY+9);
+    const moduleNames=sections.map(section=>section.title).filter(Boolean).slice(0,4);
+    if(moduleNames.length){doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(94,115,130);doc.text('Módulos: '+moduleNames.join(' · '),20,coverY+20,{maxWidth:166})}
+    doc.setFillColor(245,249,252);doc.roundedRect(20,238,170,25,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(94,115,130);doc.text('DOCUMENTO',27,247);doc.text('VERSIÓN',91,247);doc.text('EMISIÓN',132,247);
+    doc.setFontSize(9);doc.setTextColor(31,47,60);doc.text(item.document_code||'PRE',27,255);doc.text('v'+number(item.version||1),91,255);doc.text(app.format.fmtDate(item.issue_date||item.created_at),132,255);
+    doc.addPage();
+  }
+
+  drawHeader();
   let y=43;
-  doc.setFont('helvetica','bold');doc.setFontSize(19);doc.setTextColor(31,47,60);y=pdfText(doc,item.title,16,y,116,7);
-  doc.setFontSize(9);doc.text((item.document_code||'PRE')+' · v'+number(item.version||1),16,y+2);
-  doc.setFont('helvetica','normal');doc.setTextColor(94,115,130);doc.text('Emisión',145,42);doc.text(app.format.fmtDate(item.issue_date||item.created_at),194,42,{align:'right'});doc.text('Validez',145,49);doc.text(app.format.fmtDate(item.valid_until),194,49,{align:'right'});doc.text('Moneda',145,56);doc.text(item.currency||'ARS',194,56,{align:'right'});
-  y=Math.max(y+12,68);doc.setFillColor(245,249,252);doc.roundedRect(16,y-7,178,27,2,2,'F');doc.setFontSize(7);doc.setTextColor(94,115,130);doc.text('CLIENTE / OPORTUNIDAD',22,y);doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(31,47,60);doc.text(lead.business_name||'Sin identificar',22,y+8);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text([lead.contact_name,lead.email,lead.phone].filter(Boolean).join(' · ')||'Datos de contacto no informados',22,y+15);
-  y+=32;
-  const textBlock=(title,text)=>{doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(3,96,189);doc.text(title,16,y);y+=6;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(31,47,60);y=pdfText(doc,text||'No especificado.',16,y,178,4);y+=7};
-  textBlock('ALCANCE INCLUIDO',item.scope);
-  textBlock('EXCLUSIONES Y SUPUESTOS',item.exclusions);
-  for(const section of sections){
-    if(y>235){doc.addPage();await addHeader();y=42}
-    doc.setFillColor(43,58,70);doc.rect(16,y-5,178,9,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text(section.title,20,y+1);y+=11;
-    if(section.description){doc.setTextColor(94,115,130);doc.setFont('helvetica','normal');doc.setFontSize(7);y=pdfText(doc,section.description,20,y,168,3.5);y+=3}
-    doc.setTextColor(94,115,130);doc.setFont('helvetica','bold');doc.setFontSize(7);doc.text('CONCEPTO',20,y);doc.text('CANT.',132,y,{align:'right'});doc.text('P. UNIT.',160,y,{align:'right'});doc.text('SUBTOTAL',190,y,{align:'right'});y+=5;
+  doc.setFont('helvetica','bold');doc.setFontSize(19);doc.setTextColor(31,47,60);
+  const titleLines=doc.splitTextToSize(String(item.title||'Propuesta comercial'),112);doc.text(titleLines,16,y);
+  doc.setFillColor(236,247,252);doc.roundedRect(138,38,56,29,2,2,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(3,96,189);doc.text('INVERSIÓN TOTAL',144,47);
+  doc.setFontSize(13);doc.setTextColor(31,47,60);doc.text(money(item.amount,item.currency),188,59,{align:'right',maxWidth:44});
+  y=Math.max(76,43+titleLines.length*7+8);
+
+  const metadata=[
+    ['CLIENTE / OPORTUNIDAD',lead.business_name||'Sin identificar'],
+    ['PROYECTO',item.project_name||item.title],
+    ['ESTADO',STATUS_LABELS[item.status]||item.status],
+    ['VIGENCIA','Hasta '+app.format.fmtDate(item.valid_until)],
+    ['PLAZO ESTIMADO',(item.delivery_weeks||'-')+' semanas'],
+    ['MONEDA',item.currency||'ARS']
+  ];
+  metadata.forEach(([label,value],index)=>{
+    const column=index%2,row=Math.floor(index/2),x=16+column*91,top=y+row*20;
+    doc.setFillColor(247,250,252);doc.setDrawColor(224,233,239);doc.roundedRect(x,top,87,16,2,2,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(5.8);doc.setTextColor(94,115,130);doc.text(label,x+5,top+5);
+    doc.setFontSize(8);doc.setTextColor(31,47,60);doc.text(short(value,44),x+5,top+11.5);
+  });
+  y+=66;
+
+  if(conceptual){
+    writeNarrative('RESUMEN EJECUTIVO',item.executive_summary);
+    writeNarrative('OBJETIVO DE LA PROPUESTA',item.objective);
+  }
+  writeNarrative('ALCANCE INCLUIDO',item.scope);
+
+  for(const [sectionIndex,section] of sections.entries()){
+    ensureSpace(24);
+    doc.setFillColor(31,47,60);doc.roundedRect(16,y-5,178,13,2,2,'F');
+    doc.setFillColor(49,165,214);doc.roundedRect(16,y-5,8,13,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(196,232,247);doc.text(String(sectionIndex+1).padStart(2,'0'),20,y+2,{align:'center'});
+    doc.setFontSize(9);doc.setTextColor(255,255,255);doc.text(short(section.title,74),29,y+2);
+    y+=14;
+    if(section.description){
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(94,115,130);
+      for(const descriptionLine of doc.splitTextToSize(section.description,168)){ensureSpace(4);doc.text(descriptionLine,20,y);y+=3.8}
+      y+=3;
+    }
+    if(!conceptual){
+      ensureSpace(9);doc.setFillColor(247,250,252);doc.rect(20,y-4,170,8,'F');doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(94,115,130);doc.text('CONCEPTO',23,y+1);doc.text('CANT.',132,y+1,{align:'right'});doc.text('P. UNIT.',160,y+1,{align:'right'});doc.text('SUBTOTAL',188,y+1,{align:'right'});y+=10;
+    }
     let sectionTotal=0;
     for(const line of section.items){
-      if(y>264){doc.addPage();await addHeader();y=42}
-      const subtotal=number(line.subtotal_sale)||number(line.quantity)*number(line.unit_cost)*(1+number(line.margin_percent)/100);sectionTotal+=subtotal;
-      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(31,47,60);doc.text(String(line.description).slice(0,74),20,y);doc.text(number(line.quantity)+' '+line.unit,132,y,{align:'right'});doc.text(money(line.unit_price||number(line.unit_cost)*(1+number(line.margin_percent)/100),item.currency),160,y,{align:'right'});doc.text(money(subtotal,item.currency),190,y,{align:'right'});doc.setDrawColor(232,238,242);doc.line(20,y+3,190,y+3);y+=8;
+      const subtotal=lineSubtotal(line);sectionTotal+=subtotal;
+      const descriptionLines=doc.splitTextToSize(String(line.description||'Concepto'),conceptual?128:98);
+      const noteLines=String(line.notes||'').split(/\r?\n/).map(value=>value.trim()).filter(Boolean).flatMap(value=>doc.splitTextToSize('- '+value,conceptual?158:145));
+      ensureSpace(9+descriptionLines.length*4+noteLines.length*3.6);
+      doc.setFont('helvetica','bold');doc.setFontSize(conceptual?8.5:7.5);doc.setTextColor(31,47,60);doc.text(descriptionLines,conceptual?24:23,y);
+      if(conceptual&&pricingDisplay==='itemized'){doc.setFontSize(8);doc.text(money(subtotal,item.currency),188,y,{align:'right'})}
+      if(!conceptual){
+        doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.text(number(line.quantity)+' '+line.unit,132,y,{align:'right'});doc.text(money(line.unit_price||number(line.unit_cost)*(1+number(line.margin_percent)/100),item.currency),160,y,{align:'right'});doc.text(money(subtotal,item.currency),188,y,{align:'right'});
+      }
+      y+=descriptionLines.length*4+1;
+      if(conceptual){
+        doc.setFont('helvetica','normal');doc.setFontSize(6.7);doc.setTextColor(3,96,189);doc.text(String(line.category||'Solución').toUpperCase(),24,y);y+=4;
+      }
+      if(noteLines.length){doc.setFont('helvetica','normal');doc.setFontSize(7.2);doc.setTextColor(94,115,130);for(const noteLine of noteLines){ensureSpace(4);doc.text(noteLine,conceptual?28:24,y);y+=3.6}}
+      doc.setDrawColor(232,238,242);doc.line(20,y+2,190,y+2);y+=7;
     }
-    doc.setFont('helvetica','bold');doc.text('Total etapa',160,y,{align:'right'});doc.text(money(sectionTotal,item.currency),190,y,{align:'right'});y+=10;
+    if(pricingDisplay!=='total_only'){
+      ensureSpace(10);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(31,47,60);doc.text(conceptual?'Inversión del módulo':'Total etapa',158,y,{align:'right'});doc.text(money(sectionTotal,item.currency),190,y,{align:'right'});y+=11;
+    }else y+=3;
   }
-  if(y>225){doc.addPage();await addHeader();y=42}
-  doc.setDrawColor(211,224,233);doc.line(112,y,194,y);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(94,115,130);doc.text('Subtotal',160,y+8,{align:'right'});doc.text('Impuestos '+number(item.tax_percent)+'%',160,y+16,{align:'right'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(31,47,60);doc.text('TOTAL',160,y+28,{align:'right'});doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(money(item.subtotal_sale,item.currency),194,y+8,{align:'right'});doc.text(money(item.tax_amount,item.currency),194,y+16,{align:'right'});doc.setFont('helvetica','bold');doc.setFontSize(13);doc.text(money(item.amount,item.currency),194,y+28,{align:'right'});
-  y+=42;doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text('CONDICIONES COMERCIALES',16,y);doc.setFont('helvetica','normal');doc.setTextColor(94,115,130);y=pdfText(doc,'Forma de pago: '+(item.payment_terms||'A convenir')+' · Plazo estimado: '+(item.delivery_weeks||'-')+' semanas.',16,y+6,178,4);
-  if(!['enviada','aceptada'].includes(item.status)){doc.setFont('helvetica','bold');doc.setFontSize(38);doc.setTextColor(229,234,238);doc.text('BORRADOR',105,155,{align:'center',angle:35})}
-  const pages=doc.getNumberOfPages();for(let page=1;page<=pages;page++){doc.setPage(page);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(110,128,141);doc.text('Generado por SC Gestión · Presupuesto comercial · Página '+page+' de '+pages,105,287,{align:'center'})}
+
+  writeNarrative('EXCLUSIONES Y SUPUESTOS',item.exclusions);
+  ensureSpace(49);
+  const saleBeforeDiscount=sections.flatMap(section=>section.items).reduce((sum,line)=>sum+lineSubtotal(line),0);
+  const discount=Math.max(0,saleBeforeDiscount-number(item.subtotal_sale));
+  doc.setFillColor(31,47,60);doc.roundedRect(16,y,178,38,3,3,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(197,232,247);doc.text('INVERSIÓN PROPUESTA',24,y+10);
+  doc.setFontSize(19);doc.setTextColor(255,255,255);doc.text(money(item.amount,item.currency),186,y+24,{align:'right'});
+  doc.setFont('helvetica','normal');doc.setFontSize(6.8);doc.setTextColor(218,229,236);doc.text('Base '+money(saleBeforeDiscount,item.currency)+(discount?' · Descuento '+money(discount,item.currency):'')+' · Impuestos '+number(item.tax_percent)+'%',24,y+31,{maxWidth:150});
+  y+=48;
+  writeNarrative('CONDICIONES COMERCIALES','Forma de pago: '+(item.payment_terms||'A convenir')+'. Plazo estimado: '+(item.delivery_weeks||'-')+' semanas. Vigencia: hasta '+app.format.fmtDate(item.valid_until)+'.');
+  if(item.notes)writeNarrative('NOTAS COMERCIALES',item.notes);
+  if(conceptual){
+    ensureSpace(42);
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(3,96,189);doc.text('PRÓXIMOS PASOS',16,y);y+=7;
+    const nextSteps=[['01','Validar alcance y prioridades'],['02','Confirmar inversión y cronograma'],['03','Iniciar relevamiento detallado']];
+    nextSteps.forEach(([step,label],index)=>{
+      const x=16+index*60;
+      doc.setFillColor(247,250,252);doc.setDrawColor(224,233,239);doc.roundedRect(x,y,56,24,2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(49,165,214);doc.text(step,x+5,y+8);
+      doc.setFontSize(7.2);doc.setTextColor(31,47,60);doc.text(doc.splitTextToSize(label,43),x+5,y+14);
+    });
+    y+=32;
+    ensureSpace(26);
+    doc.setFillColor(236,247,252);doc.roundedRect(16,y,178,21,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(31,47,60);doc.text('Conversemos sobre el alcance final',23,y+8);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(94,115,130);doc.text(contactEmail+' · '+contactPhone,23,y+15);
+  }
+
+  const pages=doc.getNumberOfPages();
+  for(let page=1;page<=pages;page++){
+    doc.setPage(page);
+    if(!['enviada','aceptada'].includes(item.status)){
+      doc.setFont('helvetica','bold');doc.setFontSize(40);doc.setTextColor(236,240,243);doc.text('BORRADOR',105,160,{align:'center',angle:35});
+    }
+    doc.setDrawColor(211,224,233);doc.line(16,277,194,277);
+    drawLogo(16,282,10);
+    doc.setFont('helvetica','bold');doc.setFontSize(5.7);doc.setTextColor(94,115,130);doc.text('ELABORADO POR',30,283);
+    doc.setFontSize(7);doc.setTextColor(31,47,60);doc.text(brand,30,288);
+    doc.setFont('helvetica','normal');doc.setFontSize(5.8);doc.setTextColor(94,115,130);doc.text(contactEmail+' · '+contactPhone,105,284,{align:'center'});doc.text(website,105,289,{align:'center'});
+    doc.setFont('helvetica','bold');doc.setTextColor(31,47,60);doc.text('PÁGINA '+page+' / '+pages,194,287,{align:'right'});
+  }
   doc.save((item.document_code||'presupuesto')+'-v'+number(item.version||1)+'.pdf');
-  app.notify('PDF generado');
+  app.notify((conceptual?'Propuesta conceptual':'Presupuesto')+' generado en PDF');
 }
 
 function bind(){

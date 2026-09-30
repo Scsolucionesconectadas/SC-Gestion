@@ -20,6 +20,8 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 
 Los presupuestos usan columnas generadas para precio unitario y subtotales. La RPC `save_commercial_proposal` vuelve a calcular descuento, impuesto y total dentro de PostgreSQL, guarda un snapshot por versión y deja las tablas de detalle en modo de lectura para `authenticated`.
 
+`proposals.proposal_type` distingue `detailed` y `conceptual`. `pricing_display` limita la exposición de importes a `itemized`, `section_total` o `total_only`; `cover_enabled`, `cover_subtitle`, `executive_summary` y `objective` conservan la narrativa del documento. PostgreSQL valida tipos y longitudes antes de que la RPC reemplace el detalle y publique la nueva versión atómicamente.
+
 ## Configuración comercial
 
 `organizations.settings` conserva preferencias de bajo volumen separadas por dominio. `pipeline` incluye `card_limit`, `hide_empty` y `stale_days`; `quotes` incluye `document_prefix`, `validity_days`, `tax_percent`, `margin_percent`, `delivery_weeks` y `payment_terms`. La interfaz mezcla estos valores con predeterminados seguros y solo el propietario puede actualizarlos.
@@ -44,6 +46,7 @@ Los presupuestos usan columnas generadas para precio unitario y subtotales. La R
 - `20260930005207_chatgpt_oauth_indexes.sql`: índices de cobertura para usuario y empresa detectados por Performance Advisor.
 - `20260930024955_commercial_quote_builder.sql`: permisos, cabecera extendida, etapas, conceptos, versiones, RLS, estados y guardado transaccional de presupuestos.
 - `20260930111554_commercial_quote_fk_indexes.sql`: índices de cobertura en el orden exacto de las claves foráneas del módulo comercial.
+- `20260930214821_conceptual_proposals.sql`: tipo de propuesta, presentación de precios, portada, narrativa ejecutiva y actualización atómica de la RPC comercial. Aplicada en Supabase como `conceptual_proposals`.
 
 ## Perfiles y membresías
 
