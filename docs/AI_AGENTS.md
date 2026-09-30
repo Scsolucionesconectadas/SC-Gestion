@@ -1,12 +1,12 @@
 # Agentes IA de SC Gestión
 
-Los agentes se ejecutan mediante la Edge Function `ai-agent`. El navegador nunca recibe `OPENAI_API_KEY`.
+Los agentes se ejecutan mediante la Edge Function `ai-agent` con la cuenta de ChatGPT asociada a la empresa activa. No se usan claves API manuales, cookies copiadas ni contraseñas de ChatGPT.
 
 ## Agent Studio
 
 Los usuarios con `agents.manage` pueden crear agentes especializados, guardar borradores y publicar versiones inmutables. Cada definición contiene nombre, propósito, instrucciones, modelo, fuentes internas, herramientas habilitadas y requisito de aprobación humana. Los usuarios con `agents.run` solo ejecutan versiones publicadas.
 
-El modelo solicitado por una definición debe existir también en `OPENAI_ALLOWED_MODELS`; la validación final siempre ocurre en la Edge Function. Agent Studio consulta el estado del servidor y ofrece los modelos autorizados disponibles para el proyecto conectado.
+El modelo solicitado por una definición debe existir en el catálogo que devuelve la cuenta conectada. La validación final siempre ocurre en la Edge Function y Agent Studio solo ofrece esos modelos.
 
 ## Agente comercial
 
@@ -35,20 +35,26 @@ El modelo solicitado por una definición debe existir también en `OPENAI_ALLOWE
 - Consultas al CRM, catálogo y trazabilidad filtradas por empresa.
 - Errores internos no se exponen al navegador.
 - `store: false` en Responses API.
+- `stream: true`; una ejecución se confirma únicamente al recibir `response.completed`.
+- Tokens OAuth cifrados con AES-GCM y contexto por empresa.
+- Renovación rotativa del `refresh_token` con control de versión para evitar carreras.
 
-## Secrets
+## Conexión con ChatGPT
+
+El flujo usa OpenID Connect y Authorization Code con PKCE. Solo un usuario con `agents.manage` puede iniciar, cambiar, verificar o desconectar la cuenta. El callback valida `state`, `nonce`, emisor, audiencia y firma antes de persistir la conexión.
+
+Variables privadas de Edge Functions:
 
 ```env
-OPENAI_API_KEY=
-OPENAI_ACCOUNT_LABEL=SC Produccion
-OPENAI_ORGANIZATION_ID=
-OPENAI_PROJECT_ID=
-OPENAI_ALLOWED_MODELS=gpt-6-luna,gpt-6-sol,gpt-6-astra,gpt-5.4-mini,gpt-5-mini
-OPENAI_PROSPECTING_MODEL=gpt-5-mini
-OPENAI_QUOTE_MODEL=gpt-5-mini
+CHATGPT_CLIENT_ID=
+CHATGPT_CLIENT_SECRET=
+CHATGPT_TOKEN_AUTH_METHOD=none
+CHATGPT_REDIRECT_URI=https://rcvzfzuisnactwepvcup.supabase.co/functions/v1/chatgpt-oauth/callback
+CHATGPT_TOKEN_ENCRYPTION_KEY=
+CHATGPT_AGENT_HOST_ID=
 ALLOWED_ORIGINS=https://erp.scsolucionesconectadas.com.ar
 ```
 
-OpenAI API autentica con una clave de proyecto, no mediante un inicio de sesión de ChatGPT dentro del CRM. La clave, la organización y el proyecto permanecen exclusivamente en Supabase Secrets. `OPENAI_ACCOUNT_LABEL` es una etiqueta operativa sin secretos que permite identificar en la interfaz qué cuenta financia las ejecuciones.
+`CHATGPT_TOKEN_ENCRYPTION_KEY` debe contener 32 bytes aleatorios codificados como base64url sin padding. `CHATGPT_CLIENT_SECRET` se usa únicamente si el registro asignado por OpenAI exige `client_secret_basic`.
 
-El estado de la integración verifica `GET /v1/models`, cruza la respuesta con `OPENAI_ALLOWED_MODELS` y muestra únicamente metadatos seguros. Las ejecuciones registran agente, versión, duración y consumo informado por la API sin almacenar secretos. Los errores de credencial, cuota, permisos y modelo se transforman en mensajes accionables sin exponer la respuesta interna completa.
+SC es una aplicación alojada y necesita que OpenAI apruebe “Sign in with ChatGPT” y entregue un `client_id` antes de realizar la prueba real. Mientras falte esa aprobación, Configuración muestra el bloqueo sin simular una conexión. Una vez habilitada, se puede conectar, reconectar, cambiar de cuenta, actualizar modelos o desconectar. Las ejecuciones registran agente, versión, duración y consumo informado, sin guardar secretos ni conversaciones en OpenAI.

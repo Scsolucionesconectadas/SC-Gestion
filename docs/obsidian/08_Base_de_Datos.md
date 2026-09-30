@@ -11,7 +11,7 @@ PostgreSQL 17 en Supabase.
 - Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
 - Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
-- IA y control: `agent_definitions`, `agent_versions`, `agent_runs`, `pricing_catalog`, `quote_estimates`, `activity_log`, `notifications`.
+- IA y control: `agent_definitions`, `agent_versions`, `agent_runs`, `pricing_catalog`, `quote_estimates`, `chatgpt_connections`, `chatgpt_oauth_transactions`, `activity_log`, `notifications`.
 - Autorización: `permission_catalog`, `role_permission_defaults` y excepciones en `memberships.permission_overrides`.
 
 ## Integridad
@@ -34,7 +34,13 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 - `20260929143500_collaboration_performance.sql`: índices de claves foráneas y políticas sin superposición.
 - `20260929144000_task_watcher_user_index.sql`: cobertura específica de la relación entre seguidores y perfiles.
 - `20260929150000_schedule_overdue_notifications.sql`: `pg_cron` diario para avisos de tareas vencidas, filtrado por preferencias y membresías activas.
+- `20260930005036_chatgpt_oauth_connections.sql`: conexión ChatGPT por empresa y transacciones OAuth de un solo uso, sin acceso para `anon` ni `authenticated`.
+- `20260930005207_chatgpt_oauth_indexes.sql`: índices de cobertura para usuario y empresa detectados por Performance Advisor.
 
 ## Perfiles y membresías
 
 `profiles` contiene identidad global: nombre, email de contacto, teléfono, cargo, biografía y ruta de foto. `memberships` contiene rol, empresa y estado activo. La función `update_team_member` es `security definer`, revoca acceso anónimo, exige sesión autenticada y propietario activo, y evita desactivar o degradar al último propietario.
+
+## Credenciales ChatGPT
+
+`chatgpt_connections` mantiene una fila por empresa, metadatos públicos de la cuenta, modelos disponibles y tokens cifrados. `chatgpt_oauth_transactions` conserva durante diez minutos el estado hasheado, PKCE cifrado y nonce; cada fila se consume una sola vez. Ambas tablas tienen RLS sin políticas de navegador y privilegios exclusivos para `service_role`.

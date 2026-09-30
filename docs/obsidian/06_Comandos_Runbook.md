@@ -28,11 +28,12 @@ npm run users:create
 ```bash
 npx supabase functions deploy ai-agent --project-ref rcvzfzuisnactwepvcup
 npx supabase functions deploy communications --project-ref rcvzfzuisnactwepvcup
+npx supabase functions deploy chatgpt-oauth --project-ref rcvzfzuisnactwepvcup --no-verify-jwt
 ```
 
 Configurar secrets desde el panel o CLI. Nunca incluir valores en este documento.
 
-Variables de servidor requeridas: `OPENAI_API_KEY`, `OPENAI_ALLOWED_MODELS`, `OPENAI_PROSPECTING_MODEL`, `OPENAI_QUOTE_MODEL`, `RESEND_API_KEY`, `RESEND_FROM`, `RESEND_REPLY_TO` y `ALLOWED_ORIGINS`.
+Variables de servidor requeridas para ChatGPT: `CHATGPT_CLIENT_ID`, `CHATGPT_REDIRECT_URI`, `CHATGPT_TOKEN_ENCRYPTION_KEY` y `ALLOWED_ORIGINS`. `CHATGPT_CLIENT_SECRET`, `CHATGPT_TOKEN_AUTH_METHOD` y `CHATGPT_AGENT_HOST_ID` dependen del registro aprobado. Correo requiere `RESEND_API_KEY`, `RESEND_FROM` y `RESEND_REPLY_TO`.
 
 Después de una migración o despliegue, ejecutar Security Advisor y Performance Advisor desde Supabase y registrar cualquier excepción aceptada.
 

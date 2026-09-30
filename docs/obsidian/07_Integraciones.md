@@ -6,7 +6,7 @@
 - Database: PostgreSQL con RLS.
 - Storage: buckets privados `organization-documents`, `profile-avatars` y `generated-pdfs`.
 - Realtime: refresco de entidades filtradas por `organization_id`.
-- Edge Functions: `ai-agent` y `communications`, ambas con JWT obligatorio.
+- Edge Functions: `ai-agent` y `communications` con JWT; `chatgpt-oauth` valida manualmente las acciones autenticadas y deja público solo el callback protegido por OAuth.
 - `pg_cron`: evaluación diaria de tareas vencidas y creación deduplicada de avisos internos.
 
 Usuarios iniciales aprovisionados:
@@ -26,22 +26,21 @@ SUPABASE_URL=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-## OpenAI
+## ChatGPT
 
-La Edge Function usa Responses API con salida estructurada. Variables:
+La conexión usa Sign in with ChatGPT, Authorization Code con PKCE y OIDC. La cuenta queda asociada a la empresa activa. Variables privadas:
 
 ```env
-OPENAI_API_KEY=
-OPENAI_ACCOUNT_LABEL=
-OPENAI_ORGANIZATION_ID=
-OPENAI_PROJECT_ID=
-OPENAI_ALLOWED_MODELS=gpt-6-luna,gpt-6-sol,gpt-6-astra,gpt-5.4-mini,gpt-5-mini
-OPENAI_PROSPECTING_MODEL=
-OPENAI_QUOTE_MODEL=
+CHATGPT_CLIENT_ID=
+CHATGPT_CLIENT_SECRET=
+CHATGPT_TOKEN_AUTH_METHOD=none
+CHATGPT_REDIRECT_URI=https://rcvzfzuisnactwepvcup.supabase.co/functions/v1/chatgpt-oauth/callback
+CHATGPT_TOKEN_ENCRYPTION_KEY=
+CHATGPT_AGENT_HOST_ID=
 ALLOWED_ORIGINS=https://erp.scsolucionesconectadas.com.ar
 ```
 
-No hay acciones destructivas automáticas por IA. Las versiones configurables pueden exigir aprobación humana y cada ejecución queda registrada. La integración se autentica con una clave de proyecto en el servidor, no con un login de ChatGPT en el navegador. El portal verifica cuenta, proyecto y modelos sin devolver la clave.
+Los tokens de acceso, renovación e identidad se cifran antes de guardarse y nunca se devuelven al navegador. Se puede conectar, reconectar, cambiar de cuenta, actualizar modelos o desconectar. No hay acciones destructivas automáticas y cada ejecución queda registrada. La conexión productiva depende de que OpenAI apruebe a SC como aplicación alojada y entregue su `client_id`.
 
 ## Resend
 

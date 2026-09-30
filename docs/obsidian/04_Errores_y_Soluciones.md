@@ -98,9 +98,9 @@
 
 **Causa:** `OPENAI_API_KEY` no estaba configurada en Supabase Secrets. La función devolvía `503` antes de registrar una fila en `agent_runs` y el cliente descartaba el cuerpo JSON de la respuesta.
 
-**Solución aplicada:** la Edge Function devuelve códigos y mensajes públicos seguros; el cliente lee el cuerpo de `FunctionsHttpError`; Configuración permite verificar la conexión y muestra el procedimiento correcto para una clave de proyecto.
+**Solución aplicada en esa versión:** la Edge Function devolvió códigos y mensajes públicos seguros y el cliente comenzó a leer el cuerpo de `FunctionsHttpError`. La autenticación por clave quedó reemplazada luego por OAuth de ChatGPT.
 
-**Cómo evitarlo:** verificar la integración después de cada rotación de credenciales y mantener `OPENAI_ACCOUNT_LABEL`, `OPENAI_PROJECT_ID`, `OPENAI_ORGANIZATION_ID` y `OPENAI_ALLOWED_MODELS` junto con la clave en el servidor.
+**Cómo evitarlo actualmente:** verificar la cuenta ChatGPT, su sesión y catálogo de modelos desde Integraciones; no volver a solicitar claves API manuales para este flujo.
 
 **Archivos relacionados:** `supabase/functions/ai-agent/index.ts`, `assets/js/agents.js`, `assets/js/workspace.js`.
 
@@ -113,3 +113,27 @@
 **Solución aplicada:** el modal ahora es una columna flexible; el layout ocupa el espacio restante, el editor desplaza su contenido y las acciones permanecen visibles en el borde inferior.
 
 **Cómo evitarlo:** usar `flex: 1` y `min-height: 0` para regiones desplazables dentro de diálogos, y probar también resoluciones con poca altura.
+
+## 2026-09-29 - Integración de IA no coincidía con el acceso disponible
+
+**Síntoma:** la interfaz pedía una `OPENAI_API_KEY`, pero SC necesita autorizar una cuenta normal de ChatGPT y usar su plan.
+
+**Causa:** la primera implementación estaba diseñada para la API de plataforma y no para el programa Sign in with ChatGPT.
+
+**Solución aplicada:** se sustituyó por OAuth/OIDC oficial con PKCE, conexión por empresa, tokens cifrados en servidor y ejecución por streaming. La interfaz ya no solicita ni documenta claves API.
+
+**Cómo evitarlo:** confirmar el producto de autenticación y facturación antes de implementar una integración de IA; no confundir una suscripción de ChatGPT con una credencial estándar de API.
+
+**Archivos relacionados:** `supabase/functions/chatgpt-oauth/index.ts`, `supabase/functions/ai-agent/index.ts`, `assets/js/workspace.js`, `assets/js/agents.js`.
+
+## 2026-09-29 - Scrollbar vertical en pestañas de Configuración
+
+**Síntoma:** junto a las pestañas aparecía una barra vertical pequeña aunque el contenido cabía en altura.
+
+**Causa:** `overflow-x: auto` permitía que el navegador resolviera el eje vertical como desplazable alrededor del indicador activo.
+
+**Solución aplicada:** se fijó `overflow-y: hidden`, se ocultó únicamente el scrollbar visual y se conservó desplazamiento horizontal táctil.
+
+**Cómo evitarlo:** declarar ambos ejes en barras de pestañas responsivas y probar su `scrollHeight` en Playwright.
+
+**Archivos relacionados:** `assets/css/app.css`, `tests/app-shell.spec.js`.

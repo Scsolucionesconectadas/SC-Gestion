@@ -10,8 +10,8 @@
 
 - Proyecto: `sc-crm-comercial`.
 - Región: `sa-east-1`.
-- Edge Functions: `ai-agent` y `communications`, JWT obligatorio.
-- Migraciones aplicadas hasta `20260929150000_schedule_overdue_notifications.sql`.
+- Edge Functions: `ai-agent` v6 y `communications` con JWT; `chatgpt-oauth` v2 con callback público y autenticación manual para acciones POST.
+- Migraciones aplicadas hasta `20260930005207_chatgpt_oauth_indexes.sql`.
 - Bucket privado `profile-avatars`: máximo 2 MB, JPEG/PNG/WebP y acceso controlado por membresías.
 - Bucket privado `generated-pdfs`: documentos internos no fiscales accesibles por permisos de facturación y comunicaciones.
 
@@ -22,7 +22,8 @@
 3. Ejecutar prueba multi-tenant con usuarios reales.
 4. Definir backups, monitoreo y rollback.
 5. Configurar un dominio remitente de Resend y validar un envío controlado.
-6. Configurar `OPENAI_API_KEY`, cuenta, organización, proyecto y modelos permitidos en Supabase Secrets; validar desde Integraciones y ejecutar un agente controlado.
+6. Obtener el `client_id` aprobado por OpenAI para Sign in with ChatGPT.
+7. Configurar los secretos `CHATGPT_*`, conectar una cuenta desde Integraciones y ejecutar un agente controlado.
 
 ## Jobs
 

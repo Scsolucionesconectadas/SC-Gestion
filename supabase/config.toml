@@ -1,0 +1,10 @@
+project_id = "sc-crm-comercial"
+
+[functions.ai-agent]
+verify_jwt = true
+
+[functions.communications]
+verify_jwt = true
+
+[functions.chatgpt-oauth]
+verify_jwt = false

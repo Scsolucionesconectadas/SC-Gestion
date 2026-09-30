@@ -13,7 +13,8 @@ const fallbackPermissions=[
 ].map(([code,module,label],position)=>({code,module,label,position}));
 const requestedSettingsTab=new URLSearchParams(location.search).get('tab');
 let settingsTab=['company','permissions','notifications','integrations'].includes(requestedSettingsTab)?requestedSettingsTab:'company';
-let integrationState={openai:null,email:null};
+let integrationState={chatgpt:null,email:null};
+let chatGptCallbackHandled=false;
 
 const esc=value=>app.format.esc(value);
 const icon=()=>window.lucide?.createIcons();
@@ -97,7 +98,12 @@ const emailStatusClass=status=>({sent:'status-green',queued:'status-amber',faile
 
 function renderSettings(){
   if(!$('settingsSurface')||app.activeView!=='settings')return;
-  document.querySelectorAll('[data-settings-tab]').forEach(button=>button.classList.toggle('active',button.dataset.settingsTab===settingsTab));
+  document.querySelectorAll('[data-settings-tab]').forEach(button=>{
+    const active=button.dataset.settingsTab===settingsTab;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-selected',String(active));
+    button.setAttribute('tabindex',active?'0':'-1');
+  });
   const render={company:companySettings,permissions:permissionsSettings,notifications:notificationSettings,integrations:integrationSettings}[settingsTab];
   $('settingsSurface').innerHTML=render();
   bindSettingsForm();
@@ -123,11 +129,11 @@ function notificationSettings(){
 function preferenceRow(name,title,copy,checked,iconName){return '<label class="preference-row"><span class="settings-icon"><i data-lucide="'+iconName+'"></i></span><span><b>'+title+'</b><small>'+copy+'</small></span><span class="toggle-field"><input type="checkbox" name="'+name+'" '+(checked?'checked':'')+'><span></span></span></label>'}
 
 function integrationSettings(){
-  const state=value=>value?.connected===true?'<span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span>':value?.configured===false||value?.connected===false?'<span class="integration-state is-error"><i data-lucide="circle-alert"></i>Requiere configuración</span>':'<span class="integration-state"><i data-lucide="circle-dashed"></i>Sin verificar</span>';
-  const openai=integrationState.openai;
-  const openaiMeta=openai?'<div class="integration-meta"><span><b>Cuenta</b>'+esc(openai.account?.label||'Sin identificar')+'</span><span><b>Proyecto</b>'+esc(openai.account?.project_id||'Sin informar')+'</span><span><b>Modelos</b>'+esc(String(openai.available_models?.length||openai.allowed_models?.length||0))+' habilitados</span></div>':'';
+  const state=value=>value?.connected===true?'<span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span>':value?.code==='CHATGPT_PROVIDER_ACCESS_REQUIRED'?'<span class="integration-state is-waiting"><i data-lucide="clock-3"></i>Habilitación pendiente</span>':value?.configured===false||value?.connected===false?'<span class="integration-state is-error"><i data-lucide="circle-alert"></i>Requiere configuración</span>':'<span class="integration-state"><i data-lucide="circle-dashed"></i>Sin verificar</span>';
+  const chatgpt=integrationState.chatgpt;
+  const chatgptMeta=chatgpt?'<div class="integration-meta"><span><b>Cuenta</b>'+esc(chatgpt.account?.label||'Sin conectar')+'</span><span><b>Sesión</b>'+esc(chatgpt.connected?'Plan de ChatGPT':'No iniciada')+'</span><span><b>Modelos</b>'+esc(String(chatgpt.models?.length||chatgpt.available_models?.length||0))+' disponibles</span></div>':'';
   return '<div class="integration-grid">'+
-    '<article class="integration-card"><span class="integration-logo openai-mark">AI</span><div class="integration-copy"><h3>OpenAI Responses API</h3><p>Motor seguro para agentes comerciales, presupuestos y asistentes configurables.</p>'+state(openai)+openaiMeta+'</div><div class="integration-actions"><button class="btn btn-secondary" type="button" data-check-integration="openai" aria-label="Verificar OpenAI"><i data-lucide="refresh-cw"></i>Verificar</button><button class="btn btn-primary" type="button" data-configure-integration="openai"><i data-lucide="settings-2"></i>Configurar</button></div></article>'+
+    '<article class="integration-card"><span class="integration-logo chatgpt-mark"><i data-lucide="sparkles"></i></span><div class="integration-copy"><h3>ChatGPT para agentes</h3><p>Cuenta del plan de ChatGPT asociada a esta empresa mediante inicio de sesión oficial.</p>'+state(chatgpt)+chatgptMeta+'</div><div class="integration-actions"><button class="btn btn-secondary" type="button" data-check-integration="chatgpt" aria-label="Actualizar estado de ChatGPT"><i data-lucide="refresh-cw"></i>Actualizar</button><button class="btn btn-primary" type="button" data-configure-integration="chatgpt"><i data-lucide="'+(chatgpt?.connected?'settings-2':'log-in')+'"></i>'+(chatgpt?.connected?'Administrar':'Conectar')+'</button></div></article>'+
     '<article class="integration-card"><span class="integration-logo"><i data-lucide="mail"></i></span><div class="integration-copy"><h3>Correo transaccional</h3><p>Envíos trazables mediante Resend, con adjuntos privados autorizados.</p>'+state(integrationState.email)+'</div><div class="integration-actions"><button class="btn btn-secondary" type="button" data-check-integration="email" aria-label="Verificar correo"><i data-lucide="refresh-cw"></i>Verificar</button><button class="btn btn-primary" type="button" data-configure-integration="email"><i data-lucide="settings-2"></i>Configurar</button></div></article>'+
     '<article class="integration-card"><span class="integration-logo"><i data-lucide="database"></i></span><div class="integration-copy"><h3>Supabase</h3><p>Autenticación, PostgreSQL, Storage, Realtime y funciones seguras.</p><span class="integration-state is-ok"><i data-lucide="circle-check"></i>Conectada</span></div><div class="integration-actions"><button class="btn btn-secondary" type="button" disabled><i data-lucide="shield-check"></i>Activa</button></div></article>'+
     '</div><p class="section-disclaimer"><i data-lucide="shield-check"></i>Las credenciales privadas viven como secretos del servidor. SC Gestión nunca las muestra ni las guarda en el navegador.</p>';
@@ -349,11 +355,12 @@ async function integrationError(error){
 
 async function checkIntegration(kind,{silent=false}={}){
   if(app.mode==='demo'){
-    integrationState[kind]=kind==='openai'?{configured:true,connected:true,message:'Conexión demo verificada.',account:{label:'SC · Proyecto Demo',project_id:'demo'},allowed_models:['gpt-6-luna','gpt-6-sol','gpt-5-mini'],available_models:['gpt-6-luna','gpt-6-sol','gpt-5-mini']}:{configured:true,connected:true};
+    integrationState[kind]=kind==='chatgpt'?{configured:true,provider_approved:true,oauth_ready:true,connected:true,message:'Cuenta demo conectada.',account:{label:'Maikol Betancourt',email:'maikol@demo.local'},models:[{slug:'gpt-5-mini',display_name:'GPT-5 Mini'},{slug:'gpt-5',display_name:'GPT-5'}],available_models:['gpt-5-mini','gpt-5']}:{configured:true,connected:true};
     renderSettings();return integrationState[kind];
   }
-  const functionName=kind==='openai'?'ai-agent':'communications';
-  const {data,error}=await app.supabase.functions.invoke(functionName,{body:{action:'connection_status',organization_id:app.activeOrganization.id}});
+  const functionName=kind==='chatgpt'?'chatgpt-oauth':'communications';
+  const action=kind==='chatgpt'?'status':'connection_status';
+  const {data,error}=await app.supabase.functions.invoke(functionName,{body:{action,organization_id:app.activeOrganization.id}});
   integrationState[kind]=error?{configured:false,connected:false,...await integrationError(error)}:{...data,connected:data?.connected??data?.configured===true};
   renderSettings();
   if(!silent)app.notify(integrationState[kind].connected?'Integración disponible':integrationState[kind].message||'La integración requiere configuración');
@@ -362,16 +369,51 @@ async function checkIntegration(kind,{silent=false}={}){
 
 async function openIntegrationSetup(kind){
   const status=await checkIntegration(kind,{silent:true});
+  if(kind==='chatgpt'){
+    const account=status?.account||{};
+    const models=(status?.models||[]).map(model=>model.display_name||model.slug).filter(Boolean);
+    const providerPending=status?.code==='CHATGPT_PROVIDER_ACCESS_REQUIRED';
+    const details=status?.connected?'<div class="integration-detail-grid"><div><span>Cuenta conectada</span><b>'+esc(account.label||account.email||'Cuenta de ChatGPT')+'</b></div><div><span>Email</span><b>'+esc(account.email||'No informado')+'</b></div><div><span>Vencimiento de sesión</span><b>'+esc(status.expires_at?app.format.fmtDateTime(status.expires_at):'Renovación automática')+'</b></div><div><span>Última verificación</span><b>'+esc(status.last_verified_at?app.format.fmtDateTime(status.last_verified_at):'Pendiente')+'</b></div><div class="full"><span>Modelos disponibles para esta cuenta</span><b>'+esc(models.join(', ')||'Actualizar catálogo')+'</b></div></div>':'';
+    const actions=status?.connected
+      ?'<button type="button" class="btn btn-secondary" data-chatgpt-action="models"><i data-lucide="refresh-cw"></i>Actualizar modelos</button><button type="button" class="btn btn-secondary" data-chatgpt-action="reconnect"><i data-lucide="rotate-cw"></i>Reconectar</button><button type="button" class="btn btn-secondary" data-chatgpt-action="switch"><i data-lucide="users-round"></i>Cambiar cuenta</button><button type="button" class="btn btn-secondary danger-soft" data-chatgpt-action="disconnect"><i data-lucide="unplug"></i>Desconectar</button>'
+      :providerPending
+        ?'<a class="btn btn-primary" href="https://developers.openai.com/siwc/request-client-id" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Solicitar habilitación</a>'
+        :'<button type="button" class="btn btn-primary" data-chatgpt-action="connect"><i data-lucide="log-in"></i>Conectar con ChatGPT</button>';
+    showAction('Conectar con ChatGPT','CUENTA DE IA','<div class="integration-setup"><section class="integration-setup-status '+(status?.connected?'is-connected':'is-pending')+'"><i data-lucide="'+(status?.connected?'badge-check':providerPending?'clock-3':'circle-alert')+'"></i><div><b>'+(status?.connected?'Cuenta conectada':providerPending?'Habilitación del proveedor pendiente':'ChatGPT sin conectar')+'</b><p>'+esc(status?.message||'Iniciá sesión con la cuenta de ChatGPT que usará esta empresa.')+'</p></div></section>'+details+'<section class="integration-setup-copy"><h3>Inicio de sesión oficial, sin claves manuales</h3><p>SC usa Authorization Code con PKCE. Los tokens se cifran y permanecen exclusivamente en el servidor; el navegador no guarda cookies, contraseñas ni credenciales de ChatGPT.</p></section><ol class="integration-steps"><li><span>1</span><div><b>Elegí la cuenta</b><p>ChatGPT mostrará su pantalla oficial de acceso y consentimiento.</p></div></li><li><span>2</span><div><b>Asociación por empresa</b><p>La cuenta queda vinculada únicamente a la empresa activa y puede cambiarse cuando sea necesario.</p></div></li><li><span>3</span><div><b>Modelos de la cuenta</b><p>Agent Studio mostrará solo los modelos que esa cuenta tenga disponibles.</p></div></li></ol><div class="integration-setup-actions">'+actions+'</div></div>',{wide:true});
+    return;
+  }
   const projectRef=(window.SC_CONFIG?.SUPABASE_URL||'').match(/^https:\/\/([^.]+)/)?.[1]||'';
   const secretsUrl=projectRef?'https://supabase.com/dashboard/project/'+projectRef+'/functions/secrets':'https://supabase.com/dashboard';
-  const isOpenAI=kind==='openai';
-  const required=isOpenAI?['OPENAI_API_KEY','OPENAI_ACCOUNT_LABEL','OPENAI_PROJECT_ID','OPENAI_ORGANIZATION_ID','OPENAI_ALLOWED_MODELS']:['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];
-  const provider=isOpenAI?'OpenAI':'Resend';
-  const providerUrl=isOpenAI?'https://platform.openai.com/api-keys':'https://resend.com/api-keys';
-  const account=status?.account||{};
-  const models=status?.available_models?.length?status.available_models:status?.allowed_models||[];
-  const details=isOpenAI?'<div class="integration-detail-grid"><div><span>Cuenta operativa</span><b>'+esc(account.label||'Sin identificar')+'</b></div><div><span>Proyecto</span><b>'+esc(account.project_id||'Sin informar')+'</b></div><div class="full"><span>Modelos habilitados</span><b>'+esc(models.join(', ')||'Pendientes de verificación')+'</b></div></div>':'';
-  showAction('Configurar '+provider,'INTEGRACIÓN SEGURA','<div class="integration-setup"><section class="integration-setup-status '+(status?.connected?'is-connected':'is-pending')+'"><i data-lucide="'+(status?.connected?'badge-check':'circle-alert')+'"></i><div><b>'+(status?.connected?'Conexión verificada':'Configuración pendiente')+'</b><p>'+esc(status?.message||(status?.connected?'El servicio respondió correctamente.':'Completá los secretos del servidor.'))+'</p></div></section>'+details+'<section class="integration-setup-copy"><h3>'+(isOpenAI?'Conexión por proyecto, no por ChatGPT':'Credenciales del proveedor')+'</h3><p>'+(isOpenAI?'La API de OpenAI usa una clave de proyecto alojada en el servidor. No existe un inicio de sesión de ChatGPT que deba abrirse dentro del CRM. La etiqueta de cuenta permite identificar qué proyecto está pagando y ejecutando los agentes.':'Las credenciales de envío se guardan en Supabase Secrets y nunca se exponen al navegador.')+'</p></section><ol class="integration-steps"><li><span>1</span><div><b>Ingresá a '+provider+'</b><p>Creá o seleccioná la credencial del proyecto de producción.</p></div></li><li><span>2</span><div><b>Configurá Supabase Secrets</b><p>'+required.map(name=>'<code>'+name+'</code>').join(' ')+'</p></div></li><li><span>3</span><div><b>Volvé a verificar</b><p>SC Gestión validará la conexión sin mostrar la clave privada.</p></div></li></ol><div class="integration-setup-actions"><a class="btn btn-secondary" href="'+providerUrl+'" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Abrir '+provider+'</a><a class="btn btn-secondary" href="'+secretsUrl+'" target="_blank" rel="noopener"><i data-lucide="shield-keyhole"></i>Abrir secretos</a><button type="button" class="btn btn-secondary" data-copy-integration="'+kind+'"><i data-lucide="copy"></i>Copiar variables</button><button type="button" class="btn btn-primary" data-retry-integration="'+kind+'"><i data-lucide="refresh-cw"></i>Verificar ahora</button></div></div>',{wide:true});
+  const required=['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];
+  showAction('Configurar Resend','INTEGRACIÓN SEGURA','<div class="integration-setup"><section class="integration-setup-status '+(status?.connected?'is-connected':'is-pending')+'"><i data-lucide="'+(status?.connected?'badge-check':'circle-alert')+'"></i><div><b>'+(status?.connected?'Conexión verificada':'Configuración pendiente')+'</b><p>'+esc(status?.message||(status?.connected?'El servicio respondió correctamente.':'Completá los secretos del servidor.'))+'</p></div></section><section class="integration-setup-copy"><h3>Credenciales del proveedor</h3><p>Las credenciales de envío se guardan en Supabase Secrets y nunca se exponen al navegador.</p></section><ol class="integration-steps"><li><span>1</span><div><b>Ingresá a Resend</b><p>Creá o seleccioná la credencial del proyecto de producción.</p></div></li><li><span>2</span><div><b>Configurá Supabase Secrets</b><p>'+required.map(name=>'<code>'+name+'</code>').join(' ')+'</p></div></li><li><span>3</span><div><b>Volvé a verificar</b><p>SC Gestión validará la conexión sin mostrar la clave privada.</p></div></li></ol><div class="integration-setup-actions"><a class="btn btn-secondary" href="https://resend.com/api-keys" target="_blank" rel="noopener"><i data-lucide="external-link"></i>Abrir Resend</a><a class="btn btn-secondary" href="'+secretsUrl+'" target="_blank" rel="noopener"><i data-lucide="shield-keyhole"></i>Abrir secretos</a><button type="button" class="btn btn-secondary" data-copy-integration="email"><i data-lucide="copy"></i>Copiar variables</button><button type="button" class="btn btn-primary" data-retry-integration="email"><i data-lucide="refresh-cw"></i>Verificar ahora</button></div></div>',{wide:true});
+}
+
+async function chatGptAction(action){
+  if(app.mode==='demo'){
+    if(action==='disconnect')integrationState.chatgpt={configured:true,provider_approved:true,oauth_ready:true,connected:false,code:'CHATGPT_NOT_CONNECTED',message:'Todavía no hay una cuenta de ChatGPT conectada a esta empresa.'};
+    else integrationState.chatgpt={configured:true,provider_approved:true,oauth_ready:true,connected:true,message:'Cuenta demo conectada.',account:{label:'Maikol Betancourt',email:'maikol@demo.local'},models:[{slug:'gpt-5-mini',display_name:'GPT-5 Mini'},{slug:'gpt-5',display_name:'GPT-5'}],available_models:['gpt-5-mini','gpt-5']};
+    app.closeModal('actionModal');renderSettings();app.notify(action==='disconnect'?'Cuenta desconectada en la demo':'Cuenta demo actualizada');return;
+  }
+  if(action==='disconnect'&&!confirm('¿Desconectar la cuenta de ChatGPT de esta empresa? Los agentes dejarán de ejecutarse.'))return;
+  const requestAction=['connect','reconnect','switch'].includes(action)?'start':action;
+  const body={action:requestAction,organization_id:app.activeOrganization.id,return_to:location.href,switch_account:action==='switch'};
+  const {data,error}=await app.supabase.functions.invoke('chatgpt-oauth',{body});
+  if(error){const detail=await integrationError(error);app.notify(detail.message||'No se pudo completar la operación con ChatGPT.');return}
+  if(data?.authorization_url){location.assign(data.authorization_url);return}
+  integrationState.chatgpt=data?.connected===undefined?null:data;
+  app.closeModal('actionModal');await checkIntegration('chatgpt',{silent:true});
+  app.notify(action==='disconnect'?'Cuenta de ChatGPT desconectada':'Integración de ChatGPT actualizada');
+}
+
+async function handleChatGptCallback(){
+  if(chatGptCallbackHandled||!app.activeOrganization)return;
+  const params=new URLSearchParams(location.search),outcome=params.get('chatgpt');if(!outcome)return;
+  chatGptCallbackHandled=true;
+  if(outcome==='connected')app.notify('Cuenta de ChatGPT conectada a la empresa activa');
+  else app.notify('No se pudo conectar ChatGPT. Revisá la autorización e intentá nuevamente.');
+  params.delete('chatgpt');params.delete('reason');
+  history.replaceState({},'',location.pathname+(params.toString()?'?'+params:'')+location.hash);
+  await checkIntegration('chatgpt',{silent:true});
 }
 
 async function retryIntegration(kind){
@@ -381,7 +423,7 @@ async function retryIntegration(kind){
 
 function renderAll(){
   if(!isAppVisible())return;
-  renderQuickCreate();renderUserMenu();renderNotifications();renderCommunications();renderSettings();icon();
+  renderQuickCreate();renderUserMenu();renderNotifications();renderCommunications();renderSettings();icon();handleChatGptCallback();
 }
 
 function bind(){
@@ -409,7 +451,8 @@ function bind(){
     const integration=event.target.closest('[data-check-integration]');if(integration){checkIntegration(integration.dataset.checkIntegration);return}
     const configureIntegration=event.target.closest('[data-configure-integration]');if(configureIntegration){openIntegrationSetup(configureIntegration.dataset.configureIntegration);return}
     const retry=event.target.closest('[data-retry-integration]');if(retry){retryIntegration(retry.dataset.retryIntegration);return}
-    const copyVariables=event.target.closest('[data-copy-integration]');if(copyVariables){const names=copyVariables.dataset.copyIntegration==='openai'?['OPENAI_API_KEY','OPENAI_ACCOUNT_LABEL','OPENAI_PROJECT_ID','OPENAI_ORGANIZATION_ID','OPENAI_ALLOWED_MODELS']:['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];navigator.clipboard.writeText(names.map(name=>name+'=').join('\n')).then(()=>app.notify('Variables copiadas'));return}
+    const chatgptAction=event.target.closest('[data-chatgpt-action]');if(chatgptAction){chatGptAction(chatgptAction.dataset.chatgptAction);return}
+    const copyVariables=event.target.closest('[data-copy-integration]');if(copyVariables){const names=['RESEND_API_KEY','RESEND_FROM','RESEND_REPLY_TO'];navigator.clipboard.writeText(names.map(name=>name+'=').join('\n')).then(()=>app.notify('Variables copiadas'));return}
   });
   document.addEventListener('keydown',event=>{if(event.key==='Escape')closePopovers()});
   window.addEventListener('sc:workspace',renderAll);

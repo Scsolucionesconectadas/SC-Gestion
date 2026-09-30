@@ -7,7 +7,7 @@ Portal interno multiempresa de **Soluciones Conectadas** para centralizar oportu
 - Frontend estático en HTML, CSS y JavaScript.
 - Supabase Auth, PostgreSQL, Storage, Realtime y Edge Functions.
 - Row Level Security por `organization_id`, roles y permisos granulares.
-- OpenAI Responses API detrás de una Edge Function autenticada.
+- Plan de ChatGPT conectado mediante OAuth oficial, PKCE y Edge Functions.
 - Chart.js, SortableJS, Day.js y Lucide con versiones fijadas.
 - Playwright y HTML Validate para calidad.
 
@@ -54,7 +54,7 @@ La Edge Function `communications` envía mensajes preparados desde el portal med
 
 ## Agentes IA
 
-La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa, permiso `agents.run` y `organization_id`. Agent Studio permite a quienes tienen `agents.manage` crear borradores, definir instrucciones, contexto, herramientas, seleccionar un modelo verificado y publicar versiones inmutables. Configuración muestra el estado, la cuenta operativa y los modelos disponibles; la clave de OpenAI queda únicamente en Supabase Secrets. Consulte `docs/AI_AGENTS.md`.
+La función `supabase/functions/ai-agent/index.ts` exige JWT, membresía activa, permiso `agents.run` y `organization_id`. Agent Studio permite a quienes tienen `agents.manage` crear borradores, definir instrucciones, contexto, herramientas, seleccionar un modelo de la cuenta conectada y publicar versiones inmutables. `chatgpt-oauth` implementa Authorization Code con PKCE, asocia la cuenta de ChatGPT a la empresa activa y guarda sus tokens cifrados solo en el servidor. Las ejecuciones usan `store: false` y `stream: true`. Consulte `docs/AI_AGENTS.md`.
 
 ## Colaboración
 

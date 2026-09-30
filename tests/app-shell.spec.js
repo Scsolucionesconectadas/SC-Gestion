@@ -126,12 +126,14 @@ test('opera colaboración, comunicaciones, PDF y configuración', async ({ page 
   await expect(page.locator('#settingsSurface')).toContainText('Preferencias personales');
 
   await page.locator('[data-settings-tab="integrations"]').click();
-  await expect(page.locator('#settingsSurface')).toContainText('OpenAI Responses API');
-  await page.locator('[data-configure-integration="openai"]').click();
-  await expect(page.locator('#actionTitle')).toHaveText('Configurar OpenAI');
-  await expect(page.locator('#actionBody')).toContainText('Conexión por proyecto, no por ChatGPT');
-  await expect(page.locator('#actionBody')).toContainText('SC · Proyecto Demo');
-  await expect(page.locator('#actionBody')).toContainText('OPENAI_API_KEY');
+  await expect(page.locator('#settingsSurface')).toContainText('ChatGPT para agentes');
+  const tabsOverflow=await page.locator('.settings-tabs').evaluate(element=>({clientHeight:element.clientHeight,scrollHeight:element.scrollHeight}));
+  expect(tabsOverflow.scrollHeight).toBeLessThanOrEqual(tabsOverflow.clientHeight+1);
+  await page.locator('[data-configure-integration="chatgpt"]').click();
+  await expect(page.locator('#actionTitle')).toHaveText('Conectar con ChatGPT');
+  await expect(page.locator('#actionBody')).toContainText('Inicio de sesión oficial, sin claves manuales');
+  await expect(page.locator('#actionBody')).toContainText('Maikol Betancourt');
+  await expect(page.locator('#actionBody')).not.toContainText('OPENAI_API_KEY');
   await page.locator('#actionModal [data-close="actionModal"]').click();
 
   const topbarHeight=await page.locator('.topbar').evaluate(element=>element.getBoundingClientRect().height);
@@ -188,7 +190,7 @@ test('mantiene Agent Studio completo y desplazable en pantallas bajas', async ({
     const modal=document.querySelector('#agentStudioModal');
     modal.hidden=false;
     document.body.classList.add('studio-open');
-    document.querySelector('#studioEditor').innerHTML='<form class="agent-definition-form"><section class="studio-connection is-pending"><span class="studio-connection-icon"></span><div><b>OpenAI requiere configuración</b><p>Cuenta pendiente</p></div><a class="btn btn-secondary">Configurar</a></section><div class="studio-fields"><label>Nombre<input value="Agente Comercial"></label><label>Identificador<input value="prospecting"></label><label class="full">Descripción<input value="Demo"></label><label class="full">Prompt<textarea rows="16">Prompt de prueba</textarea></label><label>Modelo<select><option>gpt-6-luna</option></select></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label>Web</label></fieldset><fieldset><legend>Fuentes</legend><label>CRM</label></fieldset></div><div class="studio-history"><div><b>Versiones</b></div><div class="version-list"><span>v1</span></div></div><div class="form-actions"><button class="btn btn-secondary">Cancelar</button><button class="btn btn-primary">Publicar versión</button></div></form>';
+    document.querySelector('#studioEditor').innerHTML='<form class="agent-definition-form"><section class="studio-connection is-pending"><span class="studio-connection-icon"></span><div><b>ChatGPT requiere conexión</b><p>Cuenta pendiente</p></div><a class="btn btn-secondary">Conectar</a></section><div class="studio-fields"><label>Nombre<input value="Agente Comercial"></label><label>Identificador<input value="prospecting"></label><label class="full">Descripción<input value="Demo"></label><label class="full">Prompt<textarea rows="16">Prompt de prueba</textarea></label><label>Modelo<select><option>gpt-5-mini</option></select></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label>Web</label></fieldset><fieldset><legend>Fuentes</legend><label>CRM</label></fieldset></div><div class="studio-history"><div><b>Versiones</b></div><div class="version-list"><span>v1</span></div></div><div class="form-actions"><button class="btn btn-secondary">Cancelar</button><button class="btn btn-primary">Publicar versión</button></div></form>';
   });
   const modal=page.locator('.agent-studio-modal');
   const modalBox=await modal.boundingBox();

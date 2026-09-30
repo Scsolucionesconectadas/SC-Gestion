@@ -14,7 +14,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Sidebar responsive, formularios y modales actualizados y cubiertos por Playwright.
 - Colaboración de tareas con checklist, subtareas, comentarios y seguidores; notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
 - Avisos diarios de tareas vencidas programados a las 08:15 de Argentina mediante `pg_cron`.
-- Agent Studio implementado con borradores, versiones publicadas, selector de modelos verificados, estado de cuenta operativa y diagnóstico accionable.
+- Agent Studio implementado con borradores, versiones publicadas y modelos de la cuenta de ChatGPT conectada por empresa.
+- Flujo OAuth de ChatGPT preparado con PKCE, tokens cifrados en servidor, renovación, cambio de cuenta y desconexión. La prueba real espera el `client_id` aprobado por OpenAI.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
 ## Stack técnico
@@ -23,7 +24,7 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Backend: Supabase Auth, Edge Functions y Realtime.
 - Base de datos: PostgreSQL con RLS.
 - Archivos: Supabase Storage privado.
-- IA: OpenAI Responses API desde Edge Function.
+- IA: plan de ChatGPT mediante OAuth oficial y Responses API desde Edge Functions.
 - Calidad: Playwright y HTML Validate.
 
 ## Cómo ejecutar
@@ -39,7 +40,7 @@ npm run serve
 - [ ] Validar separación con dos empresas y usuarios reales.
 - [ ] Configurar recuperación de contraseña para las identidades internas.
 - [ ] Configurar y verificar Resend con un dominio remitente validado.
-- [ ] Configurar la clave y los metadatos del proyecto OpenAI en Supabase Secrets y ejecutar una prueba controlada.
+- [ ] Obtener de OpenAI la habilitación y el `client_id` de Sign in with ChatGPT; cargar secretos y ejecutar una prueba controlada.
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 

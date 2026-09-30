@@ -10,7 +10,19 @@
 - [ ] Completar identidad legal, CUIT y domicilio solo cuando estén formalmente disponibles.
 - [ ] Revisión legal argentina de privacidad, términos y cookies del sitio público.
 - [ ] Configurar `RESEND_API_KEY`, remitente verificado y ejecutar un envío controlado.
-- [ ] Configurar `OPENAI_API_KEY`, etiqueta de cuenta, organización y proyecto en Supabase Secrets; luego ejecutar un agente controlado.
+- [ ] Solicitar y obtener de OpenAI el `client_id` para Sign in with ChatGPT en una aplicación alojada.
+- [ ] Configurar `CHATGPT_CLIENT_ID`, `CHATGPT_REDIRECT_URI` y `CHATGPT_TOKEN_ENCRYPTION_KEY` en Supabase Secrets; agregar secreto y método de autenticación solo si el registro lo exige.
+- [ ] Conectar una cuenta real de ChatGPT, validar el catálogo de modelos y ejecutar un agente controlado con `store: false` y `stream: true`.
+
+## Configuración propuesta
+
+- [ ] Seguridad: MFA, sesiones activas, cierre remoto, historial de accesos y políticas de contraseña.
+- [ ] Administración: numeración interna, condiciones de pago, vencimientos, impuestos informativos y plantillas PDF.
+- [ ] Comunicaciones: remitentes, firmas, plantillas, horarios silenciosos y reglas de notificación por evento.
+- [ ] Datos: retención, exportación, importación, backups y restauración verificada.
+- [ ] Automatizaciones: webhooks, n8n, reintentos, alertas y bitácora de ejecuciones.
+- [ ] Marca y localización: logo, idioma, formatos de fecha, zona horaria, moneda y colores por empresa.
+- [ ] IA: límites por rol, aprobación humana por agente, consumo visible y políticas de herramientas por empresa.
 
 ## Resueltos
 

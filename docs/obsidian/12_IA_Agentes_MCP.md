@@ -10,22 +10,23 @@
 
 - Salida JSON Schema estricta.
 - `store: false`.
+- `stream: true` y confirmación de `response.completed`.
 - Revisión humana obligatoria.
 - Rate limit por usuario y empresa.
 - Consultas filtradas por tenant.
-- Clave OpenAI solo en Supabase Secrets.
-- Modelos limitados por `OPENAI_ALLOWED_MODELS` en servidor.
+- Cuenta de ChatGPT asociada a la empresa activa mediante OAuth/OIDC y PKCE.
+- Tokens cifrados con AES-GCM solo en servidor; sin cookies copiadas, contraseñas ni claves API manuales.
 - Modelos disponibles verificados contra `GET /v1/models` antes de mostrarlos en Agent Studio.
-- Identificación operativa mediante `OPENAI_ACCOUNT_LABEL`, `OPENAI_ORGANIZATION_ID` y `OPENAI_PROJECT_ID`, sin exponer credenciales.
 - Versiones publicadas inmutables y ejecución vinculada a agente y versión.
 - Métricas de duración y tokens informados por la API.
 
-## Conexión OpenAI
+## Conexión ChatGPT
 
-- La API usa una clave de proyecto guardada en Supabase Secrets; no existe un login de ChatGPT dentro del navegador.
-- Configuración permite verificar conexión, cuenta, proyecto y modelos habilitados.
-- Si falta la clave o OpenAI responde con credencial, cuota, permiso o modelo inválido, el usuario recibe una explicación accionable y el detalle interno queda en logs.
-- Modelos base autorizables: `gpt-6-luna`, `gpt-6-sol`, `gpt-6-astra`, `gpt-5.4-mini` y `gpt-5-mini`.
+- Configuración permite iniciar el login oficial, verificar la cuenta, actualizar modelos, reconectar, cambiar de cuenta o desconectar.
+- El callback valida estado, PKCE, nonce, firma, emisor, audiencia y scope `chatgpt.tokens.use.direct`.
+- Los refresh tokens rotan y se actualizan con control de versión para resolver concurrencia.
+- Si la sesión vence, el plan alcanza su límite o el modelo deja de estar disponible, el usuario recibe una explicación accionable y el detalle interno queda en logs.
+- SC debe obtener aprobación y un `client_id` del programa Sign in with ChatGPT antes de completar el flujo productivo.
 
 ## MCP
 

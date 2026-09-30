@@ -159,4 +159,30 @@
 - Logs de Supabase: el `503` ocurrió antes de crear una corrida porque faltaba `OPENAI_API_KEY`.
 
 **Pendientes detectados:**
-- Cargar la credencial y metadatos de la cuenta real en Supabase Secrets y ejecutar una prueba controlada.
+- Este pendiente quedó reemplazado por la habilitación OAuth de ChatGPT documentada en la entrada siguiente.
+
+## 2026-09-29 - OAuth de ChatGPT y refinamiento de Configuración
+
+**Cambios realizados:**
+- Se reemplazó el flujo de clave API por conexión oficial de ChatGPT con OAuth, PKCE y OIDC por empresa.
+- Se agregaron cifrado de tokens, renovación rotativa, catálogo de modelos, reconexión, cambio de cuenta, revocación y desconexión.
+- `ai-agent` usa el token de la empresa, entrada estructurada, `store: false`, `stream: true` y espera `response.completed`.
+- Configuración y Agent Studio muestran cuenta y modelos reales sin secretos; mientras falta aprobación del proveedor se informa el bloqueo.
+- Se eliminó la barra vertical de las pestañas y se mejoraron botones, campos e integraciones con microinteracciones accesibles.
+
+**Archivos modificados:**
+- `supabase/functions/_shared/chatgpt-plan.ts`, `supabase/functions/chatgpt-oauth/index.ts`, `supabase/functions/ai-agent/index.ts`.
+- `supabase/migrations/20260930005036_chatgpt_oauth_connections.sql`, `supabase/config.toml`.
+- `assets/js/workspace.js`, `assets/js/agents.js`, `assets/css/app.css`, `.env.example` y pruebas.
+
+**Validaciones realizadas:**
+- `npm run lint`: correcto.
+- Playwright: 5 pruebas aprobadas en escritorio, móvil y pantalla baja.
+- Búsqueda de referencias runtime a `OPENAI_API_KEY`: sin coincidencias.
+- Migraciones de conexión e índices aplicadas en Supabase; `ai-agent` v6 y `chatgpt-oauth` v2 activos.
+- Acción OAuth sin JWT rechazada con `401`; callback sin estado redirigido como error controlado.
+- `anon` y `authenticated` sin privilegio de lectura; Performance Advisor sin claves foráneas nuevas sin índice.
+- Revisión visual a 1650 x 790 y 390 x 844 sin desborde ni scrollbar vertical en las pestañas.
+
+**Pendientes detectados:**
+- Obtener el `client_id` aprobado por OpenAI, configurar secretos y realizar el recorrido OAuth real.

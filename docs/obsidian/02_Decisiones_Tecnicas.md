@@ -82,7 +82,7 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 
 ## 2026-09-29 - Versionado de agentes y secretos solo en servidor
 
-**Decisión:** separar definiciones editables de versiones publicadas inmutables y aceptar únicamente modelos incluidos en `OPENAI_ALLOWED_MODELS`.
+**Decisión histórica:** separar definiciones editables de versiones publicadas inmutables. La restricción posterior por variable de modelos quedó reemplazada el 2026-09-29 por el catálogo de la cuenta ChatGPT conectada.
 
 **Motivo:** conservar trazabilidad, permitir rollback conceptual y evitar que un valor del navegador elija modelos o credenciales no autorizados.
 
@@ -101,3 +101,25 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** `mailto:` sin trazabilidad y claves de proveedor en el frontend; ambas se descartaron.
 
 **Archivos relacionados:** `assets/js/workspace.js`, `supabase/functions/communications/index.ts`, `supabase/migrations/20260929134500_collaboration_communications.sql`.
+
+## 2026-09-29 - Plan de ChatGPT mediante OAuth por empresa
+
+**Decisión:** reemplazar la autenticación con clave API por Sign in with ChatGPT usando Authorization Code, PKCE y OIDC. Cada empresa mantiene una sola cuenta conectada y Agent Studio usa únicamente sus modelos disponibles.
+
+**Motivo:** SC usará el plan de ChatGPT autorizado por la persona, sin solicitar claves API, copiar cookies ni almacenar contraseñas.
+
+**Impacto:** los tokens se cifran con AES-GCM y se guardan solo en tablas privadas; el callback valida estado, nonce, firma, emisor y audiencia. `ai-agent` ejecuta con `store: false` y `stream: true` y confirma solo `response.completed`.
+
+**Alternativas consideradas:** clave de proyecto OpenAI y automatización de la sesión web. La primera no coincide con el modelo de acceso requerido; la segunda se descarta por insegura y no oficial.
+
+**Archivos relacionados:** `supabase/functions/chatgpt-oauth/index.ts`, `supabase/functions/_shared/chatgpt-plan.ts`, `supabase/functions/ai-agent/index.ts`, `supabase/migrations/20260930005036_chatgpt_oauth_connections.sql`.
+
+## 2026-09-29 - Microinteracciones sin nueva dependencia
+
+**Decisión:** adaptar patrones de feedback visual de Uiverse con CSS propio y el sistema SC, sin copiar un componente completo ni agregar una librería.
+
+**Motivo:** botones, campos y pestañas necesitan mejor respuesta visual, pero las transiciones existentes cubren el caso con menor peso y mantenimiento.
+
+**Impacto:** foco visible, hover, presión, brillo y movimiento breve respetan `prefers-reduced-motion`; las pestañas de Configuración no muestran scrollbar vertical.
+
+**Archivos relacionados:** `assets/css/app.css`, `assets/js/workspace.js`.

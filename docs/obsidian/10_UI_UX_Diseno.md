@@ -53,10 +53,11 @@
 - Historial de comunicaciones y compositor de correo con estados de envío visibles.
 - Agent Studio usa selector lateral y editor enfocado, con historial de versiones.
 - Agent Studio mantiene cabecera y acciones visibles, desplaza solo el editor y no corta los controles en pantallas bajas o móviles.
-- El selector de modelo muestra opciones autorizadas por el servidor y el estado superior identifica la conexión y la cuenta operativa de OpenAI.
+- El selector de modelo muestra únicamente opciones disponibles para la cuenta de ChatGPT asociada a la empresa activa.
 - La barra superior usa una altura compacta de 64 px en escritorio y 58 px en móvil, con búsqueda y acciones que se simplifican por resolución.
-- Integraciones ofrece verificación y un asistente de configuración con estado, metadatos seguros, variables requeridas y accesos al proveedor y a Supabase Secrets.
+- Integraciones permite conectar, reconectar, cambiar, verificar o desconectar ChatGPT sin pedir claves manuales; si falta aprobación del proveedor muestra el requisito real.
 - Los botones emplean brillo y presión breves inspirados en patrones públicos de Uiverse, adaptados al sistema SC y desactivados con `prefers-reduced-motion`.
+- Campos, integraciones y pestañas suman foco, hover y transiciones sobrias; la barra de pestañas permite desplazamiento táctil horizontal sin scrollbar vertical.
 - Lectura y escritura se reflejan por permiso específico; una persona puede consultar un módulo sin recibir acciones de edición.
 - La preferencia `in_app` controla también los recordatorios automáticos de tareas vencidas.
 - Las rutas inexistentes muestran una página 404 breve, coherente con SC y con retorno directo al acceso principal.

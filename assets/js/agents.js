@@ -5,14 +5,6 @@ const configured=Boolean(cfg.SUPABASE_URL&&cfg.SUPABASE_PUBLISHABLE_KEY);
 const supabase=configured?createClient(cfg.SUPABASE_URL,cfg.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true}}):null;
 
 const ORG_KEY='sc_gestion_active_organization';
-const FALLBACK_MODELS=['gpt-6-luna','gpt-6-sol','gpt-6-astra','gpt-5.4-mini','gpt-5-mini'];
-const MODEL_LABELS={
-  'gpt-6-luna':'GPT-6 Luna · eficiente',
-  'gpt-6-sol':'GPT-6 Sol · equilibrado',
-  'gpt-6-astra':'GPT-6 Astra · máxima calidad',
-  'gpt-5.4-mini':'GPT-5.4 Mini · rápido',
-  'gpt-5-mini':'GPT-5 Mini · compatible'
-};
 let session=null,profile=null,prospects=[],definitions=[],activeAgent='prospecting',membership=null,organization=null,canRun=false,canManage=false,studioAgentId=null,connection=null;
 
 const $=id=>document.getElementById(id);
@@ -39,33 +31,41 @@ async function invokeAgent(body){
   return data;
 }
 
+async function invokeChatGpt(body){
+  const {data,error}=await supabase.functions.invoke('chatgpt-oauth',{body});
+  if(error)throw new Error(await functionErrorMessage(error));
+  return data;
+}
+
 async function loadConnectionStatus(){
   if(!canManage)return;
   try{
-    connection=await invokeAgent({action:'connection_status',organization_id:organization.id});
+    connection=await invokeChatGpt({action:'status',organization_id:organization.id});
   }catch(error){
-    connection={configured:false,connected:false,message:error.message,allowed_models:FALLBACK_MODELS,available_models:[]};
+    connection={configured:false,connected:false,message:error.message,models:[],available_models:[]};
   }
   renderConnectionStatus();
 }
 
 function renderConnectionStatus(){
   const target=$('agentConnectionStatus');if(!target)return;
-  const label=connection?.account?.label;
+  const label=connection?.account?.label||connection?.account?.email;
   target.className='agent-provider '+(connection?.connected?'is-connected':'is-pending');
-  target.innerHTML='<span></span><div><b>'+(connection?.connected?'OpenAI conectado':'OpenAI pendiente')+'</b><small>'+esc(connection?.connected?(label||'Cuenta sin identificar'):'Configuración requerida')+'</small></div>';
+  target.innerHTML='<span></span><div><b>'+(connection?.connected?'ChatGPT conectado':'ChatGPT pendiente')+'</b><small>'+esc(connection?.connected?(label||'Cuenta sin identificar'):(connection?.message||'Configuración requerida'))+'</small></div>';
 }
 
 function modelOptions(selected){
-  const available=Array.isArray(connection?.available_models)&&connection.available_models.length?connection.available_models:connection?.allowed_models;
-  const models=[...new Set([...(Array.isArray(available)?available:FALLBACK_MODELS),selected].filter(Boolean))];
-  return models.map(model=>'<option value="'+esc(model)+'" '+(model===selected?'selected':'')+'>'+esc(MODEL_LABELS[model]||model)+'</option>').join('');
+  const entries=Array.isArray(connection?.models)?connection.models:[];
+  const models=entries.map(item=>({slug:String(item.slug||''),label:String(item.display_name||item.slug||'')})).filter(item=>item.slug);
+  if(selected&&!models.some(item=>item.slug===selected))models.unshift({slug:selected,label:selected+' · no disponible en la cuenta'});
+  if(!models.length)models.push({slug:'',label:'Conectá ChatGPT para cargar modelos'});
+  return models.map(item=>'<option value="'+esc(item.slug)+'" '+(item.slug===selected?'selected':'')+' '+(!item.slug?'disabled':'')+'>'+esc(item.label)+'</option>').join('');
 }
 
 function connectionBanner(){
   const account=connection?.account||{};
-  const details=[account.label,account.project_id].filter(Boolean).join(' · ');
-  return '<section class="studio-connection '+(connection?.connected?'is-connected':'is-pending')+'"><span class="studio-connection-icon"><i data-lucide="'+(connection?.connected?'badge-check':'unplug')+'"></i></span><div><b>'+(connection?.connected?'Conexión OpenAI verificada':'OpenAI requiere configuración')+'</b><p>'+esc(connection?.connected?(details||'La credencial funciona, pero falta identificar la cuenta operativa.'):(connection?.message||'Falta la credencial de proyecto en el servidor.'))+'</p></div><a class="btn btn-secondary" href="./index.html?view=settings&tab=integrations"><i data-lucide="settings-2"></i>'+(connection?.connected?'Ver integración':'Configurar')+'</a></section>';
+  const details=[account.label,account.email].filter(Boolean).join(' · ');
+  return '<section class="studio-connection '+(connection?.connected?'is-connected':'is-pending')+'"><span class="studio-connection-icon"><i data-lucide="'+(connection?.connected?'badge-check':'unplug')+'"></i></span><div><b>'+(connection?.connected?'Cuenta de ChatGPT verificada':'ChatGPT requiere conexión')+'</b><p>'+esc(connection?.connected?(details||'Cuenta de ChatGPT asociada a la empresa activa.'):(connection?.message||'Conectá una cuenta de ChatGPT desde Configuración > Integraciones.'))+'</p></div><a class="btn btn-secondary" href="./index.html?view=settings&tab=integrations"><i data-lucide="settings-2"></i>'+(connection?.connected?'Administrar':'Conectar')+'</a></section>';
 }
 
 async function init(){
@@ -294,16 +294,16 @@ async function editStudioAgent(agentId){
   studioAgentId=agentId||null;renderStudioList();const agent=definitions.find(item=>item.id===studioAgentId)||null;
   const versions=agent?await supabase.from('agent_versions').select('id,version,published_at,published_by').eq('organization_id',organization.id).eq('agent_id',agent.id).order('version',{ascending:false}).limit(12):{data:[]};
   const tools=Array.isArray(agent?.tools)?agent.tools:[],sources=Array.isArray(agent?.context_sources)?agent.context_sources:[];
-  $('studioEditor').innerHTML='<form id="agentDefinitionForm" class="agent-definition-form"><input type="hidden" name="id" value="'+esc(agent?.id||'')+'"><div class="studio-editor-head"><div><span class="eyebrow">'+(agent?'BORRADOR DE CONFIGURACIÓN':'NUEVO AGENTE')+'</span><h3>'+(agent?esc(agent.name):'Definí un asistente especializado')+'</h3></div>'+(agent?'<span class="status-pill '+(agent.status==='active'?'status-green':'status-amber')+'">'+(agent.status==='active'?'Publicado v'+agent.current_version:'Borrador')+'</span>':'')+'</div><div class="studio-fields"><label>Nombre<input name="name" required minlength="2" maxlength="120" value="'+esc(agent?.name||'')+'" placeholder="Ej.: Analista de proyectos"></label><label>Identificador<input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" '+(agent?'readonly':'')+' value="'+esc(agent?.slug||'')+'" placeholder="analista-proyectos"></label><label class="full">Descripción<input name="description" maxlength="300" value="'+esc(agent?.description||'')+'" placeholder="Qué resuelve y para quién."></label><label class="full">Prompt del sistema<textarea name="instructions" required minlength="20" maxlength="20000" rows="10" placeholder="Rol, objetivo, reglas, límites y formato esperado.">'+esc(agent?.instructions||'')+'</textarea><small>Los secretos y claves nunca deben incluirse en el prompt.</small></label><label>Modelo autorizado<input name="model" list="modelOptions" value="'+esc(agent?.model||'gpt-5-mini')+'"><datalist id="modelOptions"><option value="gpt-5-mini"></datalist><small>También debe estar permitido en OPENAI_ALLOWED_MODELS.</small></label><label class="approval-control">Aprobación humana<span class="toggle-field"><input name="requires_approval" type="checkbox" '+(agent?.requires_approval!==false?'checked':'')+'><span></span><b>Requerida</b></span></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label class="check-row"><input type="checkbox" name="web_search" '+(tools.includes('web_search')?'checked':'')+'><span>Búsqueda web pública</span></label></fieldset><fieldset><legend>Fuentes internas</legend><label class="check-row"><input type="checkbox" name="prospects" '+(sources.includes('prospects')?'checked':'')+'><span>Oportunidades</span></label><label class="check-row"><input type="checkbox" name="pricing_catalog" '+(sources.includes('pricing_catalog')?'checked':'')+'><span>Catálogo de precios</span></label></fieldset></div><div class="studio-history"><div><b>Versiones publicadas</b><small>Historial inmutable para auditoría</small></div><div class="version-list">'+((versions.data||[]).length?(versions.data||[]).map(version=>'<span><b>v'+version.version+'</b><small>'+new Date(version.published_at).toLocaleString('es-AR')+'</small></span>').join(''):'<span><small>Sin versiones publicadas.</small></span>')+'</div></div><div class="form-actions">'+(agent?'<button type="button" class="btn btn-secondary danger-soft" data-archive-agent="'+agent.id+'"><i data-lucide="archive"></i>Archivar</button>':'')+'<span class="form-actions-spacer"></span><button type="button" class="btn btn-secondary" data-agent-close>Cancelar</button><button class="btn btn-secondary" type="submit"><i data-lucide="save"></i>Guardar borrador</button>'+(agent?'<button type="button" class="btn btn-primary" data-publish-agent="'+agent.id+'"><i data-lucide="rocket"></i>Publicar versión</button>':'')+'</div></form>';
-  const selectedModel=agent?.model||'gpt-5-mini';
+  $('studioEditor').innerHTML='<form id="agentDefinitionForm" class="agent-definition-form"><input type="hidden" name="id" value="'+esc(agent?.id||'')+'"><div class="studio-editor-head"><div><span class="eyebrow">'+(agent?'BORRADOR DE CONFIGURACIÓN':'NUEVO AGENTE')+'</span><h3>'+(agent?esc(agent.name):'Definí un asistente especializado')+'</h3></div>'+(agent?'<span class="status-pill '+(agent.status==='active'?'status-green':'status-amber')+'">'+(agent.status==='active'?'Publicado v'+agent.current_version:'Borrador')+'</span>':'')+'</div><div class="studio-fields"><label>Nombre<input name="name" required minlength="2" maxlength="120" value="'+esc(agent?.name||'')+'" placeholder="Ej.: Analista de proyectos"></label><label>Identificador<input name="slug" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" '+(agent?'readonly':'')+' value="'+esc(agent?.slug||'')+'" placeholder="analista-proyectos"></label><label class="full">Descripción<input name="description" maxlength="300" value="'+esc(agent?.description||'')+'" placeholder="Qué resuelve y para quién."></label><label class="full">Prompt del sistema<textarea name="instructions" required minlength="20" maxlength="20000" rows="10" placeholder="Rol, objetivo, reglas, límites y formato esperado.">'+esc(agent?.instructions||'')+'</textarea><small>Los secretos y claves nunca deben incluirse en el prompt.</small></label><label>Modelo autorizado<input name="model" value="'+esc(agent?.model||'')+'"><small>Se selecciona entre los modelos de la cuenta de ChatGPT conectada.</small></label><label class="approval-control">Aprobación humana<span class="toggle-field"><input name="requires_approval" type="checkbox" '+(agent?.requires_approval!==false?'checked':'')+'><span></span><b>Requerida</b></span></label></div><div class="studio-options"><fieldset><legend>Herramientas</legend><label class="check-row"><input type="checkbox" name="web_search" '+(tools.includes('web_search')?'checked':'')+'><span>Búsqueda web pública</span></label></fieldset><fieldset><legend>Fuentes internas</legend><label class="check-row"><input type="checkbox" name="prospects" '+(sources.includes('prospects')?'checked':'')+'><span>Oportunidades</span></label><label class="check-row"><input type="checkbox" name="pricing_catalog" '+(sources.includes('pricing_catalog')?'checked':'')+'><span>Catálogo de precios</span></label></fieldset></div><div class="studio-history"><div><b>Versiones publicadas</b><small>Historial inmutable para auditoría</small></div><div class="version-list">'+((versions.data||[]).length?(versions.data||[]).map(version=>'<span><b>v'+version.version+'</b><small>'+new Date(version.published_at).toLocaleString('es-AR')+'</small></span>').join(''):'<span><small>Sin versiones publicadas.</small></span>')+'</div></div><div class="form-actions">'+(agent?'<button type="button" class="btn btn-secondary danger-soft" data-archive-agent="'+agent.id+'"><i data-lucide="archive"></i>Archivar</button>':'')+'<span class="form-actions-spacer"></span><button type="button" class="btn btn-secondary" data-agent-close>Cancelar</button><button class="btn btn-secondary" type="submit"><i data-lucide="save"></i>Guardar borrador</button>'+(agent?'<button type="button" class="btn btn-primary" data-publish-agent="'+agent.id+'"><i data-lucide="rocket"></i>Publicar versión</button>':'')+'</div></form>';
+  const selectedModel=agent?.model||connection?.models?.[0]?.slug||'';
   const modelField=$('studioEditor').querySelector('input[name="model"]');
-  modelField.closest('label').innerHTML='Modelo autorizado<select name="model" required>'+modelOptions(selectedModel)+'</select><small>La lista se valida contra los modelos habilitados en el servidor.</small>';
+  modelField.closest('label').innerHTML='Modelo autorizado<select name="model" required>'+modelOptions(selectedModel)+'</select><small>'+(connection?.connected?'La lista proviene de la cuenta de ChatGPT conectada.':'Conectá ChatGPT para elegir y publicar un modelo.')+'</small>';
   $('agentDefinitionForm').insertAdjacentHTML('afterbegin',connectionBanner());
   $('agentDefinitionForm').onsubmit=saveAgentDefinition;$('studioEditor').querySelectorAll('[data-agent-close]').forEach(button=>button.onclick=closeStudio);iconRefresh();
 }
 async function saveAgentDefinition(event){
   event.preventDefault();const values=new FormData(event.target),id=values.get('id')||null;
-  const payload={organization_id:organization.id,slug:values.get('slug').trim().toLowerCase(),name:values.get('name').trim(),description:values.get('description').trim()||null,instructions:values.get('instructions').trim(),model:values.get('model').trim()||'gpt-5-mini',tools:values.get('web_search')==='on'?['web_search']:[],context_sources:['prospects','pricing_catalog'].filter(key=>values.get(key)==='on'),requires_approval:values.get('requires_approval')==='on',updated_by:profile.id};
+  const payload={organization_id:organization.id,slug:values.get('slug').trim().toLowerCase(),name:values.get('name').trim(),description:values.get('description').trim()||null,instructions:values.get('instructions').trim(),model:String(values.get('model')||'').trim(),tools:values.get('web_search')==='on'?['web_search']:[],context_sources:['prospects','pricing_catalog'].filter(key=>values.get(key)==='on'),requires_approval:values.get('requires_approval')==='on',updated_by:profile.id};
   const result=id?await supabase.from('agent_definitions').update(payload).eq('organization_id',organization.id).eq('id',id).select('*').single():await supabase.from('agent_definitions').insert({...payload,status:'draft',created_by:profile.id}).select('*').single();
   if(result.error){toast(result.error.message);return}
   await reloadDefinitions();studioAgentId=result.data.id;await editStudioAgent(result.data.id);toast('Borrador guardado');
