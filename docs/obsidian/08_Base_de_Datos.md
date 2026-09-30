@@ -7,7 +7,7 @@ PostgreSQL 17 en Supabase.
 ## Entidades principales
 
 - Acceso: `profiles`, `organizations`, `memberships`.
-- Comercial: `prospects`, `interactions`, `meetings`, `proposals`.
+- Comercial: `prospects`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
 - Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
 - Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
@@ -17,6 +17,8 @@ PostgreSQL 17 en Supabase.
 ## Integridad
 
 Las relaciones operativas usan claves compuestas con `organization_id` para impedir referencias entre empresas. Finanzas se limita a `owner`, `admin` y `accounting`.
+
+Los presupuestos usan columnas generadas para precio unitario y subtotales. La RPC `save_commercial_proposal` vuelve a calcular descuento, impuesto y total dentro de PostgreSQL, guarda un snapshot por versión y deja las tablas de detalle en modo de lectura para `authenticated`.
 
 ## Migraciones
 
@@ -36,6 +38,8 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 - `20260929150000_schedule_overdue_notifications.sql`: `pg_cron` diario para avisos de tareas vencidas, filtrado por preferencias y membresías activas.
 - `20260930005036_chatgpt_oauth_connections.sql`: conexión ChatGPT por empresa y transacciones OAuth de un solo uso, sin acceso para `anon` ni `authenticated`.
 - `20260930005207_chatgpt_oauth_indexes.sql`: índices de cobertura para usuario y empresa detectados por Performance Advisor.
+- `20260930024955_commercial_quote_builder.sql`: permisos, cabecera extendida, etapas, conceptos, versiones, RLS, estados y guardado transaccional de presupuestos.
+- `20260930111554_commercial_quote_fk_indexes.sql`: índices de cobertura en el orden exacto de las claves foráneas del módulo comercial.
 
 ## Perfiles y membresías
 
@@ -44,3 +48,11 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 ## Credenciales ChatGPT
 
 `chatgpt_connections` mantiene una fila por empresa, metadatos públicos de la cuenta, modelos disponibles y tokens cifrados. `chatgpt_oauth_transactions` conserva durante diez minutos el estado hasheado, PKCE cifrado y nonce; cada fila se consume una sola vez. Ambas tablas tienen RLS sin políticas de navegador y privilegios exclusivos para `service_role`.
+
+## Importaciones controladas
+
+- 2026-09-29: importación transaccional del CRM provisorio para Soluciones Conectadas.
+- Resultado: 65 filas en `prospects` y 65 filas relacionadas en `interactions`.
+- Control posterior: cero negocios duplicados por nombre normalizado y cero interacciones huérfanas.
+- Trazabilidad: las oportunidades importadas usan `source = 'Google Sheets · CRM Comercial SC y Click'`.
+- Privacidad: la carga no se almacena en migraciones, scripts ni documentación del repositorio público.

@@ -186,3 +186,48 @@
 
 **Pendientes detectados:**
 - Obtener el `client_id` aprobado por OpenAI, configurar secretos y realizar el recorrido OAuth real.
+
+## 2026-09-29 - Migración comercial y refinamiento visual global
+
+**Cambios realizados:**
+- Se migraron 65 oportunidades y 65 seguimientos desde el CRM provisorio hacia `prospects` e `interactions`.
+- Se preservaron responsables, fechas, contactos, necesidades, próximos pasos y observaciones sin almacenar la fuente en el repositorio.
+- Se corrigió definitivamente el scrollbar lateral de Configuración con recorte vertical y desplazamiento horizontal solo en pantallas pequeñas.
+- Se unificó la escala tipográfica de navegación, tablas, formularios, tarjetas, modales e Integraciones.
+- Se incorporaron transiciones de entrada, foco, hover y selección con desactivación mediante `prefers-reduced-motion`.
+- Se registró que OpenAI recibió la solicitud comercial y prevé ampliar el acceso durante el cuarto trimestre.
+
+**Archivos modificados:**
+- `assets/css/app.css`, `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- Auditoría posterior: 65 oportunidades, 65 interacciones, cero duplicados y cero relaciones huérfanas.
+- `npm run lint`: correcto.
+- Playwright: 5 pruebas aprobadas.
+- Revisión visual en 1440 x 900 y 390 x 844, sin desborde horizontal; cabecera de 64 px y 56 px respectivamente.
+
+**Pendientes detectados:**
+- Esperar la respuesta de OpenAI antes de configurar credenciales o ejecutar el primer agente real.
+
+## 2026-09-30 - Constructor de presupuestos comerciales
+
+**Cambios realizados:**
+- Se incorporó el módulo Presupuestos con KPIs, filtros, estados, edición, nueva versión y acceso desde creación rápida.
+- El constructor organiza identificación, alcance, exclusiones, etapas, conceptos, cantidades, unidades, costos, márgenes, descuentos, impuestos, condiciones y control previo.
+- El PDF comercial muestra alcance, conceptos, precios y condiciones sin exponer costos internos ni márgenes.
+- PostgreSQL recalcula los totales, conserva snapshots, impide saltos de estado y bloquea la edición de documentos cerrados.
+- Se retiró el formulario antiguo que escribía directamente en `proposals` y se limitaron las tablas comerciales a lectura desde el navegador.
+
+**Archivos modificados:**
+- `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/workspace.js`, `assets/js/quotes.js`.
+- `supabase/migrations/20260930024955_commercial_quote_builder.sql` y `supabase/migrations/20260930111554_commercial_quote_fk_indexes.sql`.
+- `package.json`, `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- `npm run lint`: correcto.
+- Playwright: 6 pruebas aprobadas; creación, cálculo, PDF, versión y responsive a 390 x 844 incluidos.
+- Prueba transaccional real en Supabase: total calculado por servidor, recorrido completo de estados y bloqueo posterior a aceptación; todos los datos temporales se revirtieron.
+- Security Advisor revisado; la RPC `security definer` es intencional, valida sesión, empresa y permisos. Performance Advisor quedó sin claves foráneas sin índice.
+
+**Pendientes detectados:**
+- Validar el primer presupuesto real con un usuario autenticado y definir si la aceptación abrirá un asistente de conversión a cliente y proyecto.

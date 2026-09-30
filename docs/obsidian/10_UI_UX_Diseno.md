@@ -54,10 +54,20 @@
 - Agent Studio usa selector lateral y editor enfocado, con historial de versiones.
 - Agent Studio mantiene cabecera y acciones visibles, desplaza solo el editor y no corta los controles en pantallas bajas o móviles.
 - El selector de modelo muestra únicamente opciones disponibles para la cuenta de ChatGPT asociada a la empresa activa.
-- La barra superior usa una altura compacta de 64 px en escritorio y 58 px en móvil, con búsqueda y acciones que se simplifican por resolución.
+- La barra superior usa una altura compacta de 64 px en escritorio y 56 px en móvil, con búsqueda y acciones que se simplifican por resolución.
 - Integraciones permite conectar, reconectar, cambiar, verificar o desconectar ChatGPT sin pedir claves manuales; si falta aprobación del proveedor muestra el requisito real.
 - Los botones emplean brillo y presión breves inspirados en patrones públicos de Uiverse, adaptados al sistema SC y desactivados con `prefers-reduced-motion`.
 - Campos, integraciones y pestañas suman foco, hover y transiciones sobrias; la barra de pestañas permite desplazamiento táctil horizontal sin scrollbar vertical.
+- La escala tipográfica usa Inter para lectura y controles, Sora para jerarquía, tamaños mínimos legibles en tablas y metadatos, y espaciado de letras neutro.
+- Tarjetas, paneles y estados activos usan movimiento breve con la misma curva de aceleración; el menú conserva desplazamiento funcional sin una barra lateral visible.
 - Lectura y escritura se reflejan por permiso específico; una persona puede consultar un módulo sin recibir acciones de edición.
 - La preferencia `in_app` controla también los recordatorios automáticos de tareas vencidas.
 - Las rutas inexistentes muestran una página 404 breve, coherente con SC y con retorno directo al acceso principal.
+
+## Presupuestos comerciales
+
+- La vista combina KPIs, filtro por estado, tabla para escritorio y fichas compactas en móvil.
+- El constructor de formato amplio separa identificación, alcance, costeo y condiciones; un resumen económico y un control previo acompañan la edición.
+- Cada etapa admite conceptos con categoría, descripción, cantidad, unidad, costo y margen. Los totales se actualizan sin recargar la página.
+- En pantallas de hasta 840 px el modal ocupa el viewport, usa una sola columna, conserva las acciones visibles y desplaza únicamente su contenido.
+- El PDF oculta costo y margen, respeta el logo sin deformarlo y diferencia borradores antes de la emisión.

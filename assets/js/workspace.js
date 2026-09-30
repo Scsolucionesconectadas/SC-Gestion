@@ -57,6 +57,7 @@ function togglePopover(panelId,buttonId){
 function renderQuickCreate(){
   const options=[
     ['prospect','Oportunidad','users-round','crm.write'],['client','Cliente','building-2','clients.write'],
+    ['budget','Presupuesto','file-spreadsheet','quotes.write'],
     ['project','Proyecto','briefcase-business','projects.write'],['task','Tarea','list-plus','tasks.write'],
     ['invoice','Comprobante','receipt-text','billing.write'],['email','Correo','mail-plus','communications.send']
   ].filter(item=>app.hasPermission(item[3])||(app.mode==='demo'&&item[3]!=='communications.send'));
@@ -436,7 +437,7 @@ function bind(){
   $('newOrganizationBtn')?.addEventListener('click',openNewOrganization);
   document.addEventListener('click',event=>{
     if(!event.target.closest('.popover-wrap'))closePopovers();
-    const quick=event.target.closest('[data-quick-create]');if(quick){closePopovers();const type=quick.dataset.quickCreate;if(type==='prospect')$('newProspectBtn').click();else if(type==='email')openEmailComposer();else app.openAction(type);return}
+    const quick=event.target.closest('[data-quick-create]');if(quick){closePopovers();const type=quick.dataset.quickCreate;if(type==='prospect')$('newProspectBtn').click();else if(type==='budget')window.dispatchEvent(new CustomEvent('sc:quote:new'));else if(type==='email')openEmailComposer();else app.openAction(type);return}
     const userAction=event.target.closest('[data-user-action]')?.dataset.userAction;if(userAction){closePopovers();if(userAction==='profile')app.openAction('profile');if(userAction==='password')app.openAction('changePassword');if(userAction==='notifications'){settingsTab='notifications';app.setView('settings')}if(userAction==='settings')app.setView('settings');if(userAction==='logout')$('logoutBtn').click();return}
     const notification=event.target.closest('[data-notification]');if(notification){markNotification(notification.dataset.notification,notification.dataset.entity);return}
     const taskButton=event.target.closest('[data-task-open]');if(taskButton){openTaskDetail(taskButton.dataset.taskOpen);return}

@@ -127,8 +127,13 @@ test('opera colaboración, comunicaciones, PDF y configuración', async ({ page 
 
   await page.locator('[data-settings-tab="integrations"]').click();
   await expect(page.locator('#settingsSurface')).toContainText('ChatGPT para agentes');
-  const tabsOverflow=await page.locator('.settings-tabs').evaluate(element=>({clientHeight:element.clientHeight,scrollHeight:element.scrollHeight}));
+  const tabsOverflow=await page.locator('.settings-tabs').evaluate(element=>({
+    clientHeight:element.clientHeight,
+    scrollHeight:element.scrollHeight,
+    overflowY:getComputedStyle(element).overflowY
+  }));
   expect(tabsOverflow.scrollHeight).toBeLessThanOrEqual(tabsOverflow.clientHeight+1);
+  expect(['clip','hidden']).toContain(tabsOverflow.overflowY);
   await page.locator('[data-configure-integration="chatgpt"]').click();
   await expect(page.locator('#actionTitle')).toHaveText('Conectar con ChatGPT');
   await expect(page.locator('#actionBody')).toContainText('Inicio de sesión oficial, sin claves manuales');
@@ -179,6 +184,52 @@ test('mantiene navegación usable y sin desborde horizontal en móvil', async ({
   expect(overflow).toBe(false);
   const mobileTopbarHeight=await page.locator('.topbar').evaluate(element=>element.getBoundingClientRect().height);
   expect(mobileTopbarHeight).toBeLessThanOrEqual(60);
+  expect(runtimeErrors).toEqual([]);
+});
+
+test('crea, calcula, versiona y exporta presupuestos por etapas', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+  await page.locator('[data-view="budgets"]').click();
+  await expect(page.locator('#budgetsView')).toBeVisible();
+  await expect(page.locator('#budgetRows')).toContainText('PRE-2026-0001');
+
+  await page.locator('#newBudgetBtn').click();
+  await expect(page.locator('#budgetModal')).toBeVisible();
+  await page.locator('[data-header="title"]').fill('Automatización de pedidos y reportes');
+  await page.locator('[data-header="project_name"]').fill('Operación comercial conectada');
+  await page.locator('[data-item-field="description"]').first().fill('Relevamiento e implementación');
+  await page.locator('[data-item-field="quantity"]').first().fill('2');
+  await page.locator('[data-item-field="unit_cost"]').first().fill('1000');
+  await page.locator('[data-item-field="margin_percent"]').first().fill('25');
+  await page.locator('[data-header="tax_percent"]').fill('21');
+  await expect(page.locator('#quoteTotal')).toContainText('3.025');
+  await page.locator('#budgetForm button[type="submit"]').click();
+  await expect(page.locator('#budgetModal')).toBeHidden();
+  const createdRow=page.locator('#budgetRows tr').filter({hasText:'Operación comercial conectada'});
+  await expect(createdRow).toContainText('3.025');
+
+  const downloadPromise=page.waitForEvent('download');
+  await createdRow.locator('[data-quote-pdf]').click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^PRE-\d{4}-\d{4}-v1\.pdf$/);
+
+  await createdRow.locator('[data-quote-version]').click();
+  await expect(page.locator('[data-header="status"]')).toHaveValue('borrador');
+  await expect(page.locator('.quote-version-chip')).toContainText('v2');
+  await page.locator('[data-close="budgetModal"]').last().click();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator('#newBudgetBtn').click();
+  const mobileModal = await page.locator('.budget-modal').boundingBox();
+  expect(mobileModal).not.toBeNull();
+  expect(mobileModal.x).toBeGreaterThanOrEqual(0);
+  expect(mobileModal.width).toBeLessThanOrEqual(390);
+  expect(mobileModal.height).toBeLessThanOrEqual(845);
+  const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(mobileOverflow).toBeLessThanOrEqual(1);
+  await page.locator('#budgetBuilder').evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(page.locator('.quote-form-actions')).toBeVisible();
+  await page.locator('[data-close="budgetModal"]').last().click();
   expect(runtimeErrors).toEqual([]);
 });
 

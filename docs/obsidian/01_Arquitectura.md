@@ -13,10 +13,11 @@
 9. Edge Function `communications`: entrega autenticada de emails mediante Resend.
 10. Storage privado `profile-avatars`: fotos bajo la ruta `{user_id}/archivo` con acceso entre miembros y administración autorizada.
 11. Storage privado `generated-pdfs`: comprobantes internos no fiscales versionados por empresa.
+12. Presupuestos comerciales: `proposals` como cabecera, `proposal_sections` y `proposal_items` para costeo por etapas, y `proposal_versions` para snapshots auditables.
 
 ## Módulos
 
-Oportunidades, interacciones, reuniones, propuestas, clientes, proyectos, tareas colaborativas con checklist y subtareas, documentos, comprobantes internos, pagos, comunicaciones, notificaciones, reportes, equipo, configuración y agentes IA.
+Oportunidades, interacciones, reuniones, presupuestos comerciales, clientes, proyectos, tareas colaborativas con checklist y subtareas, documentos, comprobantes internos, pagos, comunicaciones, notificaciones, reportes, equipo, configuración y agentes IA.
 
 ## Límite de confianza
 
@@ -25,5 +26,7 @@ La interfaz oculta acciones según el rol, pero la seguridad real se aplica con 
 La edición del equipo usa `public.update_team_member`: valida que quien llama sea propietario activo, actualiza perfil y membresía en una operación y evita dejar a la empresa sin propietario.
 
 Los permisos efectivos combinan los valores predeterminados de `role_permission_defaults` con `memberships.permission_overrides`. Las RPC administrativas vuelven a validar la sesión y la capacidad solicitada dentro de PostgreSQL. El frontend replica esas decisiones para mostrar una interfaz coherente, pero no es el límite de seguridad.
+
+El navegador solo puede leer presupuestos según `quotes.view`. La RPC `save_commercial_proposal` concentra la escritura: valida `quotes.write` o `quotes.approve`, recalcula costos y totales, reemplaza etapas y conceptos en una transacción, registra la versión y aplica el avance comercial. Un documento aceptado, rechazado o vencido queda inmutable; cualquier corrección requiere una nueva versión.
 
 El callback OAuth es público porque el proveedor debe abrirlo sin JWT de Supabase. Su confianza se basa en `state` hasheado y de un solo uso, PKCE, `nonce`, firma OIDC, emisor y audiencia. Las acciones iniciadas desde el portal sí exigen sesión y `agents.manage`.

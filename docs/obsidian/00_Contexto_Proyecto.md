@@ -15,7 +15,10 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Colaboración de tareas con checklist, subtareas, comentarios y seguidores; notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
 - Avisos diarios de tareas vencidas programados a las 08:15 de Argentina mediante `pg_cron`.
 - Agent Studio implementado con borradores, versiones publicadas y modelos de la cuenta de ChatGPT conectada por empresa.
-- Flujo OAuth de ChatGPT preparado con PKCE, tokens cifrados en servidor, renovación, cambio de cuenta y desconexión. La prueba real espera el `client_id` aprobado por OpenAI.
+- Flujo OAuth de ChatGPT preparado con PKCE, tokens cifrados en servidor, renovación, cambio de cuenta y desconexión. La solicitud comercial fue recibida por OpenAI y la prueba real espera su habilitación y `client_id`.
+- CRM provisorio migrado desde Google Sheets: 65 oportunidades y 65 interacciones vinculadas, sin duplicados ni relaciones huérfanas.
+- Constructor de presupuestos comerciales implementado con alcance, etapas, conceptos, costos internos, márgenes, impuestos, aprobación, versiones y PDF para clientes.
+- Los importes se recalculan en PostgreSQL y los presupuestos cerrados solo pueden continuar mediante una nueva versión.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
 ## Stack técnico
@@ -40,9 +43,10 @@ npm run serve
 - [ ] Validar separación con dos empresas y usuarios reales.
 - [ ] Configurar recuperación de contraseña para las identidades internas.
 - [ ] Configurar y verificar Resend con un dominio remitente validado.
-- [ ] Obtener de OpenAI la habilitación y el `client_id` de Sign in with ChatGPT; cargar secretos y ejecutar una prueba controlada.
+- [ ] Esperar la respuesta de OpenAI a la solicitud de Sign in with ChatGPT prevista para el cuarto trimestre; luego cargar el `client_id`, los secretos y ejecutar una prueba controlada.
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
+- [ ] Validar el primer presupuesto real con un usuario autenticado y definir la conversión guiada de oportunidad aceptada a cliente/proyecto.
 
 ## Notas relacionadas
 

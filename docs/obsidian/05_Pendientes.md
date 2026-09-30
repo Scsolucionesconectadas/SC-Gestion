@@ -10,9 +10,11 @@
 - [ ] Completar identidad legal, CUIT y domicilio solo cuando estén formalmente disponibles.
 - [ ] Revisión legal argentina de privacidad, términos y cookies del sitio público.
 - [ ] Configurar `RESEND_API_KEY`, remitente verificado y ejecutar un envío controlado.
-- [ ] Solicitar y obtener de OpenAI el `client_id` para Sign in with ChatGPT en una aplicación alojada.
+- [ ] Esperar la respuesta de OpenAI a la solicitud comercial de Sign in with ChatGPT; el formulario informa una ampliación de acceso prevista para comienzos del cuarto trimestre.
 - [ ] Configurar `CHATGPT_CLIENT_ID`, `CHATGPT_REDIRECT_URI` y `CHATGPT_TOKEN_ENCRYPTION_KEY` en Supabase Secrets; agregar secreto y método de autenticación solo si el registro lo exige.
 - [ ] Conectar una cuenta real de ChatGPT, validar el catálogo de modelos y ejecutar un agente controlado con `store: false` y `stream: true`.
+- [ ] Validar el primer presupuesto comercial real con un usuario autenticado.
+- [ ] Definir el asistente de conversión de presupuesto aceptado a cliente y proyecto, sin crear duplicados automáticamente.
 
 ## Configuración propuesta
 
@@ -26,6 +28,10 @@
 
 ## Resueltos
 
+- [x] Constructor de presupuestos por etapas, conceptos, margen, aprobación, versiones y PDF comercial - 2026-09-30.
+- [x] Presentar a OpenAI la solicitud comercial para Sign in with ChatGPT - 2026-09-29.
+- [x] Migrar el CRM provisorio: 65 oportunidades y 65 interacciones sin duplicados ni huérfanos - 2026-09-29.
+- [x] Unificar tipografías, microinteracciones y eliminar scrollbars técnicos visibles en Configuración - 2026-09-29.
 - [x] Corregir el indicador de cambio inicial para `mbetancourt` y verificar que no vuelva a bloquear el acceso - 2026-09-29.
 - [x] Incorporar perfiles profesionales y administración del equipo por el propietario - 2026-09-29.
 - [x] Rediseñar sidebar, formularios y modales responsive - 2026-09-29.

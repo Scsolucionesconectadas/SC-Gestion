@@ -132,8 +132,20 @@
 
 **Causa:** `overflow-x: auto` permitía que el navegador resolviera el eje vertical como desplazable alrededor del indicador activo.
 
-**Solución aplicada:** se fijó `overflow-y: hidden`, se ocultó únicamente el scrollbar visual y se conservó desplazamiento horizontal táctil.
+**Solución aplicada:** en escritorio se usa `overflow: clip`; en pantallas pequeñas se habilita solo el desplazamiento horizontal y se recorta el eje vertical. El scrollbar del menú lateral también queda oculto sin impedir rueda, teclado o gesto táctil.
 
 **Cómo evitarlo:** declarar ambos ejes en barras de pestañas responsivas y probar su `scrollHeight` en Playwright.
 
 **Archivos relacionados:** `assets/css/app.css`, `tests/app-shell.spec.js`.
+
+## 2026-09-30 - El constructor de presupuestos no abría
+
+**Síntoma:** al pulsar Nuevo presupuesto el modal permanecía oculto y la consola informaba `dayjs is not defined`.
+
+**Causa:** `assets/js/quotes.js` utilizaba fechas y numeración anual mediante Day.js sin importar el módulo.
+
+**Solución aplicada:** importar la misma versión fijada de Day.js usada por la aplicación y agregar el archivo al chequeo de sintaxis y al recorrido E2E.
+
+**Cómo evitarlo:** ejecutar la interacción completa en navegador, capturar `pageerror` y mantener cada módulo ES con dependencias explícitas.
+
+**Archivos relacionados:** `assets/js/quotes.js`, `package.json`, `tests/app-shell.spec.js`.

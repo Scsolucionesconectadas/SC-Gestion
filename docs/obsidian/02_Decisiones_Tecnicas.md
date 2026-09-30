@@ -123,3 +123,27 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Impacto:** foco visible, hover, presión, brillo y movimiento breve respetan `prefers-reduced-motion`; las pestañas de Configuración no muestran scrollbar vertical.
 
 **Archivos relacionados:** `assets/css/app.css`, `assets/js/workspace.js`.
+
+## 2026-09-29 - Importación privada e idempotente del CRM provisorio
+
+**Decisión:** migrar los datos operativos directamente desde la hoja autorizada hacia Supabase mediante una única transacción idempotente, sin crear una migración de datos ni guardar el contenido de la hoja en Git.
+
+**Motivo:** los contactos contienen datos personales y comerciales reales; el repositorio público debe conservar solo código y documentación no sensible.
+
+**Impacto:** se incorporaron 65 oportunidades y 65 interacciones a Soluciones Conectadas. La carga evita duplicados por empresa y negocio, conserva responsables y fechas, y revierte el lote completo ante cualquier restricción inválida.
+
+**Alternativas consideradas:** versionar los registros en SQL o importarlos manualmente desde el navegador. Se descartaron por exposición de datos y mayor riesgo de errores parciales.
+
+**Archivos relacionados:** ninguno; la operación se ejecutó de forma controlada contra Supabase y solo se documentan sus conteos.
+
+## 2026-09-30 - Presupuestos guiados separados de facturación
+
+**Decisión:** modelar el presupuesto como una propuesta comercial versionada, compuesta por etapas y conceptos, sin convertir la planilla de referencia en una pantalla ni mezclarla con comprobantes internos.
+
+**Motivo:** el equipo necesita construir alcance y precio desde el requerimiento del cliente, conservar el costo y margen para uso interno y entregar un PDF que muestre únicamente valores comerciales.
+
+**Impacto:** `proposals` conserva la cabecera; `proposal_sections`, `proposal_items` y `proposal_versions` agregan desglose e historial. Solo `save_commercial_proposal` escribe estas tablas, recalcula totales y controla la secuencia `borrador/revisión/aprobada/enviada/aceptada o rechazada`.
+
+**Alternativas consideradas:** replicar el Excel completo y permitir escrituras directas desde el navegador. Se descartaron por complejidad visual, riesgo de datos parciales y manipulación de importes.
+
+**Archivos relacionados:** `assets/js/quotes.js`, `supabase/migrations/20260930024955_commercial_quote_builder.sql`, `supabase/migrations/20260930111554_commercial_quote_fk_indexes.sql`.

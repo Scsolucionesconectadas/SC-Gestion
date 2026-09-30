@@ -101,6 +101,7 @@
         <button type="button" class="active" data-view="dashboard"><i data-lucide="layout-dashboard"></i><span>Inicio</span></button>
         <button type="button" data-view="prospects"><i data-lucide="users-round"></i><span>Oportunidades</span></button>
         <button type="button" data-view="pipeline"><i data-lucide="columns-3"></i><span>Pipeline</span></button>
+        <button type="button" data-view="budgets"><i data-lucide="file-spreadsheet"></i><span>Presupuestos</span></button>
         <button type="button" data-view="clients"><i data-lucide="building-2"></i><span>Clientes</span></button>
         <button type="button" data-view="projects"><i data-lucide="briefcase-business"></i><span>Proyectos</span></button>
         <button type="button" data-view="followups"><i data-lucide="calendar-clock"></i><span>Seguimientos</span></button>
@@ -221,6 +222,18 @@
       <section class="content view" id="pipelineView">
         <div class="section-note"><i data-lucide="grab"></i><span>Arrastrá una tarjeta para cambiar su etapa comercial.</span></div>
         <div class="kanban" id="kanban"></div>
+      </section>
+
+      <section class="content view" id="budgetsView">
+        <div class="page-toolbar budget-toolbar">
+          <div><span class="eyebrow">PROPUESTAS COMERCIALES</span><h2 class="page-subtitle">Presupuestos por alcance y etapas</h2><p class="page-description">Costos internos, márgenes y condiciones controladas antes de emitir al cliente.</p></div>
+          <div class="toolbar-actions"><select id="budgetStatusFilter" aria-label="Filtrar presupuestos por estado"><option value="">Todos los estados</option></select><button type="button" class="btn btn-primary" id="newBudgetBtn"><i data-lucide="plus"></i>Nuevo presupuesto</button></div>
+        </div>
+        <div class="kpi-grid budget-kpis" id="budgetKpis"></div>
+        <div class="panel table-panel">
+          <div class="table-scroll"><table><thead><tr><th>Código</th><th>Proyecto / oportunidad</th><th>Versión</th><th>Importe</th><th>Estado</th><th>Vigencia</th><th></th></tr></thead><tbody id="budgetRows"></tbody></table></div>
+          <div class="mobile-list" id="mobileBudgets"></div>
+        </div>
       </section>
 
       <section class="content view" id="clientsView">
@@ -359,6 +372,13 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="budgetModal" hidden>
+    <div class="modal budget-modal" role="dialog" aria-modal="true" aria-labelledby="budgetModalTitle">
+      <div class="modal-head budget-modal-head"><div><span class="eyebrow" id="budgetModalEyebrow">PRESUPUESTO CONTROLADO</span><h2 id="budgetModalTitle">Nuevo presupuesto</h2><p id="budgetModalSubtitle">Definí el alcance y calculá cada etapa.</p></div><button type="button" class="icon-btn" data-close="budgetModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+      <div id="budgetBuilder"></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="actionModal" hidden>
     <div class="modal">
       <div class="modal-head"><div><span class="eyebrow" id="actionEyebrow">ACCIÓN</span><h2 id="actionTitle">Acción</h2></div><button type="button" class="icon-btn" data-close="actionModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
@@ -370,5 +390,6 @@
 
   <script type="module" src="./assets/js/app.js"></script>
   <script type="module" src="./assets/js/workspace.js"></script>
+  <script type="module" src="./assets/js/quotes.js"></script>
 </body>
 </html>

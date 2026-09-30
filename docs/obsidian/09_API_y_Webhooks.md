@@ -32,6 +32,14 @@ Operaciones: `connection_status` y `send_email`. `send_email` recibe `organizati
 
 No existen webhooks públicos en esta versión.
 
+## RPC `save_commercial_proposal`
+
+`POST /rest/v1/rpc/save_commercial_proposal`
+
+Recibe `p_proposal` con la cabecera y `p_sections` con etapas y conceptos. Requiere JWT de Supabase y permiso `quotes.write`; `quotes.approve` es adicional para aprobar. La función valida la empresa, reemplaza el detalle dentro de una transacción, recalcula importes, conserva el snapshot de versión y actualiza el avance de la oportunidad al enviar o aceptar.
+
+Las tablas `proposals`, `proposal_sections`, `proposal_items` y `proposal_versions` ofrecen solo lectura directa a `authenticated`; no se admiten mutaciones parciales desde REST. Los estados cerrados requieren crear una nueva versión.
+
 ## CORS productivo
 
 `ai-agent`, `communications` y las acciones POST de `chatgpt-oauth` permiten `https://erp.scsolucionesconectadas.com.ar` y los orígenes locales documentados. Una preflight desde otro origen recibe `403`; CORS complementa JWT, permisos y RLS, pero no los reemplaza.

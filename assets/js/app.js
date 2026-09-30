@@ -21,6 +21,7 @@ const VIEW_META = {
   dashboard:['Inicio','OPERACIÓN CONECTADA'],
   prospects:['Oportunidades','BASE COMERCIAL'],
   pipeline:['Pipeline','OPORTUNIDADES'],
+  budgets:['Presupuestos','PROPUESTAS COMERCIALES'],
   clients:['Clientes','RELACIONES'],
   projects:['Proyectos','ENTREGAS'],
   followups:['Seguimientos','AGENDA COMERCIAL'],
@@ -66,6 +67,9 @@ let data = {
   tasks: [],
   meetings: [],
   proposals: [],
+  proposalSections: [],
+  proposalItems: [],
+  proposalVersions: [],
   clients: [],
   projects: [],
   documents: [],
@@ -388,6 +392,9 @@ async function loadRemoteData(){
     supabase.from('tasks').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}),
     supabase.from('meetings').select('*').eq('organization_id',organizationId).order('starts_at',{ascending:true}),
     supabase.from('proposals').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}),
+    hasPermission('quotes.view')?supabase.from('proposal_sections').select('*').eq('organization_id',organizationId).order('position'):Promise.resolve({data:[],error:null}),
+    hasPermission('quotes.view')?supabase.from('proposal_items').select('*').eq('organization_id',organizationId).order('position'):Promise.resolve({data:[],error:null}),
+    hasPermission('quotes.view')?supabase.from('proposal_versions').select('*').eq('organization_id',organizationId).order('version',{ascending:false}):Promise.resolve({data:[],error:null}),
     supabase.from('clients').select('*').eq('organization_id',organizationId).order('business_name'),
     supabase.from('projects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
     supabase.from('documents').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
@@ -402,7 +409,7 @@ async function loadRemoteData(){
     canViewFinance()?supabase.from('generated_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
     hasPermission('agents.run')?supabase.from('agent_definitions').select('*').eq('organization_id',organizationId).order('name'):Promise.resolve({data:[],error:null})
   ]);
-  const names=['permissionCatalog','profiles','prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
+  const names=['permissionCatalog','profiles','prospects','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
   let failed=Boolean(membersQuery.error||permissionDefaultsQuery.error);
   queries.forEach((q,i)=>{
     if(q.error){console.error(names[i],q.error);failed=true;return}
@@ -424,7 +431,7 @@ function setupRealtime(){
   const organizationId=activeOrganizationId();
   if(!organizationId)return;
   realtimeChannel=supabase.channel('sc-gestion-'+organizationId);
-  ['prospects','interactions','tasks','task_comments','notifications','meetings','proposals','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
+  ['prospects','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
     realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table,filter:'organization_id=eq.'+organizationId},scheduleReload);
   });
   realtimeChannel.subscribe();
@@ -462,7 +469,14 @@ function loadDemoData(){
     {id:uuid(),prospect_id:prospects[2].id,assigned_to:p3,created_by:p3,title:'Armar demo de turnos',description:'Adaptar ejemplos al centro.',priority:'media',status:'en_progreso',due_at:dayjs().add(2,'day').toISOString(),created_at:new Date().toISOString()}
   ];
   const meetings=[{id:uuid(),prospect_id:prospects[0].id,owner_id:p1,starts_at:dayjs().add(1,'day').hour(10).minute(0).toISOString(),duration_minutes:30,modality:'Presencial',location:'Concepción del Uruguay',agenda:'Relevamiento inicial',result:null,next_step:null,status:'programada'}];
-  const proposals=[{id:uuid(),prospect_id:prospects[3].id,created_by:p1,title:'Sistema de órdenes de trabajo',amount:450000,currency:'ARS',status:'enviada',sent_at:new Date().toISOString(),valid_until:dayjs().add(15,'day').format('YYYY-MM-DD'),notes:'Demo'}];
+  const demoProposalId=uuid(),demoSectionId=uuid();
+  const proposals=[{id:demoProposalId,prospect_id:prospects[3].id,created_by:p1,title:'Sistema de órdenes de trabajo',project_name:'Digitalización del taller',document_code:'PRE-2026-0001',version:1,amount:450000,subtotal_cost:300000,subtotal_sale:450000,tax_percent:0,tax_amount:0,discount_percent:0,currency:'ARS',status:'enviada',issue_date:isoDate(),sent_at:new Date().toISOString(),valid_until:dayjs().add(15,'day').format('YYYY-MM-DD'),delivery_weeks:5,payment_terms:'50% al inicio y 50% contra entrega',scope:'Órdenes de trabajo, clientes, vehículos y seguimiento de servicios.',exclusions:'Servicios de terceros y equipamiento no especificado.',notes:'Propuesta demostrativa.'}];
+  const proposalSections=[{id:demoSectionId,proposal_id:demoProposalId,title:'Implementación inicial',description:'Relevamiento, configuración y puesta en marcha.',position:0}];
+  const proposalItems=[
+    {id:uuid(),proposal_id:demoProposalId,section_id:demoSectionId,category:'Análisis / relevamiento',description:'Relevamiento y diseño funcional',quantity:20,unit:'hora',unit_cost:8000,margin_percent:50,unit_price:12000,subtotal_cost:160000,subtotal_sale:240000,position:0},
+    {id:uuid(),proposal_id:demoProposalId,section_id:demoSectionId,category:'Implementación',description:'Configuración, pruebas y capacitación',quantity:14,unit:'hora',unit_cost:10000,margin_percent:50,unit_price:15000,subtotal_cost:140000,subtotal_sale:210000,position:1}
+  ];
+  const proposalVersions=[{id:uuid(),proposal_id:demoProposalId,version:1,snapshot:{},created_by:p1,created_at:new Date().toISOString()}];
   const clients=[{id:'demo-client',organization_id:'demo-sc',business_name:'Distribuidora Norte · Demo',contact_name:'Marina',email:'marina@demo.local',phone:'3442000001',city:'Cdelu',status:'active',updated_at:new Date().toISOString()}];
   const projects=[{id:'demo-project',organization_id:'demo-sc',client_id:'demo-client',name:'Portal de pedidos conectado',description:'Centralización de pedidos, stock y entregas.',status:'in_progress',priority:'high',owner_id:p1,start_date:isoDate(),due_date:dayjs().add(30,'day').format('YYYY-MM-DD'),budget:850000,currency:'ARS',progress:42,updated_at:new Date().toISOString()}];
   tasks[0].project_id='demo-project';
@@ -470,13 +484,13 @@ function loadDemoData(){
   const invoices=[{id:'demo-invoice',organization_id:'demo-sc',client_id:'demo-client',project_id:'demo-project',document_type:'invoice',internal_number:'INT-0001',currency:'ARS',total:320000,status:'issued',due_date:dayjs().add(10,'day').format('YYYY-MM-DD'),is_fiscal:false,created_at:new Date().toISOString()}];
   const payments=[];
   const organizationMemberships=profiles.map((profile,index)=>({user_id:profile.id,role:index===0?'owner':'commercial',active:true}));
-  const demo=normalizeDemoData({profiles,prospects,interactions,tasks,meetings,proposals,clients,projects,documents,invoices,payments,organizationMemberships});
+  const demo=normalizeDemoData({profiles,prospects,interactions,tasks,meetings,proposals,proposalSections,proposalItems,proposalVersions,clients,projects,documents,invoices,payments,organizationMemberships});
   localStorage.setItem(DEMO_KEY,JSON.stringify(demo));
   return demo;
 }
 function normalizeDemoData(demo){
   demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
-  ['prospects','interactions','tasks','meetings','proposals','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
+  ['prospects','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
   if(!(demo.organizationMemberships||[]).length){
@@ -509,7 +523,7 @@ function setView(view){
     notify('Tu rol no tiene acceso a administración.');
     return;
   }
-  const required={communications:'communications.send',settings:'team.manage'}[view];
+  const required={budgets:'quotes.view',communications:'communications.send',settings:'team.manage'}[view];
   if(required&&!hasPermission(required)&&!(view==='settings'&&hasPermission('organization.manage'))){notify('Tu rol no tiene acceso a este módulo.');return}
   activeView=view;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -893,9 +907,14 @@ function openAction(type,prospectId=null){
     return;
   }
   if(type==='teamMember'&&!canEditTeamProfiles()){notify('Solo el propietario puede editar perfiles del equipo.');return}
-  const actionPermissions={interaction:'crm.write',meeting:'crm.write',proposal:'crm.write',task:'tasks.write',client:'clients.write',project:'projects.write',projectProgress:'projects.write',document:'documents.write',invoice:'billing.write',payment:'billing.write'};
+  const actionPermissions={interaction:'crm.write',meeting:'crm.write',proposal:'quotes.write',task:'tasks.write',client:'clients.write',project:'projects.write',projectProgress:'projects.write',document:'documents.write',invoice:'billing.write',payment:'billing.write'};
   if(actionPermissions[type]&&!ensureWriteAccess(actionPermissions[type]))return;
   const p=prospectId?data.prospects.find(x=>x.id===prospectId):null;
+  if(type==='proposal'){
+    closeModal('detailModal');
+    window.dispatchEvent(new CustomEvent('sc:quote:new',{detail:{prospectId}}));
+    return;
+  }
   const titles={
     interaction:'Registrar interacción',meeting:'Programar reunión',task:'Nueva tarea',proposal:'Nueva propuesta',
     client:'Nuevo cliente',project:'Nuevo proyecto',projectProgress:'Actualizar proyecto',document:'Subir documento',
@@ -916,10 +935,6 @@ function openAction(type,prospectId=null){
     $('actionBody').innerHTML='<form class="action-form" id="actionForm"><label>Prospecto<select name="prospect_id"><option value="">Sin prospecto</option>'+prospectSelect(prospectId,true)+'</select></label><label>Título<input name="title" required></label><label>Descripción<textarea name="description" rows="3"></textarea></label><label>Asignar a<select name="assigned_to">'+ownerOptions(currentProfile?.id)+'</select></label><label>Prioridad<select name="priority"><option>baja</option><option selected>media</option><option>alta</option><option>urgente</option></select></label><label>Vencimiento<input name="due_at" type="datetime-local"></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary">Crear tarea</button></div></form>';
     if(prospectId) $('actionForm').elements.prospect_id.value=prospectId;
     $('actionForm').onsubmit=e=>submitTask(e);
-  }
-  if(type==='proposal'){
-    $('actionBody').innerHTML='<form class="action-form" id="actionForm"><label>Prospecto<select name="prospect_id" '+(p?'disabled':'')+'>'+prospectSelect(prospectId)+'</select></label><label>Título<input name="title" required></label><label>Monto<input name="amount" type="number" min="0" step="0.01"></label><label>Moneda<select name="currency"><option>ARS</option><option>USD</option></select></label><label>Estado<select name="status"><option>borrador</option><option>enviada</option></select></label><label>Válida hasta<input name="valid_until" type="date"></label><label>Notas<textarea name="notes" rows="3"></textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary">Guardar propuesta</button></div></form>';
-    $('actionForm').onsubmit=e=>submitProposal(e,prospectId);
   }
   if(type==='client'){
     $('actionBody').innerHTML='<form class="action-form" id="actionForm"><label>Razón comercial / nombre<input name="business_name" required maxlength="160"></label><label>CUIT o identificación opcional<input name="tax_identifier" maxlength="40"></label><label>Persona de contacto<input name="contact_name" maxlength="120"></label><label>Email<input name="email" type="email" maxlength="180"></label><label>Teléfono<input name="phone" inputmode="tel" maxlength="40"></label><label>Localidad<input name="city" maxlength="100"></label><label>Dirección<input name="address" maxlength="220"></label><label>Estado<select name="status"><option value="active">Activo</option><option value="inactive">Inactivo</option></select></label><label>Notas<textarea name="notes" rows="3" maxlength="2000"></textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-primary">Guardar cliente</button></div></form>';
@@ -1162,19 +1177,6 @@ async function submitTask(e){
   else{data.tasks.unshift({id:uuid(),...payload,created_at:new Date().toISOString()});saveDemo()}
   closeModal('actionModal');notify('Tarea creada');
 }
-async function submitProposal(e,fixedId){
-  e.preventDefault();if(!ensureWriteAccess('crm.write'))return;const f=new FormData(e.target);const prospectId=fixedId||f.get('prospect_id');
-  const status=f.get('status');
-  const payload={organization_id:activeOrganizationId(),prospect_id:prospectId,created_by:currentProfile.id,title:f.get('title'),amount:f.get('amount')?Number(f.get('amount')):null,currency:f.get('currency'),status,valid_until:f.get('valid_until')||null,notes:f.get('notes')||null,sent_at:status==='enviada'?new Date().toISOString():null};
-  if(mode==='supabase'){
-    const {error}=await supabase.from('proposals').insert(payload);if(error){notify(error.message);return}
-    if(status==='enviada') await supabase.from('prospects').update({status:'Propuesta enviada',next_action:'Esperar respuesta'}).eq('id',prospectId).eq('organization_id',activeOrganizationId());
-    await loadRemoteData();
-  }else{
-    data.proposals.unshift({id:uuid(),...payload,created_at:new Date().toISOString()});if(status==='enviada'){const p=data.prospects.find(x=>x.id===prospectId);p.status='Propuesta enviada';p.next_action='Esperar respuesta'}saveDemo();
-  }
-  closeModal('actionModal');closeModal('detailModal');notify('Propuesta guardada');
-}
 async function prepareAvatar(file,userId,currentValue=''){
   if(!file?.size)return {value:currentValue||null,uploadedPath:null};
   const allowed=new Set(['image/jpeg','image/png','image/webp']);
@@ -1296,7 +1298,7 @@ async function toggleTask(id){
 }
 
 function exportBackup(){
-  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,prospects:data.prospects,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
+  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,prospects:data.prospects,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,proposalSections:data.proposalSections,proposalItems:data.proposalItems,proposalVersions:data.proposalVersions,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
   const blob=new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='sc-gestion-'+(activeOrganization?.slug||'empresa')+'-'+isoDate()+'.json';a.click();URL.revokeObjectURL(a.href);
 }
