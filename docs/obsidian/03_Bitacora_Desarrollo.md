@@ -298,3 +298,28 @@
 **Pendientes detectados:**
 - Ejecutar una conversión controlada con una propuesta real y un usuario autenticado.
 - Diseñar vistas guardadas, etapas configurables y combinación asistida de duplicados.
+
+## 2026-10-01 - Cliente 360, vistas personales y unificación
+
+**Cambios realizados:**
+- Se incorporó una ficha Cliente 360° con datos comerciales, proyectos, tareas, documentos, comprobantes, cobros, correos y actividad cronológica.
+- Se agregaron búsqueda, filtro e indicadores al módulo Clientes, y vistas guardadas personales con opción predeterminada al pipeline.
+- Se implementó la unificación asistida de duplicados para propietarios, con estimación de coincidencia, vista previa del impacto y confirmación explícita.
+- PostgreSQL conserva el origen inactivo, traslada las relaciones dentro de una transacción y aplica RLS, permisos efectivos e índices de cobertura.
+
+**Archivos modificados:**
+- `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/customer360.js` y `package.json`.
+- `supabase/migrations/20261001024358_client_360_saved_views_merge.sql` y `supabase/migrations/20261001025917_pipeline_saved_views_user_index.sql`.
+- `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- `npm run lint`: correcto.
+- Playwright: 10 de 10 pruebas aprobadas; incluye guardado de vistas, Cliente 360°, responsive y unificación completa.
+- Migraciones aplicadas a `sc-crm-comercial`; RLS, cuatro políticas, grants, funciones `security invoker`, `search_path` e índices verificados.
+- Performance Advisor sin claves foráneas sin índice después de la migración complementaria.
+- Revisión visual en 1920 x 953 y 390 x 844 sin desborde horizontal.
+- Recarga con configuración real después de aplicar las migraciones: cero errores o advertencias en consola.
+
+**Pendientes detectados:**
+- Ejecutar una unificación controlada con datos reales y un propietario autenticado.
+- Diseñar etapas configurables y acciones masivas con auditoría.

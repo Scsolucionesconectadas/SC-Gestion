@@ -69,6 +69,7 @@ let data = {
   profiles: [],
   prospects: [],
   prospectStageHistory: [],
+  pipelineSavedViews: [],
   interactions: [],
   tasks: [],
   meetings: [],
@@ -404,6 +405,7 @@ async function loadRemoteData(){
     profileIds.length?supabase.from('profiles').select('*').in('id',profileIds).order('full_name'):Promise.resolve({data:[],error:null}),
     supabase.from('prospects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
     supabase.from('prospect_stage_history').select('*').eq('organization_id',organizationId).order('changed_at',{ascending:false}).limit(2000),
+    supabase.from('pipeline_saved_views').select('*').eq('organization_id',organizationId).eq('user_id',currentUser.id).order('updated_at',{ascending:false}),
     supabase.from('interactions').select('*').eq('organization_id',organizationId).order('happened_at',{ascending:false}).limit(1000),
     supabase.from('tasks').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}),
     supabase.from('meetings').select('*').eq('organization_id',organizationId).order('starts_at',{ascending:true}),
@@ -425,7 +427,7 @@ async function loadRemoteData(){
     canViewFinance()?supabase.from('generated_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
     hasPermission('agents.run')?supabase.from('agent_definitions').select('*').eq('organization_id',organizationId).order('name'):Promise.resolve({data:[],error:null})
   ]);
-  const names=['permissionCatalog','profiles','prospects','prospectStageHistory','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
+  const names=['permissionCatalog','profiles','prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
   let failed=Boolean(membersQuery.error||permissionDefaultsQuery.error);
   queries.forEach((q,i)=>{
     if(q.error){console.error(names[i],q.error);failed=true;return}
@@ -447,7 +449,7 @@ function setupRealtime(){
   const organizationId=activeOrganizationId();
   if(!organizationId)return;
   realtimeChannel=supabase.channel('sc-gestion-'+organizationId);
-  ['prospects','prospect_stage_history','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
+  ['prospects','prospect_stage_history','pipeline_saved_views','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
     realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table,filter:'organization_id=eq.'+organizationId},scheduleReload);
   });
   realtimeChannel.subscribe();
@@ -506,7 +508,7 @@ function loadDemoData(){
 }
 function normalizeDemoData(demo){
   demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
-  ['prospects','prospectStageHistory','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
+  ['prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
   demo.prospects=demo.prospects.map(prospect=>{
@@ -735,6 +737,29 @@ function clearPipelineFilters(){
   $('pipelineLimitFilter').value=preferences.cardLimit;$('pipelineHideEmpty').checked=preferences.hideEmpty;
   renderPipeline();
 }
+function getPipelineFilters(){
+  return {
+    search:$('pipelineSearch').value.trim(),owner:$('pipelineOwnerFilter').value,sector:$('pipelineSectorFilter').value,
+    followup:$('pipelineFollowupFilter').value,probability:$('pipelineProbabilityFilter').value,currency:$('pipelineCurrencyFilter').value,
+    outcome:$('pipelineOutcomeFilter').value,limit:$('pipelineLimitFilter').value,hide_empty:$('pipelineHideEmpty').checked
+  };
+}
+function applyPipelineFilters(filters={}){
+  const setValue=(id,value,fallback='')=>{
+    const control=$(id),candidate=String(value??fallback);
+    control.value=[...control.options].some(option=>option.value===candidate)?candidate:fallback;
+  };
+  $('pipelineSearch').value=String(filters.search||'').slice(0,160);
+  setValue('pipelineOwnerFilter',filters.owner);
+  setValue('pipelineSectorFilter',filters.sector);
+  setValue('pipelineFollowupFilter',filters.followup);
+  setValue('pipelineProbabilityFilter',filters.probability);
+  setValue('pipelineCurrencyFilter',filters.currency);
+  setValue('pipelineOutcomeFilter',filters.outcome,'active');
+  setValue('pipelineLimitFilter',filters.limit,pipelinePreferences().cardLimit);
+  $('pipelineHideEmpty').checked=filters.hide_empty===true;
+  renderPipeline();
+}
 function applyPipelinePreferences(){
   const preferences=pipelinePreferences();
   $('pipelineLimitFilter').value=preferences.cardLimit;$('pipelineHideEmpty').checked=preferences.hideEmpty;
@@ -786,16 +811,29 @@ function renderTasks(){
   }).join('');
 }
 function renderClients(){
-  const rows=data.clients.slice().sort((a,b)=>a.business_name.localeCompare(b.business_name));
+  const visibleClients=data.clients.filter(client=>!client.merged_into_id);
+  const query=$('clientSearch').value.toLowerCase().trim(),status=$('clientStatusFilter').value;
+  const rows=visibleClients.filter(client=>{
+    const haystack=[client.business_name,client.contact_name,client.email,client.phone,client.city,client.tax_identifier].join(' ').toLowerCase();
+    return (!query||haystack.includes(query))&&(status==='all'||client.status===status);
+  }).sort((a,b)=>a.business_name.localeCompare(b.business_name));
+  const activeIds=new Set(visibleClients.filter(client=>client.status==='active').map(client=>client.id));
+  const activeProjects=data.projects.filter(project=>activeIds.has(project.client_id)&&!['completed','cancelled'].includes(project.status));
+  const pendingTasks=data.tasks.filter(task=>activeProjects.some(project=>project.id===task.project_id)&&task.status!=='completada');
+  const openInvoices=data.invoices.filter(invoice=>activeIds.has(invoice.client_id)&&!['paid','cancelled'].includes(invoice.status));
+  $('clientInsights').innerHTML=[
+    ['Clientes activos',activeIds.size,'building-2'],['Proyectos en curso',activeProjects.length,'briefcase-business'],
+    ['Tareas abiertas',pendingTasks.length,'list-checks'],['Comprobantes abiertos',openInvoices.length,'receipt-text']
+  ].map(([label,value,icon])=>'<article><i data-lucide="'+icon+'"></i><span><small>'+label+'</small><strong>'+value+'</strong></span></article>').join('');
   $('clientRows').innerHTML=rows.length?rows.map(client=>
     '<tr><td><span class="row-main"><b>'+esc(client.business_name)+'</b><small>'+esc(client.tax_identifier||'Sin identificación fiscal')+'</small></span></td>'+
     '<td>'+esc(client.contact_name||'—')+'<small class="cell-sub">'+esc(client.email||client.phone||'Sin datos')+'</small></td>'+
     '<td>'+esc(client.city||'—')+'</td><td>'+businessPill(client.status,{active:'Activo',inactive:'Inactivo'})+'</td>'+
-    '<td>'+fmtDate(client.updated_at||client.created_at)+'</td></tr>'
-  ).join(''):'<tr><td colspan="5">'+emptyState('Todavía no hay clientes registrados.','building-2')+'</td></tr>';
+    '<td>'+fmtDate(client.updated_at||client.created_at)+'</td><td><button class="mini-btn" data-client-open="'+client.id+'"><i data-lucide="contact-round"></i>Ficha 360°</button></td></tr>'
+  ).join(''):'<tr><td colspan="6">'+emptyState('No hay clientes para estos filtros.','building-2')+'</td></tr>';
   $('mobileClients').innerHTML=rows.length?rows.map(client=>
-    '<article class="mobile-card"><div class="mobile-card-top"><b>'+esc(client.business_name)+'</b>'+businessPill(client.status,{active:'Activo',inactive:'Inactivo'})+'</div><p>'+esc(client.contact_name||'Sin contacto')+' · '+esc(client.city||'Sin localidad')+'</p><small>'+esc(client.email||client.phone||'Sin datos de contacto')+'</small></article>'
-  ).join(''):emptyState('Todavía no hay clientes registrados.','building-2');
+    '<article class="mobile-card"><div class="mobile-card-top"><b>'+esc(client.business_name)+'</b>'+businessPill(client.status,{active:'Activo',inactive:'Inactivo'})+'</div><p>'+esc(client.contact_name||'Sin contacto')+' · '+esc(client.city||'Sin localidad')+'</p><small>'+esc(client.email||client.phone||'Sin datos de contacto')+'</small><button class="mini-btn" data-client-open="'+client.id+'"><i data-lucide="contact-round"></i>Ficha 360°</button></article>'
+  ).join(''):emptyState('No hay clientes para estos filtros.','building-2');
 }
 function renderProjects(){
   const rows=data.projects.slice().sort((a,b)=>(a.due_date||'9999').localeCompare(b.due_date||'9999'));
@@ -1478,6 +1516,8 @@ function bindStaticEvents(){
   $('pipelineSearch').addEventListener('input',renderPipeline);
   ['pipelineOwnerFilter','pipelineSectorFilter','pipelineFollowupFilter','pipelineProbabilityFilter','pipelineCurrencyFilter','pipelineOutcomeFilter','pipelineLimitFilter','pipelineHideEmpty'].forEach(id=>$(id).addEventListener('change',renderPipeline));
   $('pipelineClearFilters').addEventListener('click',clearPipelineFilters);
+  $('clientSearch').addEventListener('input',renderClients);
+  $('clientStatusFilter').addEventListener('change',renderClients);
   $('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')globalSearch()});
   document.addEventListener('keydown',e=>{
     if(e.key==='/' && !['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){e.preventDefault();$('globalSearch').focus()}
@@ -1524,6 +1564,9 @@ window.SC_APP={
   switchOrganization,
   saveDemo,
   applyPipelinePreferences,
+  getPipelineFilters,
+  applyPipelineFilters,
+  renderClients,
   format:{esc,money,fmtDate,fmtDateTime,labelFrom,roleLabel,initials}
 };
 

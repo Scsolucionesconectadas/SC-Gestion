@@ -402,6 +402,86 @@ test('convierte una propuesta aceptada en cliente, proyecto y tareas con trazabi
   expect(runtimeErrors).toEqual([]);
 });
 
+test('guarda vistas personales y consolida clientes desde la ficha 360', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+
+  await page.locator('[data-view="pipeline"]').click();
+  await page.locator('#pipelineSearch').fill('Taller');
+  await page.locator('#pipelineHideEmpty').check();
+  await page.locator('#pipelineSaveViewBtn').click();
+  await expect(page.locator('#actionTitle')).toHaveText('Guardar vista');
+  await page.locator('#pipelineViewForm [name="name"]').fill('Seguimiento prioritario');
+  await page.locator('#pipelineViewForm [name="is_default"]').check();
+  await page.locator('#pipelineViewForm button[type="submit"]').click();
+  await expect(page.locator('#pipelineSavedViewSelect')).toHaveValue(/.+/);
+
+  await page.locator('#pipelineClearFilters').click();
+  await expect(page.locator('#pipelineSearch')).toHaveValue('');
+  await page.locator('#pipelineSavedViewSelect').selectOption({index:1});
+  await expect(page.locator('#pipelineSearch')).toHaveValue('Taller');
+  await expect(page.locator('#pipelineHideEmpty')).toBeChecked();
+
+  await page.evaluate(() => {
+    const app=window.SC_APP,now=new Date().toISOString();
+    app.data.clients.push({
+      id:'demo-client-duplicate',organization_id:'demo-sc',business_name:'Distribuidora Norte Demo',
+      contact_name:'Marina',email:'marina@demo.local',phone:'3442000001',city:'Cdelu',status:'active',created_at:now,updated_at:now
+    });
+    app.data.projects.push({id:'demo-project-duplicate',organization_id:'demo-sc',client_id:'demo-client-duplicate',name:'Proyecto duplicado',status:'planned',progress:10,created_at:now,updated_at:now});
+    app.data.documents.push({id:'demo-document-duplicate',organization_id:'demo-sc',client_id:'demo-client-duplicate',title:'Documento duplicado',category:'other',status:'draft',created_at:now,updated_at:now});
+    app.data.invoices.push({id:'demo-invoice-duplicate',organization_id:'demo-sc',client_id:'demo-client-duplicate',internal_number:'INT-DUP',currency:'ARS',total:15000,status:'draft',created_at:now});
+    app.data.emailMessages.push({id:'demo-email-duplicate',organization_id:'demo-sc',related_type:'client',related_id:'demo-client-duplicate',subject:'Correo duplicado',status:'draft',created_at:now});
+    app.saveDemo();
+  });
+
+  await page.locator('[data-view="clients"]').click();
+  await expect(page.locator('#clientInsights article')).toHaveCount(4);
+  await page.locator('#clientSearch').fill('Distribuidora Norte Demo');
+  const duplicateRow=page.locator('#clientRows tr').filter({hasText:'Distribuidora Norte Demo'});
+  await duplicateRow.locator('[data-client-open]').click();
+  await expect(page.locator('#client360Title')).toHaveText('Distribuidora Norte Demo');
+  await expect(page.locator('.client-timeline')).toContainText('Proyecto duplicado');
+  await expect(page.locator('.client360-kpis')).toContainText('15.000');
+
+  await page.setViewportSize({width:390,height:844});
+  const mobileModal=await page.locator('.client360-modal').boundingBox();
+  expect(mobileModal).not.toBeNull();
+  expect(mobileModal.x).toBeGreaterThanOrEqual(0);
+  expect(mobileModal.width).toBeLessThanOrEqual(390);
+  const mobileOverflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(mobileOverflow).toBeLessThanOrEqual(1);
+  await page.setViewportSize({width:1280,height:900});
+
+  await page.locator('[data-client-merge]').click();
+  await expect(page.locator('#client360Title')).toHaveText('Consolidar clientes');
+  await page.locator('#mergeTargetSelect').selectOption('demo-client');
+  await page.locator('#mergeConfirm').check();
+  await page.locator('#mergeClientsBtn').click();
+  await expect(page.locator('#client360Title')).toHaveText('Distribuidora Norte · Demo');
+  await expect(page.locator('#client360Body')).toContainText('Distribuidora Norte Demo');
+  await page.locator('[data-close="client360Modal"]').click();
+  await page.locator('#clientSearch').fill('');
+  await expect(page.locator('#clientRows')).not.toContainText('Distribuidora Norte Demo');
+
+  const merged=await page.evaluate(() => {
+    const app=window.SC_APP;
+    return {
+      source:app.data.clients.find(item=>item.id==='demo-client-duplicate'),
+      projectClient:app.data.projects.find(item=>item.id==='demo-project-duplicate')?.client_id,
+      documentClient:app.data.documents.find(item=>item.id==='demo-document-duplicate')?.client_id,
+      invoiceClient:app.data.invoices.find(item=>item.id==='demo-invoice-duplicate')?.client_id,
+      emailClient:app.data.emailMessages.find(item=>item.id==='demo-email-duplicate')?.related_id
+    };
+  });
+  expect(merged.source.status).toBe('inactive');
+  expect(merged.source.merged_into_id).toBe('demo-client');
+  expect(merged.projectClient).toBe('demo-client');
+  expect(merged.documentClient).toBe('demo-client');
+  expect(merged.invoiceClient).toBe('demo-client');
+  expect(merged.emailClient).toBe('demo-client');
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('mantiene Agent Studio completo y desplazable en pantallas bajas', async ({ page }) => {
   await page.setViewportSize({ width: 1365, height: 768 });
   await page.route('**/assets/js/config.js', route => route.fulfill({contentType:'application/javascript',body:'window.SC_CONFIG = {};'}));

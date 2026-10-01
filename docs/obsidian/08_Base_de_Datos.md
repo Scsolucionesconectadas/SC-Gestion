@@ -7,7 +7,7 @@ PostgreSQL 17 en Supabase.
 ## Entidades principales
 
 - Acceso: `profiles`, `organizations`, `memberships`.
-- Comercial: `prospects`, `prospect_stage_history`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
+- Comercial: `prospects`, `prospect_stage_history`, `pipeline_saved_views`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
 - Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
 - Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
@@ -25,6 +25,10 @@ Los presupuestos usan columnas generadas para precio unitario y subtotales. La R
 `prospects` conserva `estimated_value`, `currency`, `probability`, `lost_reason` y `stage_entered_at`. Un trigger valida el motivo de pérdida, actualiza la fecha de etapa y registra cada alta o transición en `prospect_stage_history`. `clients` y `proposals` conservan los vínculos de origen y conversión para evitar duplicados y permitir auditoría.
 
 La RPC `convert_accepted_proposal` usa `security invoker`, exige una propuesta aceptada, valida permisos y organización, vincula o crea el cliente y opcionalmente crea proyecto y tareas en una única transacción. Una segunda ejecución devuelve la conversión existente sin repetir registros.
+
+`pipeline_saved_views` guarda filtros de bajo volumen por empresa y usuario. RLS restringe cada fila a su propietario y exige `crm.view`; un índice parcial garantiza una sola vista predeterminada. `save_pipeline_view` valida nombre, tamaño y claves admitidas antes del `upsert`.
+
+`clients.merged_into_id`, `merged_at` y `merged_by` conservan la procedencia de una unificación. `merge_clients` usa `security invoker`, bloquea origen y destino, exige propietario y permisos de escritura para cada relación afectada, traslada proyectos, documentos, comprobantes y correos directos, y marca el origen como inactivo dentro de la misma transacción.
 
 ## Configuración comercial
 
@@ -53,6 +57,8 @@ La RPC `convert_accepted_proposal` usa `security invoker`, exige una propuesta a
 - `20260930214821_conceptual_proposals.sql`: tipo de propuesta, presentación de precios, portada, narrativa ejecutiva y actualización atómica de la RPC comercial. Aplicada en Supabase como `conceptual_proposals`.
 - `20260930224548_pipeline_conversion_workflow.sql`: datos de valor y probabilidad, historial de etapas, motivo de pérdida y conversión atómica de propuestas aceptadas.
 - `20261001004835_pipeline_conversion_indexes.sql`: índices de cobertura para las nuevas relaciones comerciales.
+- `20261001024358_client_360_saved_views_merge.sql`: vistas personales con RLS, metadatos de unificación e implementación transaccional de `save_pipeline_view` y `merge_clients`.
+- `20261001025917_pipeline_saved_views_user_index.sql`: cobertura de la clave foránea de usuario detectada por Performance Advisor.
 
 ## Perfiles y membresías
 

@@ -15,6 +15,7 @@
 11. Storage privado `generated-pdfs`: comprobantes internos no fiscales versionados por empresa.
 12. Presupuestos comerciales: `proposals` como cabecera, `proposal_sections` y `proposal_items` para costeo por etapas, y `proposal_versions` para snapshots auditables.
 13. Conversión comercial: `assets/js/conversion.js` conduce la revisión y `convert_accepted_proposal` ejecuta atómicamente la creación o vinculación de cliente, proyecto y tareas.
+14. Relación con clientes: `assets/js/customer360.js` compone la ficha transversal, administra vistas personales y solicita a `merge_clients` la consolidación transaccional de duplicados.
 
 ## Módulos
 
@@ -31,5 +32,7 @@ Los permisos efectivos combinan los valores predeterminados de `role_permission_
 El navegador solo puede leer presupuestos según `quotes.view`. La RPC `save_commercial_proposal` concentra la escritura: valida `quotes.write` o `quotes.approve`, recalcula costos y totales, reemplaza etapas y conceptos en una transacción, registra la versión y aplica el avance comercial. Un documento aceptado, rechazado o vencido queda inmutable; cualquier corrección requiere una nueva versión.
 
 La aceptación de una propuesta no convierte automáticamente la oportunidad. El asistente exige confirmación, muestra coincidencias de clientes por nombre, email o teléfono y llama a `convert_accepted_proposal`. La función usa los permisos efectivos, comprueba que la propuesta esté aceptada, conserva idempotencia y vincula los registros de origen dentro de una única transacción.
+
+Las vistas del pipeline se aíslan por `organization_id` y `user_id` mediante RLS. La unificación de clientes solo puede ejecutarla un propietario con permisos efectivos sobre cada módulo afectado. `merge_clients` usa `security invoker`, bloquea ambos registros, exige que estén activos y en la misma empresa, mueve sus relaciones y conserva el origen como registro inactivo enlazado al cliente definitivo.
 
 El callback OAuth es público porque el proveedor debe abrirlo sin JWT de Supabase. Su confianza se basa en `state` hasheado y de un solo uso, PKCE, `nonce`, firma OIDC, emisor y audiencia. Las acciones iniciadas desde el portal sí exigen sesión y `agents.manage`.

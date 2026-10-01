@@ -90,3 +90,15 @@
 - Antes de crear un cliente presenta coincidencias por nombre, email o teléfono y permite vincular una existente.
 - La creación de proyecto y las tareas iniciales son decisiones explícitas; aceptar una propuesta por sí solo no genera registros.
 - En móvil ocupa el viewport sin desborde horizontal y conserva acciones alcanzables mediante desplazamiento interno.
+
+## Cliente 360°
+
+- La ficha combina identidad, contacto, acciones contextuales, indicadores, actividad cronológica, datos y proyectos sin duplicar información en una tabla de resumen.
+- Los estados técnicos se traducen a etiquetas operativas en español y cada evento identifica fecha, tipo, título y resultado.
+- En móvil el modal ocupa el viewport, apila acciones e indicadores y conserva una única zona de desplazamiento vertical sin desborde horizontal.
+- La consolidación asistida compara señales de nombre, identificación, email, teléfono y localidad, muestra el impacto y exige una confirmación explícita.
+
+## Vistas personales
+
+- El selector de vistas se ubica antes de los indicadores del pipeline y permite guardar, aplicar o eliminar filtros personales.
+- La vista predeterminada se aplica una sola vez al abrir una empresa; cualquier cambio manual vuelve a `Vista actual` para evitar una falsa sensación de sincronización.

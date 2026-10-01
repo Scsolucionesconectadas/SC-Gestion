@@ -48,6 +48,18 @@ Recibe `p_proposal_id` y `p_conversion`. Requiere JWT, `quotes.write`, acceso a 
 
 La operación es atómica e idempotente. No expone una conversión automática al cambiar de estado ni admite saltarse la revisión de duplicados presentada por la interfaz.
 
+## RPC `save_pipeline_view`
+
+`POST /rest/v1/rpc/save_pipeline_view`
+
+Recibe empresa, nombre, filtros e indicador de vista predeterminada. Requiere JWT y `crm.view`. Solo acepta las claves de filtro conocidas, guarda la fila para `auth.uid()` y desmarca cualquier predeterminada anterior del mismo usuario y empresa.
+
+## RPC `merge_clients`
+
+`POST /rest/v1/rpc/merge_clients`
+
+Recibe cliente origen y cliente definitivo. Requiere JWT, rol propietario, `clients.write` y los permisos de escritura de cada módulo con registros afectados. Ambos clientes deben estar activos y pertenecer a la misma empresa. La respuesta informa los identificadores y cantidades trasladadas; el origen queda inactivo y enlazado para auditoría.
+
 ## CORS productivo
 
 `ai-agent`, `communications` y las acciones POST de `chatgpt-oauth` permiten `https://erp.scsolucionesconectadas.com.ar` y los orígenes locales documentados. Una preflight desde otro origen recibe `403`; CORS complementa JWT, permisos y RLS, pero no los reemplaza.

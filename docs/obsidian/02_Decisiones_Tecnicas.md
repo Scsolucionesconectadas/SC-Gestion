@@ -183,3 +183,15 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** conversión automática al aceptar y escrituras separadas desde el navegador. Se descartaron por riesgo de duplicados y estados parciales.
 
 **Archivos relacionados:** `assets/js/conversion.js`, `assets/js/app.js`, `assets/js/quotes.js`, `supabase/migrations/20260930224548_pipeline_conversion_workflow.sql`, `supabase/migrations/20261001004835_pipeline_conversion_indexes.sql`.
+
+## 2026-10-01 - Cliente 360 y consolidación auditable
+
+**Decisión:** construir la ficha 360 desde las relaciones existentes y mantener las vistas del pipeline como preferencias personales. Los duplicados se consolidan mediante una RPC transaccional que inactiva, pero no elimina, el registro origen.
+
+**Motivo:** duplicar resúmenes agregados produciría datos desactualizados; compartir filtros sin un modelo de gobierno agregaría ruido entre roles; borrar un cliente duplicado eliminaría trazabilidad comercial.
+
+**Impacto:** `pipeline_saved_views` usa RLS por empresa y usuario. `clients` incorpora `merged_into_id`, `merged_at` y `merged_by`. `merge_clients` mueve proyectos, documentos, comprobantes y correos directos, completa datos faltantes del cliente definitivo y conserva las propuestas históricas dentro de la familia que Cliente 360 consulta.
+
+**Alternativas consideradas:** tabla materializada de Cliente 360, vistas compartidas por empresa y borrado físico del duplicado. Se descartaron por sincronización, permisos todavía no definidos y pérdida de auditoría.
+
+**Archivos relacionados:** `assets/js/customer360.js`, `assets/js/app.js`, `supabase/migrations/20261001024358_client_360_saved_views_merge.sql`, `supabase/migrations/20261001025917_pipeline_saved_views_user_index.sql`.

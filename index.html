@@ -224,6 +224,11 @@
           <div><span class="eyebrow">OPORTUNIDADES</span><h2 class="page-subtitle">Pipeline comercial</h2><p class="page-description">Priorizá el trabajo y mové cada negocio a su próxima etapa.</p></div>
           <button type="button" class="btn btn-secondary" id="pipelineClearFilters"><i data-lucide="filter-x"></i>Limpiar filtros</button>
         </div>
+        <div class="pipeline-viewbar">
+          <label><i data-lucide="bookmark"></i><select id="pipelineSavedViewSelect" aria-label="Vista guardada del pipeline"><option value="">Vista actual</option></select></label>
+          <button type="button" class="btn btn-secondary" id="pipelineSaveViewBtn"><i data-lucide="bookmark-plus"></i>Guardar vista</button>
+          <button type="button" class="icon-btn" id="pipelineDeleteViewBtn" aria-label="Eliminar vista guardada" title="Eliminar vista" disabled><i data-lucide="trash-2"></i></button>
+        </div>
         <section class="pipeline-insights" id="pipelineInsights" aria-label="Resumen del pipeline"></section>
         <div class="pipeline-filters" role="group" aria-label="Filtros del pipeline">
           <label class="pipeline-search"><i data-lucide="search"></i><input id="pipelineSearch" type="search" placeholder="Buscar negocio, contacto o ciudad" aria-label="Buscar en el pipeline"></label>
@@ -257,8 +262,13 @@
           <div><span class="eyebrow">RELACIONES</span><h2 class="page-subtitle">Clientes de la empresa</h2></div>
           <button type="button" class="btn btn-primary" id="newClientBtn"><i data-lucide="plus"></i>Nuevo cliente</button>
         </div>
+        <section class="client-insights" id="clientInsights" aria-label="Resumen de clientes"></section>
+        <div class="client-filters">
+          <label><i data-lucide="search"></i><input id="clientSearch" type="search" placeholder="Buscar cliente, contacto o localidad" aria-label="Buscar clientes"></label>
+          <select id="clientStatusFilter" aria-label="Filtrar clientes por estado"><option value="active">Clientes activos</option><option value="inactive">Inactivos</option><option value="all">Todos</option></select>
+        </div>
         <div class="panel table-panel">
-          <div class="table-scroll"><table><thead><tr><th>Cliente</th><th>Contacto</th><th>Localidad</th><th>Estado</th><th>Actualizado</th></tr></thead><tbody id="clientRows"></tbody></table></div>
+          <div class="table-scroll"><table><thead><tr><th>Cliente</th><th>Contacto</th><th>Localidad</th><th>Estado</th><th>Actualizado</th><th><span class="sr-only">Acciones</span></th></tr></thead><tbody id="clientRows"></tbody></table></div>
           <div class="mobile-list" id="mobileClients"></div>
         </div>
       </section>
@@ -393,6 +403,13 @@
     </div>
   </div>
 
+  <div class="modal-backdrop" id="client360Modal" hidden>
+    <div class="modal modal-xl client360-modal" role="dialog" aria-modal="true" aria-labelledby="client360Title">
+      <div class="modal-head"><div><span class="eyebrow" id="client360Eyebrow">CLIENTE 360°</span><h2 id="client360Title">Cliente</h2><p id="client360Subtitle"></p></div><button type="button" class="icon-btn" data-close="client360Modal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
+      <div id="client360Body"></div>
+    </div>
+  </div>
+
   <div class="modal-backdrop" id="conversionModal" hidden>
     <div class="modal modal-xl conversion-modal" role="dialog" aria-modal="true" aria-labelledby="conversionModalTitle">
       <div class="modal-head"><div><span class="eyebrow">CONVERSIÓN ASISTIDA</span><h2 id="conversionModalTitle">Crear cliente y proyecto</h2><p>Confirmá cada vínculo antes de incorporar el negocio a la operación.</p></div><button type="button" class="icon-btn" data-close="conversionModal" aria-label="Cerrar"><i data-lucide="x"></i></button></div>
@@ -420,5 +437,6 @@
   <script type="module" src="./assets/js/workspace.js"></script>
   <script type="module" src="./assets/js/quotes.js"></script>
   <script type="module" src="./assets/js/conversion.js"></script>
+  <script type="module" src="./assets/js/customer360.js"></script>
 </body>
 </html>

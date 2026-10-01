@@ -22,6 +22,9 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Los importes se recalculan en PostgreSQL y los presupuestos cerrados solo pueden continuar mediante una nueva versión.
 - Pipeline comercial con búsqueda, filtros por responsable, rubro, seguimiento, probabilidad, moneda y resultado; valor abierto y ponderado, antigüedad por etapa, historial, motivo de pérdida obligatorio y scroll interno para volúmenes altos.
 - Conversión asistida de propuestas aceptadas a cliente, proyecto y tareas iniciales, con revisión de posibles duplicados y confirmación humana.
+- Cliente 360° implementado con actividad relacionada, proyectos, tareas, documentos, comprobantes, cobros y comunicaciones en una ficha responsive.
+- Pipeline con vistas personales por usuario y empresa, incluida una vista predeterminada opcional.
+- Unificación asistida de clientes disponible para propietarios: conserva el registro origen inactivo, traslada relaciones operativas y deja trazabilidad.
 - El propietario configura por empresa la densidad del pipeline y los valores iniciales de presupuestos: prefijo, vigencia, impuestos, margen, plazo y condición de pago.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
@@ -51,7 +54,7 @@ npm run serve
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 - [ ] Validar el primer presupuesto o propuesta conceptual real y ejecutar una conversión controlada con un usuario autenticado.
-- [ ] Diseñar vistas guardadas y etapas configurables del pipeline sin romper el historial comercial.
+- [ ] Diseñar etapas configurables del pipeline sin romper el historial comercial.
 
 ## Notas relacionadas
 
