@@ -59,6 +59,7 @@ function render(){
   filter.innerHTML='<option value="">Todos los estados</option>'+Object.entries(STATUS_LABELS).map(([value,label])=>'<option value="'+value+'" '+(selected===value?'selected':'')+'>'+label+'</option>').join('');
   const rows=app.data.proposals.filter(item=>!selected||item.status===selected).sort((a,b)=>(b.updated_at||b.created_at||'').localeCompare(a.updated_at||a.created_at||''));
   const canWrite=app.mode==='demo'||app.hasPermission('quotes.write');
+  const canConvert=app.mode==='demo'||(app.hasPermission('crm.write')&&app.hasPermission('clients.write'));
   $('budgetRows').innerHTML=rows.length?rows.map(item=>{
     const lead=prospect(item.prospect_id);
     return '<tr><td><span class="row-main"><b>'+esc(item.document_code||'Sin código')+'</b><small>'+esc(proposalType(item))+' · '+app.format.fmtDate(item.issue_date||item.created_at)+'</small></span></td>'+
@@ -66,11 +67,12 @@ function render(){
       '<td>v'+number(item.version||1)+'</td><td><b>'+money(item.amount,item.currency)+'</b></td><td>'+statusPill(item.status)+'</td><td>'+app.format.fmtDate(item.valid_until)+'</td>'+
       '<td><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'"><i data-lucide="pencil"></i>Editar</button>':'')+
       '<button class="mini-btn" data-quote-pdf="'+item.id+'"><i data-lucide="file-down"></i>PDF</button>'+
-      (canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'" title="Crear una nueva versión"><i data-lucide="copy-plus"></i>Versión</button>':'')+'</div></td></tr>';
+      (canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'" title="Crear una nueva versión"><i data-lucide="copy-plus"></i>Versión</button>':'')+
+      (item.converted_client_id?'<span class="status-pill status-green">Convertida</span>':item.status==='aceptada'&&canConvert?'<button class="mini-btn conversion-mini" data-convert="'+item.id+'"><i data-lucide="badge-check"></i>Convertir</button>':'')+'</div></td></tr>';
   }).join(''):'<tr><td colspan="7"><div class="empty-state"><i data-lucide="file-spreadsheet"></i><div>Todavía no hay presupuestos.</div></div></td></tr>';
   $('mobileBudgets').innerHTML=rows.length?rows.map(item=>{
     const lead=prospect(item.prospect_id);
-    return '<article class="mobile-card budget-mobile-card"><div class="mobile-card-top"><b>'+esc(item.document_code||'Presupuesto')+' · v'+number(item.version||1)+'</b>'+statusPill(item.status)+'</div><p>'+esc(proposalType(item))+' · '+esc(item.project_name||item.title)+' · '+esc(lead?.business_name||'Sin oportunidad')+'</p><strong>'+money(item.amount,item.currency)+'</strong><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'">Editar</button>':'')+'<button class="mini-btn" data-quote-pdf="'+item.id+'">PDF</button>'+(canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'">Nueva versión</button>':'')+'</div></article>';
+    return '<article class="mobile-card budget-mobile-card"><div class="mobile-card-top"><b>'+esc(item.document_code||'Presupuesto')+' · v'+number(item.version||1)+'</b>'+statusPill(item.status)+'</div><p>'+esc(proposalType(item))+' · '+esc(item.project_name||item.title)+' · '+esc(lead?.business_name||'Sin oportunidad')+'</p><strong>'+money(item.amount,item.currency)+'</strong><div class="row-actions">'+(canWrite&&!TERMINAL_STATUSES.has(item.status)?'<button class="mini-btn" data-quote-edit="'+item.id+'">Editar</button>':'')+'<button class="mini-btn" data-quote-pdf="'+item.id+'">PDF</button>'+(canWrite?'<button class="mini-btn" data-quote-version="'+item.id+'">Nueva versión</button>':'')+(item.converted_client_id?'<span class="status-pill status-green">Convertida</span>':item.status==='aceptada'&&canConvert?'<button class="mini-btn conversion-mini" data-convert="'+item.id+'">Convertir</button>':'')+'</div></article>';
   }).join(''):'<div class="empty-state"><i data-lucide="file-spreadsheet"></i><div>Todavía no hay presupuestos.</div></div>';
   renderKpis();
   icon();
@@ -388,8 +390,17 @@ function saveDemoProposal(){
   const version={id:versionIndex>=0?app.data.proposalVersions[versionIndex].id:uuid(),organization_id:header.organization_id,proposal_id:id,version:header.version,snapshot:{proposal:header,sections:sectionsPayload()},change_reason:header.change_reason,created_by:app.currentUser?.id,created_at:now};
   if(versionIndex>=0)app.data.proposalVersions[versionIndex]=version;else app.data.proposalVersions.unshift(version);
   const lead=prospect(header.prospect_id);
-  if(header.status==='enviada'&&lead){lead.status='Propuesta enviada';lead.next_action='Esperar respuesta'}
-  if(header.status==='aceptada'&&lead){lead.status='Negociación';lead.next_action='Convertir en cliente'}
+  const moveLead=(status,nextAction)=>{
+    if(!lead)return;
+    const previous=lead.status;
+    lead.status=status;lead.next_action=nextAction;
+    if(previous!==status){
+      lead.stage_entered_at=now;lead.probability=status==='Propuesta enviada'?75:85;
+      app.data.prospectStageHistory.unshift({id:uuid(),organization_id:header.organization_id,prospect_id:lead.id,from_status:previous,to_status:status,reason:null,changed_by:app.currentProfile?.id,changed_at:now});
+    }
+  };
+  if(header.status==='enviada')moveLead('Propuesta enviada','Esperar respuesta');
+  if(header.status==='aceptada')moveLead('Negociación','Convertir en cliente');
   app.saveDemo();
 }
 

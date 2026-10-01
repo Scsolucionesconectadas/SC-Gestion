@@ -7,7 +7,7 @@ PostgreSQL 17 en Supabase.
 ## Entidades principales
 
 - Acceso: `profiles`, `organizations`, `memberships`.
-- Comercial: `prospects`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
+- Comercial: `prospects`, `prospect_stage_history`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
 - Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
 - Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
@@ -21,6 +21,10 @@ Las relaciones operativas usan claves compuestas con `organization_id` para impe
 Los presupuestos usan columnas generadas para precio unitario y subtotales. La RPC `save_commercial_proposal` vuelve a calcular descuento, impuesto y total dentro de PostgreSQL, guarda un snapshot por versión y deja las tablas de detalle en modo de lectura para `authenticated`.
 
 `proposals.proposal_type` distingue `detailed` y `conceptual`. `pricing_display` limita la exposición de importes a `itemized`, `section_total` o `total_only`; `cover_enabled`, `cover_subtitle`, `executive_summary` y `objective` conservan la narrativa del documento. PostgreSQL valida tipos y longitudes antes de que la RPC reemplace el detalle y publique la nueva versión atómicamente.
+
+`prospects` conserva `estimated_value`, `currency`, `probability`, `lost_reason` y `stage_entered_at`. Un trigger valida el motivo de pérdida, actualiza la fecha de etapa y registra cada alta o transición en `prospect_stage_history`. `clients` y `proposals` conservan los vínculos de origen y conversión para evitar duplicados y permitir auditoría.
+
+La RPC `convert_accepted_proposal` usa `security invoker`, exige una propuesta aceptada, valida permisos y organización, vincula o crea el cliente y opcionalmente crea proyecto y tareas en una única transacción. Una segunda ejecución devuelve la conversión existente sin repetir registros.
 
 ## Configuración comercial
 
@@ -47,6 +51,8 @@ Los presupuestos usan columnas generadas para precio unitario y subtotales. La R
 - `20260930024955_commercial_quote_builder.sql`: permisos, cabecera extendida, etapas, conceptos, versiones, RLS, estados y guardado transaccional de presupuestos.
 - `20260930111554_commercial_quote_fk_indexes.sql`: índices de cobertura en el orden exacto de las claves foráneas del módulo comercial.
 - `20260930214821_conceptual_proposals.sql`: tipo de propuesta, presentación de precios, portada, narrativa ejecutiva y actualización atómica de la RPC comercial. Aplicada en Supabase como `conceptual_proposals`.
+- `20260930224548_pipeline_conversion_workflow.sql`: datos de valor y probabilidad, historial de etapas, motivo de pérdida y conversión atómica de propuestas aceptadas.
+- `20261001004835_pipeline_conversion_indexes.sql`: índices de cobertura para las nuevas relaciones comerciales.
 
 ## Perfiles y membresías
 

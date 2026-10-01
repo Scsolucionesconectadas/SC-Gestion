@@ -276,3 +276,25 @@
 **Pendientes detectados:**
 - Validar una propuesta conceptual con datos reales y un usuario autenticado.
 - Implementar la conversión guiada de propuesta aceptada a cliente y proyecto, con confirmación para evitar duplicados.
+
+## 2026-09-30 - Pipeline avanzado y conversión asistida
+
+**Cambios realizados:**
+- Se agregaron valor estimado, moneda, probabilidad, antigüedad por etapa, motivo de pérdida e historial comercial.
+- El pipeline muestra valor abierto y ponderado, oportunidades estancadas, propuestas listas para convertir y filtros por probabilidad, moneda y resultado.
+- Se incorporó un asistente de tres pasos para revisar coincidencias, vincular o crear cliente, abrir opcionalmente un proyecto y generar tareas iniciales.
+- La conversión exige una propuesta aceptada, no se ejecuta automáticamente y queda protegida contra reintentos duplicados.
+
+**Archivos modificados:**
+- `index.html`, `assets/css/app.css`, `assets/js/app.js`, `assets/js/quotes.js`, `assets/js/conversion.js`.
+- `supabase/migrations/20260930224548_pipeline_conversion_workflow.sql` y `supabase/migrations/20261001004835_pipeline_conversion_indexes.sql`.
+- `package.json`, `tests/app-shell.spec.js` y documentación Obsidian.
+
+**Validaciones realizadas:**
+- Migraciones aplicadas a `sc-crm-comercial`; 65 movimientos iniciales de etapa, cero oportunidades sin fecha de etapa o probabilidad y cero cierres sin motivo.
+- RPC de conversión verificada como `security invoker`; índices revisados con Performance Advisor sin nuevas claves foráneas pendientes.
+- Revisión visual del pipeline y del asistente en escritorio y móvil; Playwright aprobó 9 de 9 pruebas, incluida la conversión completa y el control de desborde a 390 x 844.
+
+**Pendientes detectados:**
+- Ejecutar una conversión controlada con una propuesta real y un usuario autenticado.
+- Diseñar vistas guardadas, etapas configurables y combinación asistida de duplicados.

@@ -76,8 +76,17 @@
 
 ## Pipeline comercial
 
-- La franja de filtros combina búsqueda, responsable, rubro, seguimiento, límite por etapa y ocultamiento de vacías; en notebooks usa dos filas y en móvil una sola columna.
+- La franja de filtros combina búsqueda, responsable, rubro, seguimiento, probabilidad, moneda, resultado, límite por etapa y ocultamiento de vacías; en notebooks usa varias filas compactas y en móvil una sola columna.
+- Una banda de indicadores resume valor abierto, valor ponderado, oportunidades estancadas y propuestas aceptadas listas para convertir.
 - El tablero conserva desplazamiento horizontal entre etapas, pero cada lista tiene altura acotada y scroll vertical propio para que una etapa numerosa no extienda el documento.
+- Las tarjetas muestran probabilidad, valor y días en etapa; las oportunidades estancadas reciben una señal textual y visual, y los cierres perdidos exigen un motivo.
 - El conteo indica resultados filtrados sobre el total y el estado sin coincidencias reemplaza las columnas vacías por un mensaje único.
 - La configuración `Comercial y documentos` mantiene secciones sin cards anidadas, acciones fijas y reglas de gobierno visibles.
 - Los controles conservan foco visible, etiquetas accesibles, estados deshabilitados y soporte de `prefers-reduced-motion`.
+
+## Conversión comercial
+
+- El asistente usa tres pasos visibles: revisión, cliente y proyecto, y confirmación.
+- Antes de crear un cliente presenta coincidencias por nombre, email o teléfono y permite vincular una existente.
+- La creación de proyecto y las tareas iniciales son decisiones explícitas; aceptar una propuesta por sí solo no genera registros.
+- En móvil ocupa el viewport sin desborde horizontal y conserva acciones alcanzables mediante desplazamiento interno.

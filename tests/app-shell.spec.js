@@ -349,6 +349,59 @@ test('filtra un pipeline extenso y aplica los valores comerciales de la empresa'
   expect(runtimeErrors).toEqual([]);
 });
 
+test('convierte una propuesta aceptada en cliente, proyecto y tareas con trazabilidad', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+
+  await page.locator('[data-view="pipeline"]').click();
+  await expect(page.locator('#pipelineInsights article')).toHaveCount(4);
+  await expect(page.locator('.lead-card-value').first()).toBeVisible();
+  await expect(page.locator('.probability-pill').first()).toContainText('%');
+
+  await page.evaluate(() => {
+    const quote=window.SC_APP.data.proposals[0];
+    const lead=window.SC_APP.data.prospects.find(item=>item.id===quote.prospect_id);
+    quote.status='aceptada';quote.converted_client_id=null;quote.converted_project_id=null;quote.converted_at=null;
+    lead.status='Negociación';lead.probability=85;lead.stage_entered_at=new Date().toISOString();
+    window.SC_APP.saveDemo();
+  });
+
+  await page.locator('[data-view="budgets"]').click();
+  const quoteRow=page.locator('#budgetRows tr').filter({hasText:'PRE-2026-0001'});
+  await quoteRow.locator('[data-convert]').click();
+  await expect(page.locator('#conversionModal')).toBeVisible();
+  await expect(page.locator('.conversion-progress .active')).toContainText('Revisar');
+
+  await page.setViewportSize({width:390,height:844});
+  const conversionOverflow=await page.locator('.conversion-modal').evaluate(element=>element.scrollWidth-element.clientWidth);
+  const documentOverflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(conversionOverflow).toBeLessThanOrEqual(1);
+  expect(documentOverflow).toBeLessThanOrEqual(1);
+  await page.setViewportSize({width:1280,height:900});
+
+  await page.locator('[data-conversion-next]').click();
+
+  const form=page.locator('#conversionForm');
+  await expect(form.locator('[name="business_name"]')).toHaveValue('Taller Ruta · Demo');
+  await expect(form.locator('[name="create_project"]')).toBeChecked();
+  await expect(form.locator('[name="initial_task"]')).toHaveCount(3);
+  await page.locator('[data-conversion-next]').click();
+  await expect(page.locator('.confirmation-step')).toContainText('Digitalización del taller');
+  await page.locator('[data-conversion-finish]').click();
+  await expect(page.locator('#conversionModal')).toBeHidden();
+
+  await page.locator('[data-view="clients"]').click();
+  await expect(page.locator('#clientRows')).toContainText('Taller Ruta · Demo');
+  await page.locator('[data-view="projects"]').click();
+  await expect(page.locator('#projectGrid')).toContainText('Digitalización del taller');
+  await page.locator('[data-view="tasks"]').click();
+  await expect(page.locator('#taskBoard')).toContainText('Coordinar reunión de inicio');
+  await page.locator('[data-view="pipeline"]').click();
+  await page.locator('#pipelineOutcomeFilter').selectOption('won');
+  await expect(page.locator('.lead-card').filter({hasText:'Taller Ruta · Demo'})).toBeVisible();
+
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('mantiene Agent Studio completo y desplazable en pantallas bajas', async ({ page }) => {
   await page.setViewportSize({ width: 1365, height: 768 });
   await page.route('**/assets/js/config.js', route => route.fulfill({contentType:'application/javascript',body:'window.SC_CONFIG = {};'}));

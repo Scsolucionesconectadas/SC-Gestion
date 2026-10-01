@@ -40,6 +40,14 @@ Recibe `p_proposal` con la cabecera y `p_sections` con etapas y conceptos. Requi
 
 Las tablas `proposals`, `proposal_sections`, `proposal_items` y `proposal_versions` ofrecen solo lectura directa a `authenticated`; no se admiten mutaciones parciales desde REST. Los estados cerrados requieren crear una nueva versión.
 
+## RPC `convert_accepted_proposal`
+
+`POST /rest/v1/rpc/convert_accepted_proposal`
+
+Recibe `p_proposal_id` y `p_conversion`. Requiere JWT, `quotes.write`, acceso a la organización y una propuesta en estado `aceptada`. Permite indicar un cliente existente o los datos del nuevo cliente, crear opcionalmente un proyecto y seleccionar tareas iniciales. La respuesta contiene los identificadores resultantes y marca si la conversión ya existía.
+
+La operación es atómica e idempotente. No expone una conversión automática al cambiar de estado ni admite saltarse la revisión de duplicados presentada por la interfaz.
+
 ## CORS productivo
 
 `ai-agent`, `communications` y las acciones POST de `chatgpt-oauth` permiten `https://erp.scsolucionesconectadas.com.ar` y los orígenes locales documentados. Una preflight desde otro origen recibe `403`; CORS complementa JWT, permisos y RLS, pero no los reemplaza.

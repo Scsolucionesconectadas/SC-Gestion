@@ -20,7 +20,8 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Constructor de presupuestos detallados y propuestas conceptuales implementado con alcance, módulos, conceptos, costos internos, márgenes, impuestos, aprobación, versiones y PDF para clientes.
 - Las propuestas conceptuales admiten portada, resumen ejecutivo, objetivo, tres niveles de presentación de precios y PDF SC con metadatos, inversión, próximos pasos, pie estable y marca de agua.
 - Los importes se recalculan en PostgreSQL y los presupuestos cerrados solo pueden continuar mediante una nueva versión.
-- Pipeline comercial con búsqueda, filtros por responsable, rubro y seguimiento, límite por etapa, ocultamiento de etapas vacías y scroll interno para volúmenes altos.
+- Pipeline comercial con búsqueda, filtros por responsable, rubro, seguimiento, probabilidad, moneda y resultado; valor abierto y ponderado, antigüedad por etapa, historial, motivo de pérdida obligatorio y scroll interno para volúmenes altos.
+- Conversión asistida de propuestas aceptadas a cliente, proyecto y tareas iniciales, con revisión de posibles duplicados y confirmación humana.
 - El propietario configura por empresa la densidad del pipeline y los valores iniciales de presupuestos: prefijo, vigencia, impuestos, margen, plazo y condición de pago.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
 
@@ -49,7 +50,7 @@ npm run serve
 - [ ] Esperar la respuesta de OpenAI a la solicitud de Sign in with ChatGPT prevista para el cuarto trimestre; luego cargar el `client_id`, los secretos y ejecutar una prueba controlada.
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
-- [ ] Validar el primer presupuesto o propuesta conceptual real con un usuario autenticado y definir la conversión guiada de oportunidad aceptada a cliente/proyecto.
+- [ ] Validar el primer presupuesto o propuesta conceptual real y ejecutar una conversión controlada con un usuario autenticado.
 - [ ] Diseñar vistas guardadas y etapas configurables del pipeline sin romper el historial comercial.
 
 ## Notas relacionadas

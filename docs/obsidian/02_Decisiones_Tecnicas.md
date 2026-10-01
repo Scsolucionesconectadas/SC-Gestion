@@ -171,3 +171,15 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** generar un PDF fijo fuera del sistema o crear tablas separadas para propuestas conceptuales. Se descartaron por falta de reutilización, trazabilidad y control de versiones.
 
 **Archivos relacionados:** `assets/js/quotes.js`, `assets/css/app.css`, `supabase/migrations/20260930214821_conceptual_proposals.sql`.
+
+## 2026-09-30 - Conversión asistida y auditoría del pipeline
+
+**Decisión:** convertir una propuesta aceptada únicamente mediante confirmación humana, con búsqueda previa de clientes similares, selección entre vincular o crear y una operación atómica en PostgreSQL.
+
+**Motivo:** aceptar una propuesta expresa intención comercial, pero no garantiza que deba duplicarse un cliente, abrirse un proyecto o crearse siempre el mismo conjunto de tareas.
+
+**Impacto:** el pipeline incorpora valor, probabilidad, antigüedad e historial por etapa. Los cierres perdidos requieren motivo y la conversión deja vínculos de origen en propuesta, cliente y proyecto. `convert_accepted_proposal` es idempotente, usa `security invoker` y vuelve a validar organización y permisos.
+
+**Alternativas consideradas:** conversión automática al aceptar y escrituras separadas desde el navegador. Se descartaron por riesgo de duplicados y estados parciales.
+
+**Archivos relacionados:** `assets/js/conversion.js`, `assets/js/app.js`, `assets/js/quotes.js`, `supabase/migrations/20260930224548_pipeline_conversion_workflow.sql`, `supabase/migrations/20261001004835_pipeline_conversion_indexes.sql`.

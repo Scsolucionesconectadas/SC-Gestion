@@ -16,6 +16,11 @@ const STATUSES = [
   'Reunión pendiente','Reunión realizada','Propuesta enviada',
   'Negociación','Cliente','No interesado'
 ];
+const STAGE_PROBABILITY = {
+  'Prospecto':10,'Visitado':15,'Contactado':25,'Respondió':35,'Interesado':50,
+  'Reunión pendiente':60,'Reunión realizada':70,'Propuesta enviada':75,
+  'Negociación':85,'Cliente':100,'No interesado':0
+};
 const INTERACTION_TYPES = ['WhatsApp','Llamada','Visita','Email','Reunión','Videollamada','Nota'];
 const VIEW_META = {
   dashboard:['Inicio','OPERACIÓN CONECTADA'],
@@ -63,6 +68,7 @@ const avatarUrls = new Map();
 let data = {
   profiles: [],
   prospects: [],
+  prospectStageHistory: [],
   interactions: [],
   tasks: [],
   meetings: [],
@@ -102,6 +108,8 @@ const isReply = (p) => ['Respondió','Interesado','Reunión pendiente','Reunión
 const isOpportunity = (p) => ['Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente'].includes(p.status);
 const activeProspect = (p) => !['Cliente','No interesado'].includes(p.status);
 const activeOrganizationId = () => activeOrganization?.id || null;
+const stageProbability = (status) => STAGE_PROBABILITY[status] ?? 10;
+const stageDays = (prospect) => Math.max(0,dayjs().startOf('day').diff(dayjs(prospect.stage_entered_at||prospect.updated_at||prospect.created_at).startOf('day'),'day'));
 const roleLabel = (role) => ROLE_LABELS[role] || 'Sin rol';
 function pipelinePreferences(){
   const settings=activeOrganization?.settings?.pipeline||{};
@@ -395,6 +403,7 @@ async function loadRemoteData(){
     supabase.from('permission_catalog').select('*').order('position'),
     profileIds.length?supabase.from('profiles').select('*').in('id',profileIds).order('full_name'):Promise.resolve({data:[],error:null}),
     supabase.from('prospects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
+    supabase.from('prospect_stage_history').select('*').eq('organization_id',organizationId).order('changed_at',{ascending:false}).limit(2000),
     supabase.from('interactions').select('*').eq('organization_id',organizationId).order('happened_at',{ascending:false}).limit(1000),
     supabase.from('tasks').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}),
     supabase.from('meetings').select('*').eq('organization_id',organizationId).order('starts_at',{ascending:true}),
@@ -416,7 +425,7 @@ async function loadRemoteData(){
     canViewFinance()?supabase.from('generated_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
     hasPermission('agents.run')?supabase.from('agent_definitions').select('*').eq('organization_id',organizationId).order('name'):Promise.resolve({data:[],error:null})
   ]);
-  const names=['permissionCatalog','profiles','prospects','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
+  const names=['permissionCatalog','profiles','prospects','prospectStageHistory','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
   let failed=Boolean(membersQuery.error||permissionDefaultsQuery.error);
   queries.forEach((q,i)=>{
     if(q.error){console.error(names[i],q.error);failed=true;return}
@@ -438,7 +447,7 @@ function setupRealtime(){
   const organizationId=activeOrganizationId();
   if(!organizationId)return;
   realtimeChannel=supabase.channel('sc-gestion-'+organizationId);
-  ['prospects','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
+  ['prospects','prospect_stage_history','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
     realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table,filter:'organization_id=eq.'+organizationId},scheduleReload);
   });
   realtimeChannel.subscribe();
@@ -497,9 +506,25 @@ function loadDemoData(){
 }
 function normalizeDemoData(demo){
   demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
-  ['prospects','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
+  ['prospects','prospectStageHistory','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
+  demo.prospects=demo.prospects.map(prospect=>{
+    const proposal=demo.proposals.find(item=>item.prospect_id===prospect.id&&Number(item.amount)>0);
+    return {
+      estimated_value:proposal?.amount??null,currency:proposal?.currency||'ARS',
+      probability:stageProbability(prospect.status),lost_reason:null,
+      stage_entered_at:prospect.updated_at||prospect.created_at||new Date().toISOString(),
+      ...prospect
+    };
+  });
+  if(!demo.prospectStageHistory.length){
+    demo.prospectStageHistory=demo.prospects.map(prospect=>({
+      id:uuid(),organization_id:prospect.organization_id,prospect_id:prospect.id,
+      from_status:null,to_status:prospect.status,reason:prospect.lost_reason||null,
+      changed_by:null,changed_at:prospect.created_at||new Date().toISOString()
+    }));
+  }
   if(!(demo.organizationMemberships||[]).length){
     demo.organizationMemberships=(demo.profiles||[]).map((profile,index)=>({user_id:profile.id,role:index===0?'owner':'commercial',active:true}));
   }
@@ -590,6 +615,7 @@ function renderPipelineFilterOptions(sectors=[]){
   if(limit.dataset.organization!==organizationId){
     const preferences=pipelinePreferences();
     search.value='';ownerFilter.value='';sectorFilter.value='';$('pipelineFollowupFilter').value='';
+    $('pipelineProbabilityFilter').value='';$('pipelineCurrencyFilter').value='';$('pipelineOutcomeFilter').value='active';
     limit.value=preferences.cardLimit;hideEmpty.checked=preferences.hideEmpty;
     limit.dataset.organization=organizationId;
   }
@@ -645,8 +671,10 @@ function renderProspects(){
   $('mobileProspects').innerHTML=list.length?list.map(p=>'<article class="mobile-card" data-open="'+p.id+'"><div class="mobile-card-top"><b>'+esc(p.business_name)+'</b>'+statusPill(p.status)+'</div><p>'+esc(p.sector||'Sin rubro')+' · '+esc(ownerShort(p.owner_id))+'</p><small>'+esc(p.next_action||'Sin próxima acción')+' · '+fmtDate(p.next_followup)+'</small></article>').join(''):emptyState('No hay resultados.','search-x');
 }
 function renderPipeline(){
-  const stages=STATUSES.filter(s=>s!=='No interesado');
+  const outcome=$('pipelineOutcomeFilter').value;
+  const stages=outcome==='won'?['Cliente']:outcome==='lost'?['No interesado']:outcome==='all'?STATUSES:STATUSES.filter(status=>!['Cliente','No interesado'].includes(status));
   const query=$('pipelineSearch').value.toLowerCase().trim(),owner=$('pipelineOwnerFilter').value,sector=$('pipelineSectorFilter').value,followup=$('pipelineFollowupFilter').value;
+  const probability=$('pipelineProbabilityFilter').value,currency=$('pipelineCurrencyFilter').value;
   const preferences=pipelinePreferences(),hideEmpty=$('pipelineHideEmpty').checked;
   const limitValue=$('pipelineLimitFilter').value,limit=limitValue==='all'?Number.POSITIVE_INFINITY:Number(limitValue||preferences.cardLimit);
   const stageProspects=data.prospects.filter(item=>stages.includes(item.status));
@@ -659,24 +687,51 @@ function renderPipeline(){
       ||(followup==='overdue'&&item.next_followup&&days<0)
       ||(followup==='next7'&&item.next_followup&&days>=0&&days<=7)
       ||(followup==='no_date'&&!item.next_followup)
-      ||(followup==='stale'&&staleBase&&dayjs(staleBase).isBefore(dayjs().subtract(preferences.staleDays,'day')));
-    return (!query||haystack.includes(query))&&ownerMatches&&(!sector||item.sector===sector)&&followupMatches;
+      ||(followup==='stale'&&staleBase&&stageDays(item)>=preferences.staleDays);
+    const chance=Number(item.probability??stageProbability(item.status));
+    const probabilityMatches=!probability||(probability==='high'&&chance>=70)||(probability==='medium'&&chance>=40&&chance<70)||(probability==='low'&&chance<40);
+    const currencyMatches=!currency||(currency==='no_value'?item.estimated_value==null:item.currency===currency&&item.estimated_value!=null);
+    return (!query||haystack.includes(query))&&ownerMatches&&(!sector||item.sector===sector)&&followupMatches&&probabilityMatches&&currencyMatches;
   });
   const visibleStages=hideEmpty?stages.filter(status=>filtered.some(item=>item.status===status)):stages;
   $('pipelineResultCount').textContent=filtered.length+' de '+stageProspects.length+' oportunidades';
-  $('pipelineClearFilters').disabled=!query&&!owner&&!sector&&!followup&&limitValue===preferences.cardLimit&&hideEmpty===preferences.hideEmpty;
+  $('pipelineClearFilters').disabled=!query&&!owner&&!sector&&!followup&&!probability&&!currency&&outcome==='active'&&limitValue===preferences.cardLimit&&hideEmpty===preferences.hideEmpty;
+  renderPipelineInsights(stageProspects,preferences);
   $('kanban').innerHTML=filtered.length&&visibleStages.length?visibleStages.map(status=>{
     const items=filtered.filter(item=>item.status===status).sort((a,b)=>(a.next_followup||'9999').localeCompare(b.next_followup||'9999')||a.business_name.localeCompare(b.business_name));
     const shown=items.slice(0,limit),remaining=Math.max(0,items.length-shown.length);
-    const cards=shown.map(item=>'<article class="lead-card" data-id="'+item.id+'" data-open="'+item.id+'"><b>'+esc(item.business_name)+'</b><p>'+esc(item.sector||'Sin rubro')+'</p><div class="lead-card-foot"><span>'+esc(ownerShort(item.owner_id))+'</span><span>'+fmtDate(item.next_followup)+'</span></div></article>').join('');
+    const cards=shown.map(item=>{
+      const age=stageDays(item),stale=age>=preferences.staleDays;
+      return '<article class="lead-card '+(stale?'is-stale':'')+'" data-id="'+item.id+'" data-open="'+item.id+'">'+
+        '<div class="lead-card-title"><b>'+esc(item.business_name)+'</b><span class="probability-pill">'+Number(item.probability??stageProbability(item.status))+'%</span></div><p>'+esc(item.sector||'Sin rubro')+'</p>'+
+        '<div class="lead-card-value"><strong>'+esc(item.estimated_value==null?'Sin valor':money(item.estimated_value,item.currency||'ARS'))+'</strong><span class="stage-age '+(stale?'status-red':'')+'">'+age+' d en etapa</span></div>'+
+        '<div class="lead-card-foot"><span>'+esc(ownerShort(item.owner_id))+'</span><span>'+fmtDate(item.next_followup)+'</span></div></article>';
+    }).join('');
     return '<section class="kanban-col" data-status="'+esc(status)+'"><div class="kanban-head"><b>'+esc(status)+'</b><span class="count-pill">'+items.length+'</span></div><div class="kanban-list" data-status="'+esc(status)+'">'+(items.length?cards:'<div class="empty-state">Vacío</div>')+(remaining?'<div class="kanban-more"><b>'+remaining+'</b> más en esta etapa</div>':'')+'</div></section>';
   }).join(''):'<div class="pipeline-empty">No hay oportunidades que coincidan con los filtros.</div>';
   lucideRefresh();
   if(activeView==='pipeline')setTimeout(enableKanban,0);
 }
+function renderPipelineInsights(items,preferences){
+  const active=items.filter(activeProspect),stale=active.filter(item=>stageDays(item)>=preferences.staleDays);
+  const accepted=data.proposals.filter(item=>item.status==='aceptada'&&!item.converted_client_id).length;
+  const grouped=(weighted=false)=>Object.entries(active.reduce((totals,item)=>{
+    if(item.estimated_value==null)return totals;
+    const currency=item.currency||'ARS',factor=weighted?Number(item.probability??0)/100:1;
+    totals[currency]=(totals[currency]||0)+Number(item.estimated_value)*factor;
+    return totals;
+  },{})).map(([currency,total])=>money(total,currency)).join(' · ')||'Sin valores';
+  $('pipelineInsights').innerHTML=[
+    ['Valor abierto',grouped(false),'wallet-cards','Importe estimado activo'],
+    ['Valor ponderado',grouped(true),'chart-no-axes-combined','Importe por probabilidad'],
+    ['Sin movimiento',stale.length,'clock-alert',preferences.staleDays+' días o más'],
+    ['Listas para convertir',accepted,'badge-check','Propuestas aceptadas']
+  ].map(([label,value,icon,caption])=>'<article><span><i data-lucide="'+icon+'"></i></span><div><small>'+label+'</small><strong>'+value+'</strong><em>'+caption+'</em></div></article>').join('');
+}
 function clearPipelineFilters(){
   const preferences=pipelinePreferences();
   $('pipelineSearch').value='';$('pipelineOwnerFilter').value='';$('pipelineSectorFilter').value='';$('pipelineFollowupFilter').value='';
+  $('pipelineProbabilityFilter').value='';$('pipelineCurrencyFilter').value='';$('pipelineOutcomeFilter').value='active';
   $('pipelineLimitFilter').value=preferences.cardLimit;$('pipelineHideEmpty').checked=preferences.hideEmpty;
   renderPipeline();
 }
@@ -693,6 +748,12 @@ function enableKanban(){
       group:'crm-pipeline',animation:180,ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',
       onAdd:async evt=>{
         const id=evt.item.dataset.id,status=evt.to.dataset.status;
+        if(status==='Cliente'){
+          renderPipeline();notify('Convertí una propuesta aceptada para crear el cliente y conservar la trazabilidad.');return;
+        }
+        if(status==='No interesado'){
+          renderPipeline();openLostReason(id);return;
+        }
         await updateProspectStatus(id,status);
       }
     });
@@ -836,12 +897,16 @@ function renderReports(){
 }
 
 function resetProspectForm(){
-  $('prospectForm').reset();$('prospectId').value='';$('city').value='Cdelu';$('brand').value='SC';$('status').value='Prospecto';$('owner').value=currentProfile?.id||'';$('prospectModalTitle').textContent='Nuevo prospecto';
+  $('prospectForm').reset();$('prospectId').value='';$('city').value='Cdelu';$('brand').value='SC';$('status').value='Prospecto';$('prospectCurrency').value=activeOrganization?.default_currency||'ARS';$('probability').value=stageProbability('Prospecto');$('owner').value=currentProfile?.id||'';$('prospectModalTitle').textContent='Nuevo prospecto';syncLostReasonField();
+}
+function syncLostReasonField(){
+  const closed=$('status').value==='No interesado',field=$('lostReasonField');
+  field.hidden=!closed;$('lostReason').required=closed;
 }
 function editProspect(id){
   const p=data.prospects.find(x=>x.id===id);if(!p)return;
   resetProspectForm();
-  $('prospectId').value=p.id;$('businessName').value=p.business_name||'';$('sector').value=p.sector||'';$('city').value=p.city||'';$('contactName').value=p.contact_name||'';$('jobTitle').value=p.job_title||'';$('phone').value=p.phone||'';$('email').value=p.email||'';$('owner').value=p.owner_id||'';$('brand').value=p.brand||'SC';$('status').value=p.status||'Prospecto';$('nextAction').value=p.next_action||'';$('nextFollowup').value=p.next_followup||'';$('needInterest').value=p.need_interest||'';$('notes').value=p.notes||'';$('prospectModalTitle').textContent='Editar prospecto';openModal('prospectModal');
+  $('prospectId').value=p.id;$('businessName').value=p.business_name||'';$('sector').value=p.sector||'';$('city').value=p.city||'';$('contactName').value=p.contact_name||'';$('jobTitle').value=p.job_title||'';$('phone').value=p.phone||'';$('email').value=p.email||'';$('owner').value=p.owner_id||'';$('brand').value=p.brand||'SC';$('status').value=p.status||'Prospecto';$('estimatedValue').value=p.estimated_value??'';$('prospectCurrency').value=p.currency||'ARS';$('probability').value=p.probability??stageProbability(p.status);$('lostReason').value=p.lost_reason||'';$('nextAction').value=p.next_action||'';$('nextFollowup').value=p.next_followup||'';$('needInterest').value=p.need_interest||'';$('notes').value=p.notes||'';$('prospectModalTitle').textContent='Editar prospecto';syncLostReasonField();openModal('prospectModal');
 }
 async function submitProspect(event){
   event.preventDefault();
@@ -859,6 +924,10 @@ async function submitProspect(event){
     owner_id:$('owner').value||null,
     brand:$('brand').value,
     status:$('status').value,
+    estimated_value:$('estimatedValue').value===''?null:Number($('estimatedValue').value),
+    currency:$('prospectCurrency').value,
+    probability:Math.max(0,Math.min(100,Number($('probability').value||0))),
+    lost_reason:$('status').value==='No interesado'?$('lostReason').value.trim():null,
     next_action:$('nextAction').value.trim()||null,
     next_followup:$('nextFollowup').value||null,
     need_interest:$('needInterest').value.trim()||null,
@@ -872,10 +941,13 @@ async function submitProspect(event){
     await loadRemoteData();
   }else{
     if(id){
-      const i=data.prospects.findIndex(x=>x.id===id);data.prospects[i]={...data.prospects[i],...payload,updated_at:new Date().toISOString()};
+      const i=data.prospects.findIndex(x=>x.id===id),previous=data.prospects[i],now=new Date().toISOString();
+      data.prospects[i]={...previous,...payload,stage_entered_at:previous.status===payload.status?previous.stage_entered_at:now,updated_at:now};
+      if(previous.status!==payload.status)data.prospectStageHistory.unshift({id:uuid(),organization_id:activeOrganizationId(),prospect_id:id,from_status:previous.status,to_status:payload.status,reason:payload.lost_reason,changed_by:currentProfile.id,changed_at:now});
     }else{
-      const p={id:uuid(),...payload,created_by:currentProfile.id,created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+      const now=new Date().toISOString(),p={id:uuid(),...payload,created_by:currentProfile.id,stage_entered_at:now,created_at:now,updated_at:now};
       data.prospects.unshift(p);
+      data.prospectStageHistory.unshift({id:uuid(),organization_id:activeOrganizationId(),prospect_id:p.id,from_status:null,to_status:p.status,reason:p.lost_reason,changed_by:currentProfile.id,changed_at:now});
       data.interactions.unshift({id:uuid(),prospect_id:p.id,user_id:currentProfile.id,type:'Nota',result:'Prospecto creado en CRM',happened_at:new Date().toISOString(),created_at:new Date().toISOString()});
     }
     saveDemo();
@@ -893,10 +965,13 @@ function openDetail(id){
   const meetings=data.meetings.filter(x=>x.prospect_id===id).sort((a,b)=>(a.starts_at||'').localeCompare(b.starts_at||''));
   const tasks=data.tasks.filter(x=>x.prospect_id===id && x.status!=='cancelada').sort((a,b)=>(a.due_at||'9999').localeCompare(b.due_at||'9999'));
   const proposals=data.proposals.filter(x=>x.prospect_id===id).sort((a,b)=>(b.created_at||'').localeCompare(a.created_at||''));
+  const movements=data.prospectStageHistory.filter(x=>x.prospect_id===id).sort((a,b)=>(b.changed_at||'').localeCompare(a.changed_at||''));
+  const convertible=proposals.find(item=>item.status==='aceptada'&&!item.converted_client_id);
 
   const fields=[
     ['Estado',p.status],['Responsable',ownerName(p.owner_id)],['Contacto',p.contact_name||'—'],['Cargo',p.job_title||'—'],
-    ['Teléfono',p.phone||'—'],['Email',p.email||'—'],['Próxima acción',p.next_action||'—'],['Seguimiento',fmtDate(p.next_followup)]
+    ['Teléfono',p.phone||'—'],['Email',p.email||'—'],['Valor estimado',p.estimated_value==null?'Sin valor':money(p.estimated_value,p.currency||'ARS')],['Probabilidad',(p.probability??stageProbability(p.status))+'%'],
+    ['Tiempo en etapa',stageDays(p)+' días'],['Próxima acción',p.next_action||'—'],['Seguimiento',fmtDate(p.next_followup)]
   ];
   $('detailBody').innerHTML=
     '<div class="quick-actions">'+
@@ -905,18 +980,21 @@ function openDetail(id){
       '<button class="btn btn-secondary" data-action="meeting" data-prospect="'+id+'"><i data-lucide="calendar-plus"></i>Reunión</button>'+
       '<button class="btn btn-secondary" data-action="task" data-prospect="'+id+'"><i data-lucide="list-plus"></i>Tarea</button>'+
       '<button class="btn btn-secondary" data-action="proposal" data-prospect="'+id+'"><i data-lucide="file-plus-2"></i>Propuesta</button>'+
+      (convertible?'<button class="btn btn-primary" data-convert="'+convertible.id+'"><i data-lucide="badge-check"></i>Convertir</button>':'')+
       '<button class="btn btn-secondary" data-edit="'+id+'"><i data-lucide="pencil"></i>Editar</button>':'')+
     '</div>'+
     '<div class="detail-layout">'+
       '<div>'+
         '<div class="detail-card" style="margin-bottom:12px"><h3>Información comercial</h3><div class="detail-grid">'+fields.map(([k,v])=>'<div class="detail-field"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div></div>'+
         '<div class="detail-card" style="margin-bottom:12px"><h3>Necesidad / interés</h3><p style="font-size:11px;line-height:1.6;color:var(--muted);margin:0">'+esc(p.need_interest||'Sin información')+'</p></div>'+
+        (p.lost_reason?'<div class="detail-card detail-alert" style="margin-bottom:12px"><h3>Motivo de cierre</h3><p>'+esc(p.lost_reason)+'</p></div>':'')+
         '<div class="detail-card"><h3>Historial</h3><div class="timeline">'+(inter.length?inter.map(i=>'<div class="timeline-item"><b>'+fmtDateTime(i.happened_at)+' · '+esc(i.type)+'</b><p>'+esc(i.result||i.notes||'Interacción registrada')+(i.next_step?' · Próximo: '+esc(i.next_step):'')+'</p></div>').join(''):emptyState('Sin interacciones.','history'))+'</div></div>'+
       '</div>'+
       '<div>'+
         '<div class="detail-card" style="margin-bottom:12px"><h3>Reuniones</h3>'+(meetings.length?meetings.map(m=>'<div class="action-item"><span class="item-title"><span class="mini-icon"><i data-lucide="calendar"></i></span><span><b>'+fmtDateTime(m.starts_at)+'</b><small>'+esc(m.modality)+' · '+esc(m.status)+'</small></span></span></div>').join(''):emptyState('Sin reuniones.','calendar'))+'</div>'+
         '<div class="detail-card" style="margin-bottom:12px"><h3>Tareas</h3>'+(tasks.length?tasks.slice(0,5).map(t=>'<div class="action-item"><span><b style="font-size:10px">'+esc(t.title)+'</b><small style="display:block;color:var(--muted);font-size:9px">'+esc(t.status)+' · '+fmtDateTime(t.due_at)+'</small></span></div>').join(''):emptyState('Sin tareas.','list-checks'))+'</div>'+
-        '<div class="detail-card"><h3>Propuestas</h3>'+(proposals.length?proposals.map(x=>'<div class="action-item"><span><b style="font-size:10px">'+esc(x.title)+'</b><small style="display:block;color:var(--muted);font-size:9px">'+esc(x.status)+' · '+money(x.amount,x.currency)+'</small></span></div>').join(''):emptyState('Sin propuestas.','file-text'))+'</div>'+
+        '<div class="detail-card" style="margin-bottom:12px"><h3>Recorrido comercial</h3><div class="timeline">'+(movements.length?movements.map(move=>'<div class="timeline-item"><b>'+fmtDateTime(move.changed_at)+' · '+esc(move.to_status)+'</b><p>'+(move.from_status?'Desde '+esc(move.from_status):'Inicio del seguimiento')+(move.reason?' · '+esc(move.reason):'')+'</p></div>').join(''):emptyState('Sin cambios de etapa.','git-commit-horizontal'))+'</div></div>'+
+        '<div class="detail-card"><h3>Propuestas</h3>'+(proposals.length?proposals.map(x=>'<div class="action-item"><span><b style="font-size:10px">'+esc(x.title)+'</b><small style="display:block;color:var(--muted);font-size:9px">'+esc(x.status)+' · '+money(x.amount,x.currency)+'</small></span>'+(x.status==='aceptada'&&!x.converted_client_id?'<button class="mini-btn" data-convert="'+x.id+'">Convertir</button>':x.converted_client_id?'<span class="status-pill status-green">Convertida</span>':'')+'</div>').join(''):emptyState('Sin propuestas.','file-text'))+'</div>'+
       '</div>'+
     '</div>';
   openModal('detailModal');lucideRefresh();
@@ -1336,12 +1414,22 @@ async function submitPassword(e){
   closeButton.hidden=false;
   closeModal('actionModal');notify('Contraseña actualizada');
 }
-async function updateProspectStatus(id,status){
+function openLostReason(id){
+  const prospect=data.prospects.find(item=>item.id===id);if(!prospect)return;
+  $('actionEyebrow').textContent='CIERRE COMERCIAL';$('actionTitle').textContent='Cerrar oportunidad';
+  $('actionBody').innerHTML='<form class="action-form" id="actionForm"><div class="form-hint full-field"><b>'+esc(prospect.business_name)+'</b><p>El motivo alimenta los reportes y ayuda a mejorar futuras propuestas.</p></div><label class="full-field">Motivo de cierre<textarea name="reason" rows="4" minlength="3" maxlength="1000" required placeholder="Ej.: presupuesto postergado, eligió otra alternativa o no es prioridad"></textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-danger" type="submit"><i data-lucide="circle-x"></i>Cerrar oportunidad</button></div></form>';
+  $('actionForm').onsubmit=async event=>{event.preventDefault();const reason=new FormData(event.target).get('reason').trim();if(!reason)return;await updateProspectStatus(id,'No interesado',reason);closeModal('actionModal')};
+  openModal('actionModal');
+}
+async function updateProspectStatus(id,status,reason=null){
   if(!ensureWriteAccess('crm.write')){await loadRemoteData();return}
   if(mode==='supabase'){
-    const {error}=await supabase.from('prospects').update({status}).eq('id',id).eq('organization_id',activeOrganizationId());if(error){notify(error.message);await loadRemoteData();return}
+    const patch={status};if(status==='No interesado')patch.lost_reason=reason;
+    const {error}=await supabase.from('prospects').update(patch).eq('id',id).eq('organization_id',activeOrganizationId());if(error){notify(error.message);await loadRemoteData();return}
     await loadRemoteData();
-  }else{const p=data.prospects.find(x=>x.id===id);if(p)p.status=status;saveDemo()}
+  }else{
+    const p=data.prospects.find(x=>x.id===id);if(p&&p.status!==status){const previous=p.status,now=new Date().toISOString();p.status=status;p.lost_reason=status==='No interesado'?reason:null;p.probability=stageProbability(status);p.stage_entered_at=now;p.updated_at=now;data.prospectStageHistory.unshift({id:uuid(),organization_id:activeOrganizationId(),prospect_id:id,from_status:previous,to_status:status,reason:p.lost_reason,changed_by:currentProfile.id,changed_at:now})}saveDemo()
+  }
   notify('Etapa actualizada');
 }
 async function toggleTask(id){
@@ -1355,7 +1443,7 @@ async function toggleTask(id){
 }
 
 function exportBackup(){
-  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,prospects:data.prospects,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,proposalSections:data.proposalSections,proposalItems:data.proposalItems,proposalVersions:data.proposalVersions,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
+  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,prospects:data.prospects,prospectStageHistory:data.prospectStageHistory,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,proposalSections:data.proposalSections,proposalItems:data.proposalItems,proposalVersions:data.proposalVersions,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
   const blob=new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='sc-gestion-'+(activeOrganization?.slug||'empresa')+'-'+isoDate()+'.json';a.click();URL.revokeObjectURL(a.href);
 }
@@ -1384,10 +1472,11 @@ function bindStaticEvents(){
   $('newInvoiceBtn').addEventListener('click',()=>openAction('invoice'));
   $('myProfileBtn').addEventListener('click',()=>openAction('profile'));
   $('prospectForm').addEventListener('submit',submitProspect);
+  $('status').addEventListener('change',()=>{$('probability').value=stageProbability($('status').value);syncLostReasonField()});
   $('prospectSearch').addEventListener('input',renderProspects);
   ['statusFilter','ownerFilter','sectorFilter'].forEach(id=>$(id).addEventListener('change',renderProspects));
   $('pipelineSearch').addEventListener('input',renderPipeline);
-  ['pipelineOwnerFilter','pipelineSectorFilter','pipelineFollowupFilter','pipelineLimitFilter','pipelineHideEmpty'].forEach(id=>$(id).addEventListener('change',renderPipeline));
+  ['pipelineOwnerFilter','pipelineSectorFilter','pipelineFollowupFilter','pipelineProbabilityFilter','pipelineCurrencyFilter','pipelineOutcomeFilter','pipelineLimitFilter','pipelineHideEmpty'].forEach(id=>$(id).addEventListener('change',renderPipeline));
   $('pipelineClearFilters').addEventListener('click',clearPipelineFilters);
   $('globalSearch').addEventListener('keydown',e=>{if(e.key==='Enter')globalSearch()});
   document.addEventListener('keydown',e=>{
