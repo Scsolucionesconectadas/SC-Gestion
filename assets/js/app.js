@@ -11,16 +11,17 @@ const supabase = configured
     })
   : null;
 
-const STATUSES = [
-  'Prospecto','Visitado','Contactado','Respondió','Interesado',
-  'Reunión pendiente','Reunión realizada','Propuesta enviada',
-  'Negociación','Cliente','No interesado'
-];
-const STAGE_PROBABILITY = {
-  'Prospecto':10,'Visitado':15,'Contactado':25,'Respondió':35,'Interesado':50,
-  'Reunión pendiente':60,'Reunión realizada':70,'Propuesta enviada':75,
-  'Negociación':85,'Cliente':100,'No interesado':0
-};
+const DEFAULT_PIPELINE_STAGES = [
+  ['Prospecto','Prospecto','open',10,'gray'],['Visitado','Visitado','open',15,'blue'],
+  ['Contactado','Contactado','open',25,'cyan'],['Respondió','Respondió','open',35,'purple'],
+  ['Interesado','Interesado','open',50,'amber'],['Reunión pendiente','Reunión pendiente','open',60,'amber'],
+  ['Reunión realizada','Reunión realizada','open',70,'green'],['Propuesta enviada','Propuesta enviada','open',75,'purple'],
+  ['Negociación','Negociación','open',85,'amber'],['Cliente','Cliente','won',100,'green'],
+  ['No interesado','No interesado','lost',0,'red']
+].map(([stage_key,label,stage_type,probability,color],index)=>({
+  id:'demo-stage-'+index,organization_id:'demo-sc',stage_key,label,stage_type,probability,color,
+  position:(index+1)*10,is_active:true,is_system:true
+}));
 const INTERACTION_TYPES = ['WhatsApp','Llamada','Visita','Email','Reunión','Videollamada','Nota'];
 const VIEW_META = {
   dashboard:['Inicio','OPERACIÓN CONECTADA'],
@@ -67,6 +68,7 @@ let rolePermissionDefaults = [];
 const avatarUrls = new Map();
 let data = {
   profiles: [],
+  pipelineStages: [],
   prospects: [],
   prospectStageHistory: [],
   pipelineSavedViews: [],
@@ -105,11 +107,21 @@ const initials = (name='') => name.trim().split(/\s+/).slice(0,2).map(x=>x[0]||'
 const profileById = (id) => data.profiles.find(p => p.id === id);
 const ownerName = (id) => profileById(id)?.full_name || 'Sin asignar';
 const ownerShort = (id) => ownerName(id).split(' ')[0];
-const isReply = (p) => ['Respondió','Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente'].includes(p.status);
-const isOpportunity = (p) => ['Interesado','Reunión pendiente','Reunión realizada','Propuesta enviada','Negociación','Cliente'].includes(p.status);
-const activeProspect = (p) => !['Cliente','No interesado'].includes(p.status);
+function pipelineStages({includeInactive=false,source=data.pipelineStages}={}){
+  const stages=source?.length?source:DEFAULT_PIPELINE_STAGES;
+  return stages.filter(stage=>includeInactive||stage.is_active!==false).slice().sort((a,b)=>Number(a.position)-Number(b.position)||a.label.localeCompare(b.label));
+}
+function stageByKey(key,source=data.pipelineStages){
+  return pipelineStages({includeInactive:true,source}).find(stage=>stage.stage_key===key)
+    ||DEFAULT_PIPELINE_STAGES.find(stage=>stage.stage_key===key);
+}
+const stageLabel = status => stageByKey(status)?.label||status||'Sin etapa';
+const stageType = status => stageByKey(status)?.stage_type||(['Cliente'].includes(status)?'won':['No interesado'].includes(status)?'lost':'open');
+const stageProbability = (status,source=data.pipelineStages) => Number(stageByKey(status,source)?.probability??10);
+const isReply = p => stageType(p.status)!=='lost'&&stageProbability(p.status)>=35;
+const isOpportunity = p => stageType(p.status)!=='lost'&&stageProbability(p.status)>=50;
+const activeProspect = p => stageType(p.status)==='open';
 const activeOrganizationId = () => activeOrganization?.id || null;
-const stageProbability = (status) => STAGE_PROBABILITY[status] ?? 10;
 const stageDays = (prospect) => Math.max(0,dayjs().startOf('day').diff(dayjs(prospect.stage_entered_at||prospect.updated_at||prospect.created_at).startOf('day'),'day'));
 const roleLabel = (role) => ROLE_LABELS[role] || 'Sin rol';
 function pipelinePreferences(){
@@ -171,14 +183,10 @@ function emitWorkspace(type){
   window.dispatchEvent(new CustomEvent('sc:workspace',{detail:{type}}));
 }
 function statusClass(status){
-  if(status==='Cliente'||status==='Reunión realizada') return 'status-green';
-  if(status==='Interesado'||status==='Reunión pendiente'||status==='Negociación') return 'status-amber';
-  if(status==='Respondió'||status==='Propuesta enviada') return 'status-purple';
-  if(status==='No interesado') return 'status-red';
-  if(status==='Contactado'||status==='Visitado') return 'status-blue';
-  return 'status-gray';
+  const color=stageByKey(status)?.color;
+  return ['gray','blue','cyan','amber','purple','green','red'].includes(color)?'status-'+color:'status-gray';
 }
-function statusPill(status){ return '<span class="status-pill '+statusClass(status)+'">'+esc(status)+'</span>'; }
+function statusPill(status){ return '<span class="status-pill '+statusClass(status)+'">'+esc(stageLabel(status))+'</span>'; }
 function emptyState(text, icon='inbox'){
   return '<div class="empty-state"><i data-lucide="'+icon+'"></i><div>'+esc(text)+'</div></div>';
 }
@@ -403,6 +411,7 @@ async function loadRemoteData(){
   const queries = await Promise.all([
     supabase.from('permission_catalog').select('*').order('position'),
     profileIds.length?supabase.from('profiles').select('*').in('id',profileIds).order('full_name'):Promise.resolve({data:[],error:null}),
+    supabase.from('pipeline_stages').select('*').eq('organization_id',organizationId).order('position'),
     supabase.from('prospects').select('*').eq('organization_id',organizationId).order('updated_at',{ascending:false}),
     supabase.from('prospect_stage_history').select('*').eq('organization_id',organizationId).order('changed_at',{ascending:false}).limit(2000),
     supabase.from('pipeline_saved_views').select('*').eq('organization_id',organizationId).eq('user_id',currentUser.id).order('updated_at',{ascending:false}),
@@ -427,7 +436,7 @@ async function loadRemoteData(){
     canViewFinance()?supabase.from('generated_documents').select('*').eq('organization_id',organizationId).order('created_at',{ascending:false}):Promise.resolve({data:[],error:null}),
     hasPermission('agents.run')?supabase.from('agent_definitions').select('*').eq('organization_id',organizationId).order('name'):Promise.resolve({data:[],error:null})
   ]);
-  const names=['permissionCatalog','profiles','prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
+  const names=['permissionCatalog','profiles','pipelineStages','prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'];
   let failed=Boolean(membersQuery.error||permissionDefaultsQuery.error);
   queries.forEach((q,i)=>{
     if(q.error){console.error(names[i],q.error);failed=true;return}
@@ -449,7 +458,7 @@ function setupRealtime(){
   const organizationId=activeOrganizationId();
   if(!organizationId)return;
   realtimeChannel=supabase.channel('sc-gestion-'+organizationId);
-  ['prospects','prospect_stage_history','pipeline_saved_views','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
+  ['pipeline_stages','prospects','prospect_stage_history','pipeline_saved_views','interactions','tasks','task_comments','notifications','meetings','proposals','proposal_sections','proposal_items','proposal_versions','clients','projects','documents','invoices','invoice_items','payments','email_messages','generated_documents','agent_definitions'].forEach(table=>{
     realtimeChannel.on('postgres_changes',{event:'*',schema:'public',table,filter:'organization_id=eq.'+organizationId},scheduleReload);
   });
   realtimeChannel.subscribe();
@@ -508,14 +517,17 @@ function loadDemoData(){
 }
 function normalizeDemoData(demo){
   demo.profiles=(demo.profiles||[]).map(profile=>({email:'',phone:'',job_title:'',bio:'',avatar_url:null,...profile}));
-  ['prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
+  ['pipelineStages','prospects','prospectStageHistory','pipelineSavedViews','interactions','tasks','meetings','proposals','proposalSections','proposalItems','proposalVersions','clients','projects','documents','invoices','invoiceItems','payments','taskComments','taskWatchers','notifications','emailMessages','emailTemplates','generatedDocuments','agentDefinitions'].forEach(key=>{
     demo[key]=(demo[key]||[]).map(item=>({...item,organization_id:item.organization_id||'demo-sc'}));
   });
+  if(!demo.pipelineStages.length){
+    demo.pipelineStages=DEFAULT_PIPELINE_STAGES.map(stage=>({...stage}));
+  }
   demo.prospects=demo.prospects.map(prospect=>{
     const proposal=demo.proposals.find(item=>item.prospect_id===prospect.id&&Number(item.amount)>0);
     return {
       estimated_value:proposal?.amount??null,currency:proposal?.currency||'ARS',
-      probability:stageProbability(prospect.status),lost_reason:null,
+      probability:stageProbability(prospect.status,demo.pipelineStages),lost_reason:null,
       stage_entered_at:prospect.updated_at||prospect.created_at||new Date().toISOString(),
       ...prospect
     };
@@ -597,12 +609,13 @@ function renderOwnerControls(){
 function renderFilters(){
   const sf=$('statusFilter'),of=$('ownerFilter'),rf=$('sectorFilter');
   const keep=[sf.value,of.value,rf.value];
-  sf.innerHTML='<option value="">Todos los estados</option>'+STATUSES.map(s=>'<option>'+esc(s)+'</option>').join('');
+  const stages=pipelineStages();
+  sf.innerHTML='<option value="">Todos los estados</option>'+stages.map(stage=>'<option value="'+esc(stage.stage_key)+'">'+esc(stage.label)+'</option>').join('');
   of.innerHTML='<option value="">Todos los responsables</option>'+data.profiles.filter(p=>p.active!==false).map(p=>'<option value="'+p.id+'">'+esc(p.full_name)+'</option>').join('');
   const sectors=[...new Set(data.prospects.map(p=>p.sector).filter(Boolean))].sort();
   rf.innerHTML='<option value="">Todos los rubros</option>'+sectors.map(s=>'<option>'+esc(s)+'</option>').join('');
   sf.value=keep[0];of.value=keep[1];rf.value=keep[2];
-  $('status').innerHTML=STATUSES.map(s=>'<option>'+esc(s)+'</option>').join('');
+  $('status').innerHTML=stages.map(stage=>'<option value="'+esc(stage.stage_key)+'">'+esc(stage.label)+'</option>').join('');
   renderPipelineFilterOptions(sectors);
 }
 function renderPipelineFilterOptions(sectors=[]){
@@ -641,7 +654,7 @@ function renderDashboard(){
     return '<button class="action-item" data-open="'+x.id+'"><span class="item-title"><span class="mini-icon"><i data-lucide="building-2"></i></span><span><b>'+esc(x.business_name)+'</b><small>'+esc(x.next_action||x.status)+' · '+esc(ownerShort(x.owner_id))+'</small></span></span><span class="date-pill '+cls+'">'+dateLabel(x.next_followup)+'</span></button>';
   }).join(''):emptyState('No hay seguimientos pendientes.','calendar-check');
 
-  const groups=STATUSES.map(s=>[s,p.filter(x=>x.status===s).length]).filter(x=>x[1]>0);
+  const groups=pipelineStages({includeInactive:true}).map(stage=>[stage.label,p.filter(x=>x.status===stage.stage_key).length]).filter(x=>x[1]>0);
   $('funnelList').innerHTML=groups.length?groups.map(x=>'<div class="funnel-item"><span>'+esc(x[0])+'</span><b>'+x[1]+'</b></div>').join(''):emptyState('Sin datos.','chart-no-axes-column');
 
   const recent=data.interactions.slice().sort((a,b)=>(b.happened_at||'').localeCompare(a.happened_at||'')).slice(0,7);
@@ -674,7 +687,8 @@ function renderProspects(){
 }
 function renderPipeline(){
   const outcome=$('pipelineOutcomeFilter').value;
-  const stages=outcome==='won'?['Cliente']:outcome==='lost'?['No interesado']:outcome==='all'?STATUSES:STATUSES.filter(status=>!['Cliente','No interesado'].includes(status));
+  const catalog=pipelineStages();
+  const stages=catalog.filter(stage=>outcome==='all'||(outcome==='active'?stage.stage_type==='open':stage.stage_type===outcome)).map(stage=>stage.stage_key);
   const query=$('pipelineSearch').value.toLowerCase().trim(),owner=$('pipelineOwnerFilter').value,sector=$('pipelineSectorFilter').value,followup=$('pipelineFollowupFilter').value;
   const probability=$('pipelineProbabilityFilter').value,currency=$('pipelineCurrencyFilter').value;
   const preferences=pipelinePreferences(),hideEmpty=$('pipelineHideEmpty').checked;
@@ -709,7 +723,7 @@ function renderPipeline(){
         '<div class="lead-card-value"><strong>'+esc(item.estimated_value==null?'Sin valor':money(item.estimated_value,item.currency||'ARS'))+'</strong><span class="stage-age '+(stale?'status-red':'')+'">'+age+' d en etapa</span></div>'+
         '<div class="lead-card-foot"><span>'+esc(ownerShort(item.owner_id))+'</span><span>'+fmtDate(item.next_followup)+'</span></div></article>';
     }).join('');
-    return '<section class="kanban-col" data-status="'+esc(status)+'"><div class="kanban-head"><b>'+esc(status)+'</b><span class="count-pill">'+items.length+'</span></div><div class="kanban-list" data-status="'+esc(status)+'">'+(items.length?cards:'<div class="empty-state">Vacío</div>')+(remaining?'<div class="kanban-more"><b>'+remaining+'</b> más en esta etapa</div>':'')+'</div></section>';
+    return '<section class="kanban-col" data-status="'+esc(status)+'"><div class="kanban-head"><b>'+esc(stageLabel(status))+'</b><span class="count-pill">'+items.length+'</span></div><div class="kanban-list" data-status="'+esc(status)+'">'+(items.length?cards:'<div class="empty-state">Vacío</div>')+(remaining?'<div class="kanban-more"><b>'+remaining+'</b> más en esta etapa</div>':'')+'</div></section>';
   }).join(''):'<div class="pipeline-empty">No hay oportunidades que coincidan con los filtros.</div>';
   lucideRefresh();
   if(activeView==='pipeline')setTimeout(enableKanban,0);
@@ -773,11 +787,11 @@ function enableKanban(){
       group:'crm-pipeline',animation:180,ghostClass:'sortable-ghost',chosenClass:'sortable-chosen',
       onAdd:async evt=>{
         const id=evt.item.dataset.id,status=evt.to.dataset.status;
-        if(status==='Cliente'){
+        if(stageType(status)==='won'){
           renderPipeline();notify('Convertí una propuesta aceptada para crear el cliente y conservar la trazabilidad.');return;
         }
-        if(status==='No interesado'){
-          renderPipeline();openLostReason(id);return;
+        if(stageType(status)==='lost'){
+          renderPipeline();openLostReason(id,status);return;
         }
         await updateProspectStatus(id,status);
       }
@@ -909,7 +923,7 @@ function renderTeam(){
 }
 function renderReports(){
   charts.forEach(c=>c.destroy());charts=[];
-  const p=data.prospects,total=p.length||1,rep=p.filter(isReply).length,opp=p.filter(isOpportunity).length,clients=p.filter(x=>x.status==='Cliente').length;
+  const p=data.prospects,total=p.length||1,rep=p.filter(isReply).length,opp=p.filter(isOpportunity).length,clients=p.filter(x=>stageType(x.status)==='won').length;
   const metrics=[
     ['Tasa de respuesta',Math.round(rep/total*100)+'%','message-circle-reply',rep+' de '+p.length],
     ['Oportunidades',Math.round(opp/total*100)+'%','sparkles',opp+' prospectos'],
@@ -921,14 +935,14 @@ function renderReports(){
 
   const sectors=[...new Set(p.map(x=>x.sector||'Sin rubro'))].sort();
   $('sectorReportRows').innerHTML=sectors.length?sectors.map(s=>{
-    const a=p.filter(x=>(x.sector||'Sin rubro')===s),r=a.filter(isReply).length,o=a.filter(isOpportunity).length,c=a.filter(x=>x.status==='Cliente').length;
+    const a=p.filter(x=>(x.sector||'Sin rubro')===s),r=a.filter(isReply).length,o=a.filter(isOpportunity).length,c=a.filter(x=>stageType(x.status)==='won').length;
     return '<tr><td>'+esc(s)+'</td><td>'+a.length+'</td><td>'+r+'</td><td>'+o+'</td><td>'+c+'</td><td>'+(a.length?Math.round(o/a.length*100):0)+'%</td></tr>';
   }).join(''):'<tr><td colspan="6">Sin datos.</td></tr>';
 
-  const statusCounts=STATUSES.map(s=>p.filter(x=>x.status===s).length);
+  const reportStages=pipelineStages({includeInactive:true}),statusCounts=reportStages.map(stage=>p.filter(x=>x.status===stage.stage_key).length);
   const sc=getComputedStyle(document.documentElement).getPropertyValue('--sc-blue').trim()||'#0360BD';
   const cyan=getComputedStyle(document.documentElement).getPropertyValue('--sc-cyan').trim()||'#31A5D6';
-  charts.push(new Chart($('pipelineChart'),{type:'bar',data:{labels:STATUSES,datasets:[{data:statusCounts,backgroundColor:sc,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:getComputedStyle(document.body).getPropertyValue('--muted')}},y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(120,140,155,.12)'}}}}}));
+  charts.push(new Chart($('pipelineChart'),{type:'bar',data:{labels:reportStages.map(stage=>stage.label),datasets:[{data:statusCounts,backgroundColor:sc,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{font:{size:9},color:getComputedStyle(document.body).getPropertyValue('--muted')}},y:{beginAtZero:true,ticks:{precision:0},grid:{color:'rgba(120,140,155,.12)'}}}}}));
   const sectorOpp=sectors.map(s=>p.filter(x=>(x.sector||'Sin rubro')===s&&isOpportunity(x)).length);
   charts.push(new Chart($('sectorChart'),{type:'doughnut',data:{labels:sectors,datasets:[{data:sectorOpp,backgroundColor:sectors.map((_,i)=>i%2?cyan:sc),borderWidth:0}]},options:{responsive:true,maintainAspectRatio:false,cutout:'68%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:9},color:getComputedStyle(document.body).getPropertyValue('--muted')}}}}}));
   lucideRefresh();
@@ -938,7 +952,7 @@ function resetProspectForm(){
   $('prospectForm').reset();$('prospectId').value='';$('city').value='Cdelu';$('brand').value='SC';$('status').value='Prospecto';$('prospectCurrency').value=activeOrganization?.default_currency||'ARS';$('probability').value=stageProbability('Prospecto');$('owner').value=currentProfile?.id||'';$('prospectModalTitle').textContent='Nuevo prospecto';syncLostReasonField();
 }
 function syncLostReasonField(){
-  const closed=$('status').value==='No interesado',field=$('lostReasonField');
+  const closed=stageType($('status').value)==='lost',field=$('lostReasonField');
   field.hidden=!closed;$('lostReason').required=closed;
 }
 function editProspect(id){
@@ -965,7 +979,7 @@ async function submitProspect(event){
     estimated_value:$('estimatedValue').value===''?null:Number($('estimatedValue').value),
     currency:$('prospectCurrency').value,
     probability:Math.max(0,Math.min(100,Number($('probability').value||0))),
-    lost_reason:$('status').value==='No interesado'?$('lostReason').value.trim():null,
+    lost_reason:stageType($('status').value)==='lost'?$('lostReason').value.trim():null,
     next_action:$('nextAction').value.trim()||null,
     next_followup:$('nextFollowup').value||null,
     need_interest:$('needInterest').value.trim()||null,
@@ -1452,21 +1466,21 @@ async function submitPassword(e){
   closeButton.hidden=false;
   closeModal('actionModal');notify('Contraseña actualizada');
 }
-function openLostReason(id){
+function openLostReason(id,targetStatus='No interesado'){
   const prospect=data.prospects.find(item=>item.id===id);if(!prospect)return;
   $('actionEyebrow').textContent='CIERRE COMERCIAL';$('actionTitle').textContent='Cerrar oportunidad';
   $('actionBody').innerHTML='<form class="action-form" id="actionForm"><div class="form-hint full-field"><b>'+esc(prospect.business_name)+'</b><p>El motivo alimenta los reportes y ayuda a mejorar futuras propuestas.</p></div><label class="full-field">Motivo de cierre<textarea name="reason" rows="4" minlength="3" maxlength="1000" required placeholder="Ej.: presupuesto postergado, eligió otra alternativa o no es prioridad"></textarea></label><div class="form-actions"><button type="button" class="btn btn-secondary" data-close="actionModal">Cancelar</button><button class="btn btn-danger" type="submit"><i data-lucide="circle-x"></i>Cerrar oportunidad</button></div></form>';
-  $('actionForm').onsubmit=async event=>{event.preventDefault();const reason=new FormData(event.target).get('reason').trim();if(!reason)return;await updateProspectStatus(id,'No interesado',reason);closeModal('actionModal')};
+  $('actionForm').onsubmit=async event=>{event.preventDefault();const reason=new FormData(event.target).get('reason').trim();if(!reason)return;await updateProspectStatus(id,targetStatus,reason);closeModal('actionModal')};
   openModal('actionModal');
 }
 async function updateProspectStatus(id,status,reason=null){
   if(!ensureWriteAccess('crm.write')){await loadRemoteData();return}
   if(mode==='supabase'){
-    const patch={status};if(status==='No interesado')patch.lost_reason=reason;
+    const patch={status};if(stageType(status)==='lost')patch.lost_reason=reason;
     const {error}=await supabase.from('prospects').update(patch).eq('id',id).eq('organization_id',activeOrganizationId());if(error){notify(error.message);await loadRemoteData();return}
     await loadRemoteData();
   }else{
-    const p=data.prospects.find(x=>x.id===id);if(p&&p.status!==status){const previous=p.status,now=new Date().toISOString();p.status=status;p.lost_reason=status==='No interesado'?reason:null;p.probability=stageProbability(status);p.stage_entered_at=now;p.updated_at=now;data.prospectStageHistory.unshift({id:uuid(),organization_id:activeOrganizationId(),prospect_id:id,from_status:previous,to_status:status,reason:p.lost_reason,changed_by:currentProfile.id,changed_at:now})}saveDemo()
+    const p=data.prospects.find(x=>x.id===id);if(p&&p.status!==status){const previous=p.status,now=new Date().toISOString();p.status=status;p.lost_reason=stageType(status)==='lost'?reason:null;p.probability=stageProbability(status);p.stage_entered_at=now;p.updated_at=now;data.prospectStageHistory.unshift({id:uuid(),organization_id:activeOrganizationId(),prospect_id:id,from_status:previous,to_status:status,reason:p.lost_reason,changed_by:currentProfile.id,changed_at:now})}saveDemo()
   }
   notify('Etapa actualizada');
 }
@@ -1481,7 +1495,7 @@ async function toggleTask(id){
 }
 
 function exportBackup(){
-  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,prospects:data.prospects,prospectStageHistory:data.prospectStageHistory,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,proposalSections:data.proposalSections,proposalItems:data.proposalItems,proposalVersions:data.proposalVersions,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
+  const clean={exported_at:new Date().toISOString(),organization:activeOrganization,profiles:data.profiles,memberships:data.organizationMemberships,pipelineStages:data.pipelineStages,prospects:data.prospects,prospectStageHistory:data.prospectStageHistory,interactions:data.interactions,tasks:data.tasks,meetings:data.meetings,proposals:data.proposals,proposalSections:data.proposalSections,proposalItems:data.proposalItems,proposalVersions:data.proposalVersions,clients:data.clients,projects:data.projects,documents:data.documents,invoices:data.invoices,payments:data.payments};
   const blob=new Blob([JSON.stringify(clean,null,2)],{type:'application/json'}),a=document.createElement('a');
   a.href=URL.createObjectURL(blob);a.download='sc-gestion-'+(activeOrganization?.slug||'empresa')+'-'+isoDate()+'.json';a.click();URL.revokeObjectURL(a.href);
 }
@@ -1566,6 +1580,10 @@ window.SC_APP={
   applyPipelinePreferences,
   getPipelineFilters,
   applyPipelineFilters,
+  pipelineStages,
+  stageLabel,
+  stageType,
+  stageProbability,
   renderClients,
   format:{esc,money,fmtDate,fmtDateTime,labelFrom,roleLabel,initials}
 };

@@ -323,3 +323,28 @@
 **Pendientes detectados:**
 - Ejecutar una unificación controlada con datos reales y un propietario autenticado.
 - Diseñar etapas configurables y acciones masivas con auditoría.
+
+## 2026-10-01 - Etapas configurables del pipeline
+
+**Cambios realizados:**
+- Se agregó un catálogo de etapas por empresa con nombre visible, tipo, probabilidad, color, orden y estado activo.
+- El propietario dispone de un editor responsive para crear etapas abiertas, renombrar, ordenar, colorear y activar sin alterar las claves históricas.
+- Filtros, formulario de oportunidad, Kanban, indicadores y reportes consumen el catálogo dinámico.
+- PostgreSQL protege etapas críticas u ocupadas, valida cada movimiento y siembra el catálogo en nuevas empresas.
+
+**Archivos modificados:**
+- `assets/js/app.js`, `assets/js/workspace.js`, `assets/css/app.css` y `tests/app-shell.spec.js`.
+- `supabase/migrations/20261001125652_configurable_pipeline_stages.sql` y `supabase/migrations/20261001131727_pipeline_stage_audit.sql`.
+- Documentación Obsidian.
+
+**Validaciones realizadas:**
+- Migraciones aplicadas a `sc-crm-comercial` como versiones `20261001131105` y `20261001131743`.
+- 11 etapas, 65 oportunidades y cero oportunidades sin etapa; RLS activo y cero privilegios para `anon`.
+- RPC confirmada como `security invoker` con `search_path` vacío; tres políticas e índices verificados.
+- Trigger de auditoría confirmado sobre altas y modificaciones de `pipeline_stages`.
+- Playwright: 11 de 11 pruebas aprobadas; incluye creación, renombrado, orden, guardado, propagación y responsive a 390 x 844.
+- Inicio real con un usuario comercial: 11 etapas y 65 oportunidades cargadas, cero huérfanas y cero errores o advertencias en consola.
+
+**Pendientes detectados:**
+- Ejecutar una personalización controlada con el propietario autenticado y acordar nombres comerciales definitivos.
+- Diseñar acciones masivas con vista previa y auditoría.

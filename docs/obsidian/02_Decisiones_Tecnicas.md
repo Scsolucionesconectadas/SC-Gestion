@@ -195,3 +195,15 @@ La RPC es deliberadamente `security definer` porque actualiza perfil y membresí
 **Alternativas consideradas:** tabla materializada de Cliente 360, vistas compartidas por empresa y borrado físico del duplicado. Se descartaron por sincronización, permisos todavía no definidos y pérdida de auditoría.
 
 **Archivos relacionados:** `assets/js/customer360.js`, `assets/js/app.js`, `supabase/migrations/20261001024358_client_360_saved_views_merge.sql`, `supabase/migrations/20261001025917_pipeline_saved_views_user_index.sql`.
+
+## 2026-10-01 - Etapas configurables con identidad técnica estable
+
+**Decisión:** separar la clave técnica de cada etapa de su etiqueta visible. La empresa puede personalizar etiqueta, orden, probabilidad y color, pero los registros comerciales e historiales siguen referenciando una clave inmutable.
+
+**Motivo:** permitir que cada empresa adapte su lenguaje comercial sin reescribir oportunidades, historial ni automatizaciones que dependen de `Prospecto`, `Propuesta enviada`, `Negociación`, `Cliente` y `No interesado`.
+
+**Impacto:** `pipeline_stages` se aísla por empresa con RLS. `save_pipeline_stages` valida y guarda el catálogo en una transacción como `security invoker`; los triggers protegen etapas críticas, etapas ocupadas y transiciones inválidas, y registran cambios en `activity_log`. El frontend consume el catálogo en filtros, formularios, Kanban, métricas y reportes.
+
+**Alternativas consideradas:** guardar solo etiquetas en `organizations.settings` o migrar `prospects.status` al renombrar. Se descartaron porque la primera no modela integridad y la segunda rompería trazabilidad y acoplaría cada edición visual a una migración de datos.
+
+**Archivos relacionados:** `assets/js/app.js`, `assets/js/workspace.js`, `assets/css/app.css`, `supabase/migrations/20261001125652_configurable_pipeline_stages.sql`, `supabase/migrations/20261001131727_pipeline_stage_audit.sql`.

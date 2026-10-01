@@ -9,7 +9,7 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Esquema multiempresa aplicado al proyecto Supabase `sc-crm-comercial`.
 - Frontend y demo local implementados.
 - RLS, roles, permisos granulares por empresa, Storage privado y auditoría implementados.
-- Empresa y tres usuarios iniciales aprovisionados y validados contra Auth y RLS; `mbetancourt` completó el cambio inicial y los otros dos usuarios lo mantienen pendiente.
+- Empresa y tres usuarios iniciales aprovisionados y validados contra Auth y RLS; `mbetancourt` y `orojas` completaron el cambio inicial, mientras `areyes` todavía lo mantiene pendiente.
 - Perfiles profesionales, fotos privadas y administración del equipo por el propietario implementados.
 - Sidebar responsive, formularios y modales actualizados y cubiertos por Playwright.
 - Colaboración de tareas con checklist, subtareas, comentarios y seguidores; notificaciones, comunicaciones por email, PDF internos y preferencias personales implementados.
@@ -24,6 +24,7 @@ SC Gestión es el portal interno multiempresa de Soluciones Conectadas. Centrali
 - Conversión asistida de propuestas aceptadas a cliente, proyecto y tareas iniciales, con revisión de posibles duplicados y confirmación humana.
 - Cliente 360° implementado con actividad relacionada, proyectos, tareas, documentos, comprobantes, cobros y comunicaciones en una ficha responsive.
 - Pipeline con vistas personales por usuario y empresa, incluida una vista predeterminada opcional.
+- Etapas del pipeline configurables por empresa: el propietario puede renombrar, ordenar, colorear, ajustar probabilidades y sumar etapas abiertas sin romper historial ni automatizaciones.
 - Unificación asistida de clientes disponible para propietarios: conserva el registro origen inactivo, traslada relaciones operativas y deja trazabilidad.
 - El propietario configura por empresa la densidad del pipeline y los valores iniciales de presupuestos: prefijo, vigencia, impuestos, margen, plazo y condición de pago.
 - Frontend publicado en GitHub Pages con dominio `https://erp.scsolucionesconectadas.com.ar/`, HTTPS obligatorio y frontend público protegido por Auth y RLS.
@@ -46,7 +47,7 @@ npm run serve
 
 ## Pendientes importantes
 
-- [ ] Confirmar que `areyes` y `orojas` reemplazaron su contraseña temporal.
+- [ ] Confirmar que `areyes` reemplazó su contraseña temporal.
 - [ ] Validar separación con dos empresas y usuarios reales.
 - [ ] Configurar recuperación de contraseña para las identidades internas.
 - [ ] Configurar y verificar Resend con un dominio remitente validado.
@@ -54,7 +55,6 @@ npm run serve
 - [ ] Activar protección contra contraseñas filtradas y MFA para propietarios.
 - [ ] Completar datos identificatorios de SC cuando existan formalmente.
 - [ ] Validar el primer presupuesto o propuesta conceptual real y ejecutar una conversión controlada con un usuario autenticado.
-- [ ] Diseñar etapas configurables del pipeline sin romper el historial comercial.
 
 ## Notas relacionadas
 

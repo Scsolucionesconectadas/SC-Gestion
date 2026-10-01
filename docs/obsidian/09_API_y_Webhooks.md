@@ -60,6 +60,12 @@ Recibe empresa, nombre, filtros e indicador de vista predeterminada. Requiere JW
 
 Recibe cliente origen y cliente definitivo. Requiere JWT, rol propietario, `clients.write` y los permisos de escritura de cada módulo con registros afectados. Ambos clientes deben estar activos y pertenecer a la misma empresa. La respuesta informa los identificadores y cantidades trasladadas; el origen queda inactivo y enlazado para auditoría.
 
+## RPC `save_pipeline_stages`
+
+`POST /rest/v1/rpc/save_pipeline_stages`
+
+Recibe `p_organization_id` y `p_stages`, un arreglo de entre 3 y 20 etapas con clave, etiqueta, tipo, probabilidad, color, posición y estado activo. Requiere JWT, rol propietario y `organization.manage`. La función opera como `security invoker`, rechaza campos adicionales, claves duplicadas y etapas personalizadas de tipo terminal. Devuelve el catálogo completo ordenado.
+
 ## CORS productivo
 
 `ai-agent`, `communications` y las acciones POST de `chatgpt-oauth` permiten `https://erp.scsolucionesconectadas.com.ar` y los orígenes locales documentados. Una preflight desde otro origen recibe `403`; CORS complementa JWT, permisos y RLS, pero no los reemplaza.

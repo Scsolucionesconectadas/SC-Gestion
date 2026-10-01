@@ -16,6 +16,7 @@
 12. Presupuestos comerciales: `proposals` como cabecera, `proposal_sections` y `proposal_items` para costeo por etapas, y `proposal_versions` para snapshots auditables.
 13. Conversión comercial: `assets/js/conversion.js` conduce la revisión y `convert_accepted_proposal` ejecuta atómicamente la creación o vinculación de cliente, proyecto y tareas.
 14. Relación con clientes: `assets/js/customer360.js` compone la ficha transversal, administra vistas personales y solicita a `merge_clients` la consolidación transaccional de duplicados.
+15. Catálogo comercial: `pipeline_stages` define por empresa las etiquetas visibles, el orden, probabilidad, color y tipo de cada etapa; `prospects.status` conserva la clave técnica estable.
 
 ## Módulos
 
@@ -34,5 +35,7 @@ El navegador solo puede leer presupuestos según `quotes.view`. La RPC `save_com
 La aceptación de una propuesta no convierte automáticamente la oportunidad. El asistente exige confirmación, muestra coincidencias de clientes por nombre, email o teléfono y llama a `convert_accepted_proposal`. La función usa los permisos efectivos, comprueba que la propuesta esté aceptada, conserva idempotencia y vincula los registros de origen dentro de una única transacción.
 
 Las vistas del pipeline se aíslan por `organization_id` y `user_id` mediante RLS. La unificación de clientes solo puede ejecutarla un propietario con permisos efectivos sobre cada módulo afectado. `merge_clients` usa `security invoker`, bloquea ambos registros, exige que estén activos y en la misma empresa, mueve sus relaciones y conserva el origen como registro inactivo enlazado al cliente definitivo.
+
+La configuración de etapas usa `save_pipeline_stages` con `security invoker`, permisos de propietario y RLS. Las claves técnicas no se renombran: solo cambia la etiqueta visible. Las etapas requeridas por altas, presupuestos, negociación, conversión y cierre no pueden desactivarse; tampoco se permite desactivar una etapa que todavía contiene oportunidades. El trigger de `prospects` valida que cada transición apunte a una etapa activa de la misma empresa y `audit_pipeline_stages` registra cambios en la bitácora existente.
 
 El callback OAuth es público porque el proveedor debe abrirlo sin JWT de Supabase. Su confianza se basa en `state` hasheado y de un solo uso, PKCE, `nonce`, firma OIDC, emisor y audiencia. Las acciones iniciadas desde el portal sí exigen sesión y `agents.manage`.

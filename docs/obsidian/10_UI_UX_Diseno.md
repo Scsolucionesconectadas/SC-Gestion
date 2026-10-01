@@ -82,6 +82,8 @@
 - Las tarjetas muestran probabilidad, valor y días en etapa; las oportunidades estancadas reciben una señal textual y visual, y los cierres perdidos exigen un motivo.
 - El conteo indica resultados filtrados sobre el total y el estado sin coincidencias reemplaza las columnas vacías por un mensaje único.
 - La configuración `Comercial y documentos` mantiene secciones sin cards anidadas, acciones fijas y reglas de gobierno visibles.
+- El editor de etapas permite renombrar, ajustar probabilidad y color, activar y reordenar con botones de icono. Las etapas críticas muestran su tipo y bloquean la desactivación.
+- En escritorio las propiedades se leen en una grilla estable; por debajo de 1100 px se reorganizan y en móvil forman una ficha de una columna útil sin desborde horizontal.
 - Los controles conservan foco visible, etiquetas accesibles, estados deshabilitados y soporte de `prefers-reduced-motion`.
 
 ## Conversión comercial

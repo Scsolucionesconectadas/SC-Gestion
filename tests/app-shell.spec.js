@@ -349,6 +349,43 @@ test('filtra un pipeline extenso y aplica los valores comerciales de la empresa'
   expect(runtimeErrors).toEqual([]);
 });
 
+test('personaliza las etapas del pipeline y conserva una interfaz responsive', async ({ page }) => {
+  const runtimeErrors = await enterDemo(page);
+  await page.locator('[data-view="settings"]').click();
+  await page.locator('[data-settings-tab="commercial"]').click();
+
+  await expect(page.locator('[data-stage-row]')).toHaveCount(11);
+  await expect(page.locator('[data-stage-key="Prospecto"] [data-stage-field="active"]')).toBeDisabled();
+  await page.locator('[data-stage-key="Visitado"] [data-stage-field="label"]').fill('Calificación inicial');
+  await page.locator('[data-stage-key="Visitado"] [data-stage-field="probability"]').fill('20');
+
+  await page.locator('#addPipelineStage').click();
+  const customStage=page.locator('[data-stage-new="true"]');
+  await customStage.locator('[data-stage-field="label"]').fill('Diagnóstico');
+  await customStage.locator('[data-stage-field="probability"]').fill('55');
+  await customStage.locator('[data-stage-field="color"]').selectOption('cyan');
+  await customStage.locator('[data-stage-move="up"]').click();
+  await page.locator('#savePipelineStages').click();
+  await expect(page.locator('#toast')).toContainText('Etapas guardadas');
+
+  await expect(page.locator('[data-stage-key="Visitado"] [data-stage-field="label"]')).toHaveValue('Calificación inicial');
+  await page.locator('[data-view="prospects"]').click();
+  await expect(page.locator('#status')).toContainText('Calificación inicial');
+  await expect(page.locator('#status')).toContainText('Diagnóstico');
+  await page.locator('[data-view="pipeline"]').click();
+  await expect(page.locator('.kanban-head').filter({hasText:'Calificación inicial'})).toBeVisible();
+  await expect(page.locator('.kanban-head').filter({hasText:'Diagnóstico'})).toBeVisible();
+
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#menuBtn').click();
+  await page.locator('#sidebar [data-view="settings"]').click();
+  await page.locator('[data-settings-tab="commercial"]').click();
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+  await expect(page.locator('.pipeline-stage-row').first()).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+});
+
 test('convierte una propuesta aceptada en cliente, proyecto y tareas con trazabilidad', async ({ page }) => {
   const runtimeErrors = await enterDemo(page);
 

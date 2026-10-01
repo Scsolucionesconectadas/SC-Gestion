@@ -149,3 +149,22 @@
 **Cómo evitarlo:** ejecutar la interacción completa en navegador, capturar `pageerror` y mantener cada módulo ES con dependencias explícitas.
 
 **Archivos relacionados:** `assets/js/quotes.js`, `package.json`, `tests/app-shell.spec.js`.
+# Errores y Soluciones
+
+## 2026-10-01 - Desborde horizontal en el editor móvil de etapas
+
+**Síntoma:**
+Configuración medía 672 px dentro de un viewport de 390 px aunque las filas visibles parecían ajustadas.
+
+**Causa:**
+La regla general de inputs del editor sobrescribía el ancho de 1 px usado para ocultar los checkbox accesibles de los toggles. Cada checkbox invisible crecía al 100% y extendía el documento.
+
+**Solución aplicada:**
+Se limitó el estilo de ancho, borde y foco a `input:not([type="checkbox"])`, preservando la implementación del toggle.
+
+**Cómo evitarlo:**
+Excluir controles ocultos al crear reglas globales para inputs y mantener una prueba de `scrollWidth` en viewport móvil.
+
+**Archivos relacionados:**
+- `assets/css/app.css`
+- `tests/app-shell.spec.js`

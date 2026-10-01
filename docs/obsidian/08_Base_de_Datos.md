@@ -7,7 +7,7 @@ PostgreSQL 17 en Supabase.
 ## Entidades principales
 
 - Acceso: `profiles`, `organizations`, `memberships`.
-- Comercial: `prospects`, `prospect_stage_history`, `pipeline_saved_views`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
+- Comercial: `pipeline_stages`, `prospects`, `prospect_stage_history`, `pipeline_saved_views`, `interactions`, `meetings`, `proposals`, `proposal_sections`, `proposal_items`, `proposal_versions`.
 - Operación: `clients`, `projects`, `project_comments`, `tasks`, `task_comments`, `task_watchers`, `documents`.
 - Administración: `invoices`, `invoice_items`, `payments`.
 - Comunicaciones: `email_templates`, `email_messages`, `generated_documents`.
@@ -27,6 +27,8 @@ Los presupuestos usan columnas generadas para precio unitario y subtotales. La R
 La RPC `convert_accepted_proposal` usa `security invoker`, exige una propuesta aceptada, valida permisos y organización, vincula o crea el cliente y opcionalmente crea proyecto y tareas en una única transacción. Una segunda ejecución devuelve la conversión existente sin repetir registros.
 
 `pipeline_saved_views` guarda filtros de bajo volumen por empresa y usuario. RLS restringe cada fila a su propietario y exige `crm.view`; un índice parcial garantiza una sola vista predeterminada. `save_pipeline_view` valida nombre, tamaño y claves admitidas antes del `upsert`.
+
+`pipeline_stages` conserva una clave técnica inmutable y una etiqueta visible editable por empresa. El catálogo limita tipos, colores, probabilidades y posiciones; mantiene una única etapa activa ganada y perdida. `save_pipeline_stages` usa `security invoker`, RLS y permisos efectivos de propietario. Los triggers impiden desactivar etapas críticas u ocupadas, rechazan cualquier transición de una oportunidad hacia una etapa inexistente o inactiva y auditan altas y modificaciones en `activity_log`.
 
 `clients.merged_into_id`, `merged_at` y `merged_by` conservan la procedencia de una unificación. `merge_clients` usa `security invoker`, bloquea origen y destino, exige propietario y permisos de escritura para cada relación afectada, traslada proyectos, documentos, comprobantes y correos directos, y marca el origen como inactivo dentro de la misma transacción.
 
@@ -59,6 +61,8 @@ La RPC `convert_accepted_proposal` usa `security invoker`, exige una propuesta a
 - `20261001004835_pipeline_conversion_indexes.sql`: índices de cobertura para las nuevas relaciones comerciales.
 - `20261001024358_client_360_saved_views_merge.sql`: vistas personales con RLS, metadatos de unificación e implementación transaccional de `save_pipeline_view` y `merge_clients`.
 - `20261001025917_pipeline_saved_views_user_index.sql`: cobertura de la clave foránea de usuario detectada por Performance Advisor.
+- `20261001125652_configurable_pipeline_stages.sql`: catálogo de etapas por empresa, sembrado automático, RLS, guardado transaccional y validación de movimientos. Aplicada en Supabase como versión `20261001131105`.
+- `20261001131727_pipeline_stage_audit.sql`: auditoría de altas y modificaciones del catálogo. Aplicada en Supabase como versión `20261001131743`.
 
 ## Perfiles y membresías
 

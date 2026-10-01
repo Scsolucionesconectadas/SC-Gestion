@@ -131,10 +131,33 @@ function commercialConfiguration(){
   };
 }
 
+const PIPELINE_STAGE_COLORS={gray:'Gris',blue:'Azul',cyan:'Celeste',amber:'Ámbar',purple:'Violeta',green:'Verde',red:'Rojo'};
+const PIPELINE_REQUIRED_KEYS=new Set(['Prospecto','Propuesta enviada','Negociación','Cliente','No interesado']);
+
+function pipelineStageRow(stage,index,total,{isNew=false}={}){
+  const required=PIPELINE_REQUIRED_KEYS.has(stage.stage_key),terminal=stage.stage_type!=='open';
+  const typeLabel=stage.stage_type==='won'?'Ganada':stage.stage_type==='lost'?'Perdida':required?'Flujo automático':'Abierta';
+  const colorOptions=Object.entries(PIPELINE_STAGE_COLORS).map(([value,label])=>'<option value="'+value+'" '+(stage.color===value?'selected':'')+'>'+label+'</option>').join('');
+  return '<article class="pipeline-stage-row '+(stage.is_active===false?'is-inactive':'')+'" data-stage-row data-stage-key="'+esc(stage.stage_key)+'" data-stage-id="'+esc(stage.id||'')+'" data-stage-system="'+String(stage.is_system===true)+'" data-stage-new="'+String(isNew)+'" data-color="'+esc(stage.color||'gray')+'">'+
+    '<span class="stage-grip" aria-hidden="true"><i data-lucide="grip-vertical"></i></span>'+
+    '<label class="stage-name-field"><span>Nombre</span><input data-stage-field="label" maxlength="60" minlength="2" required value="'+esc(stage.label)+'"></label>'+
+    '<label><span>Probabilidad</span><span class="stage-number"><input data-stage-field="probability" type="number" min="0" max="100" value="'+Number(stage.probability||0)+'" '+(terminal?'disabled':'')+'><b>%</b></span></label>'+
+    '<label class="stage-color-field"><span>Color</span><span><i class="stage-color-dot"></i><select data-stage-field="color">'+colorOptions+'</select></span></label>'+
+    '<div class="stage-kind"><span>Tipo</span><b class="status-pill '+(stage.stage_type==='won'?'status-green':stage.stage_type==='lost'?'status-red':'status-blue')+'">'+typeLabel+'</b></div>'+
+    '<div class="stage-row-actions"><button type="button" class="icon-btn" data-stage-move="up" title="Subir etapa" aria-label="Subir '+esc(stage.label)+'" '+(index===0?'disabled':'')+'><i data-lucide="arrow-up"></i></button><button type="button" class="icon-btn" data-stage-move="down" title="Bajar etapa" aria-label="Bajar '+esc(stage.label)+'" '+(index===total-1?'disabled':'')+'><i data-lucide="arrow-down"></i></button>'+(isNew?'<button type="button" class="icon-btn danger" data-stage-remove title="Eliminar etapa" aria-label="Eliminar '+esc(stage.label)+'"><i data-lucide="trash-2"></i></button>':'')+'</div>'+
+    '<label class="stage-active-toggle" title="'+(required?'Esta etapa participa en un flujo automático':'Mostrar esta etapa en el pipeline')+'"><span>Activa</span><span class="toggle-field"><input data-stage-field="active" type="checkbox" '+(stage.is_active!==false?'checked':'')+' '+(required?'disabled':'')+'><span></span></span></label>'+
+    '</article>';
+}
+
+function pipelineStageEditor(){
+  const stages=app.pipelineStages({includeInactive:true});
+  return '<section class="settings-control-section pipeline-stage-editor"><div class="settings-section-head stage-editor-head"><span class="settings-icon"><i data-lucide="git-branch"></i></span><div><h3>Etapas del proceso comercial</h3><p>Personalizá el nombre, el orden, la probabilidad y el color. Las claves internas conservan todo el historial.</p></div><button class="btn btn-secondary" type="button" id="addPipelineStage" '+(stages.length>=20?'disabled':'')+'><i data-lucide="plus"></i>Nueva etapa</button></div><div class="pipeline-stage-labels" aria-hidden="true"><span>Etapa</span><span>Probabilidad</span><span>Color</span><span>Tipo</span><span>Orden</span><span>Visible</span></div><div class="pipeline-stage-list" id="pipelineStageRows">'+stages.map((stage,index)=>pipelineStageRow(stage,index,stages.length)).join('')+'</div><div class="pipeline-stage-footer"><p><i data-lucide="shield-check"></i>Las etapas de conversión, presupuestos y cierre permanecen activas para proteger los flujos automáticos.</p><button class="btn btn-primary" type="button" id="savePipelineStages"><i data-lucide="save"></i>Guardar etapas</button></div></section>';
+}
+
 function commercialSettings(){
   const settings=commercialConfiguration(),pipeline=settings.pipeline,quotes=settings.quotes;
   const option=(value,label,current)=>'<option value="'+value+'" '+(String(value)===String(current)?'selected':'')+'>'+label+'</option>';
-  return '<form id="commercialSettingsForm" class="settings-control-form">'+
+  return '<form id="commercialSettingsForm" class="settings-control-form">'+pipelineStageEditor()+
     '<section class="settings-control-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="columns-3"></i></span><div><h3>Pipeline comercial</h3><p>Controlá cuánto muestra el tablero y cuándo una oportunidad necesita atención.</p></div></div><div class="settings-control-grid"><label>Tarjetas visibles por etapa<select name="pipeline_card_limit">'+option(10,'10 tarjetas',pipeline.card_limit)+option(25,'25 tarjetas',pipeline.card_limit)+option(50,'50 tarjetas',pipeline.card_limit)+option('all','Sin límite',pipeline.card_limit)+'</select></label><label>Días sin actividad<input name="pipeline_stale_days" type="number" min="1" max="365" value="'+esc(pipeline.stale_days)+'" required></label><label class="settings-switch-row full"><span><b>Ocultar etapas vacías</b><small>Usar un tablero más compacto cuando no hay negocios en una etapa.</small></span><span class="toggle-field"><input name="pipeline_hide_empty" type="checkbox" '+(pipeline.hide_empty?'checked':'')+'><span></span></span></label></div></section>'+
     '<section class="settings-control-section"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="file-spreadsheet"></i></span><div><h3>Presupuestos y documentos</h3><p>Valores iniciales para nuevas propuestas; cada presupuesto puede ajustarlos.</p></div></div><div class="settings-control-grid"><label>Prefijo documental<input name="quote_document_prefix" maxlength="10" pattern="[A-Za-z0-9-]{2,10}" value="'+esc(quotes.document_prefix)+'" required></label><label>Vigencia predeterminada<select name="quote_validity_days">'+option(7,'7 días',quotes.validity_days)+option(15,'15 días',quotes.validity_days)+option(30,'30 días',quotes.validity_days)+option(45,'45 días',quotes.validity_days)+'</select></label><label>Impuesto predeterminado %<input name="quote_tax_percent" type="number" min="0" max="100" step="0.01" value="'+esc(quotes.tax_percent)+'" required></label><label>Margen inicial %<input name="quote_margin_percent" type="number" min="0" max="1000" step="0.01" value="'+esc(quotes.margin_percent)+'" required></label><label>Plazo inicial (semanas)<input name="quote_delivery_weeks" type="number" min="1" max="520" value="'+esc(quotes.delivery_weeks)+'" required></label><label class="full">Condición de pago inicial<textarea name="quote_payment_terms" rows="3" maxlength="500" required>'+esc(quotes.payment_terms)+'</textarea></label></div></section>'+
     '<section class="settings-control-section settings-governance"><div class="settings-section-head"><span class="settings-icon"><i data-lucide="shield-check"></i></span><div><h3>Reglas de gobierno</h3><p>Controles permanentes que protegen el proceso comercial.</p></div></div><div class="governance-list"><div><i data-lucide="badge-check"></i><span><b>Aprobación antes de enviar</b><small>Solo propietarios y administradores autorizados pueden aprobar.</small></span><span class="status-pill status-green">Activa</span></div><div><i data-lucide="lock-keyhole"></i><span><b>Documentos cerrados inmutables</b><small>Las correcciones se realizan mediante una nueva versión.</small></span><span class="status-pill status-green">Activa</span></div><div><i data-lucide="calculator"></i><span><b>Totales calculados en servidor</b><small>Costos, descuentos e impuestos no dependen del navegador.</small></span><span class="status-pill status-green">Activa</span></div></div></section>'+
@@ -169,6 +192,82 @@ function bindSettingsForm(){
   $('companySettingsForm')?.addEventListener('submit',saveCompany);
   $('commercialSettingsForm')?.addEventListener('submit',saveCommercialSettings);
   $('notificationSettingsForm')?.addEventListener('submit',saveNotificationPreferences);
+  bindPipelineStageEditor();
+}
+
+function refreshPipelineStageControls(){
+  const rows=[...document.querySelectorAll('[data-stage-row]')];
+  rows.forEach((row,index)=>{
+    row.querySelector('[data-stage-move="up"]').disabled=index===0;
+    row.querySelector('[data-stage-move="down"]').disabled=index===rows.length-1;
+  });
+}
+
+function bindPipelineStageEditor(){
+  const list=$('pipelineStageRows');if(!list)return;
+  $('addPipelineStage')?.addEventListener('click',()=>{
+    const rows=[...list.querySelectorAll('[data-stage-row]')];
+    if(rows.length>=20)return app.notify('El pipeline admite hasta 20 etapas.');
+    const stage={id:'',stage_key:'custom-'+crypto.randomUUID(),label:'Nueva etapa',stage_type:'open',probability:50,color:'blue',position:(rows.length+1)*10,is_active:true,is_system:false};
+    list.insertAdjacentHTML('beforeend',pipelineStageRow(stage,rows.length,rows.length+1,{isNew:true}));
+    refreshPipelineStageControls();icon();
+    list.lastElementChild.querySelector('[data-stage-field="label"]').select();
+  });
+  list.addEventListener('click',event=>{
+    const row=event.target.closest('[data-stage-row]');if(!row)return;
+    if(event.target.closest('[data-stage-remove]')){row.remove();refreshPipelineStageControls();return}
+    const move=event.target.closest('[data-stage-move]')?.dataset.stageMove;
+    if(move==='up'&&row.previousElementSibling)row.parentElement.insertBefore(row,row.previousElementSibling);
+    if(move==='down'&&row.nextElementSibling)row.parentElement.insertBefore(row.nextElementSibling,row);
+    if(move)refreshPipelineStageControls();
+  });
+  list.addEventListener('change',event=>{
+    const row=event.target.closest('[data-stage-row]');if(!row)return;
+    if(event.target.dataset.stageField==='active')row.classList.toggle('is-inactive',!event.target.checked);
+    if(event.target.dataset.stageField==='color')row.dataset.color=event.target.value;
+  });
+  $('savePipelineStages')?.addEventListener('click',savePipelineStages);
+}
+
+function collectPipelineStages(){
+  const rows=[...document.querySelectorAll('[data-stage-row]')];
+  const stages=rows.map((row,index)=>({
+    key:row.dataset.stageKey,
+    label:row.querySelector('[data-stage-field="label"]').value.trim().replace(/\s+/g,' '),
+    type:app.stageType(row.dataset.stageKey),
+    probability:app.stageType(row.dataset.stageKey)==='won'?100:app.stageType(row.dataset.stageKey)==='lost'?0:Number(row.querySelector('[data-stage-field="probability"]').value),
+    color:row.querySelector('[data-stage-field="color"]').value,
+    position:(index+1)*10,
+    active:row.querySelector('[data-stage-field="active"]').checked
+  }));
+  if(stages.length<3||stages.length>20)throw new Error('El pipeline debe tener entre 3 y 20 etapas.');
+  if(stages.some(stage=>stage.label.length<2))throw new Error('Cada etapa necesita un nombre de al menos 2 caracteres.');
+  if(stages.some(stage=>!Number.isFinite(stage.probability)||stage.probability<0||stage.probability>100))throw new Error('Las probabilidades deben estar entre 0 y 100%.');
+  const labels=stages.map(stage=>stage.label.toLocaleLowerCase());
+  if(new Set(labels).size!==labels.length)throw new Error('No puede haber dos etapas con el mismo nombre.');
+  if(!stages.some(stage=>stage.type==='open'&&stage.active))throw new Error('Debe quedar al menos una etapa abierta y activa.');
+  return stages;
+}
+
+async function savePipelineStages(){
+  if(app.currentMembership?.role!=='owner')return app.notify('Solo el propietario puede configurar las etapas.');
+  let stages;try{stages=collectPipelineStages()}catch(error){app.notify(error.message);return}
+  const button=$('savePipelineStages');button.disabled=true;
+  try{
+    if(app.mode==='demo'){
+      const current=new Map(app.pipelineStages({includeInactive:true}).map(stage=>[stage.stage_key,stage]));
+      app.data.pipelineStages=stages.map(stage=>{const saved=current.get(stage.key);return {id:saved?.id||'demo-stage-'+crypto.randomUUID(),organization_id:app.activeOrganization.id,stage_key:stage.key,label:stage.label,stage_type:stage.type,probability:stage.probability,color:stage.color,position:stage.position,is_active:stage.active,is_system:saved?.is_system===true}});
+      app.saveDemo();renderSettings();app.notify('Etapas guardadas en la demo');return;
+    }
+    const {data,error}=await app.supabase.rpc('save_pipeline_stages',{p_organization_id:app.activeOrganization.id,p_stages:stages});
+    if(error)throw error;
+    app.data.pipelineStages=Array.isArray(data)?data:[];
+    await app.reload();app.notify('Pipeline actualizado para la empresa');
+  }catch(error){
+    app.notify(error.message||'No se pudieron guardar las etapas.');
+  }finally{
+    if(document.body.contains(button))button.disabled=false;
+  }
 }
 
 async function saveCompany(event){

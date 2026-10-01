@@ -2,7 +2,7 @@
 
 ## Pendientes activos
 
-- [ ] Confirmar que `areyes` y `orojas` reemplazaron sus contraseñas temporales por claves fuertes y únicas.
+- [ ] Confirmar que `areyes` reemplazó su contraseña temporal por una clave fuerte y única.
 - [ ] Probar RLS con dos empresas y al menos un usuario por empresa.
 - [ ] Configurar recuperación de contraseña y segundo factor para propietarios.
 - [ ] Activar la protección de Supabase Auth contra contraseñas filtradas antes del uso productivo.
@@ -15,7 +15,6 @@
 - [ ] Conectar una cuenta real de ChatGPT, validar el catálogo de modelos y ejecutar un agente controlado con `store: false` y `stream: true`.
 - [ ] Validar el primer presupuesto detallado y la primera propuesta conceptual real con un usuario autenticado.
 - [ ] Ejecutar una conversión controlada de propuesta aceptada con un usuario autenticado y datos reales.
-- [ ] Diseñar etapas configurables por empresa con historial de cambios y mapeo seguro de oportunidades existentes.
 - [ ] Diseñar vistas compartidas del pipeline con gobierno por rol, si el uso real demuestra que son necesarias.
 - [ ] Incorporar acciones masivas con vista previa, confirmación y registro de auditoría.
 
@@ -31,6 +30,7 @@
 
 ## Resueltos
 
+- [x] Etapas configurables por empresa con claves estables, RLS, validación de transiciones, auditoría y editor responsive - 2026-10-01.
 - [x] Cliente 360° con actividad, operación, administración y comunicaciones relacionadas - 2026-10-01.
 - [x] Vistas personales y predeterminadas del pipeline aisladas por usuario y empresa - 2026-10-01.
 - [x] Unificación asistida y auditable de clientes duplicados para propietarios - 2026-10-01.
